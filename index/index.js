@@ -11,17 +11,29 @@ function OnElementUnHover(element)
 
 
 // Short top panel elements.
+var IsTopPanelHovered = false;
+
 function OnTopPanelAnimationEnd(panel)
 {
-    if (panel.getAttribute("IsHovered") == "false")
+    // Fix for shitty probelm of event firing non-stop.
+    let IsCurrentlyHovered = panel.getAttribute("IsHovered") == "true";
+    if (IsCurrentlyHovered ==IsTopPanelHovered)
+    {
+        return;
+    }
+
+    // Set elements.
+    if (!IsCurrentlyHovered)
     {
         let LoginText = document.createElement("p");
         LoginText.appendChild(document.createTextNode("L o g i n"));
         LoginText.id = "TopPanelLoginCover";
         document.getElementById("TopPanel").appendChild(LoginText);
     }
-    else if (panel.getAttribute("IsHovered") == "true")
+    else
     {
         document.getElementById("TopPanelLoginCover").remove();
     }
+
+    IsTopPanelHovered = IsCurrentlyHovered;
 }
