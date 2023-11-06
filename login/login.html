@@ -5,22 +5,23 @@
     <head>
         <title>Balķis Iekšā</title>
         <link href="../common.css" rel="stylesheet">
+        <link href="login.css" rel="stylesheet">
         <script src="../common.js"></script>
     </head>
     <body>
-        <div id="Main">
-            <div id="TopPanel" onmouseenter="OnTopPanelHoverEvent(this)" onmouseleave="OnTopPanelUnHoverEvent(this)">
-                <p id="TopPanelLoginCover">
-                    L o g i n
-                </p>
-                <a class="AccountHyperlink" id="LoginHyperlink" href="../login/login.html">
-                    Login
-                </a>
+        <div id="TopPanel" onmouseenter="OnTopPanelHoverEvent(this)" onmouseleave="OnTopPanelUnHoverEvent(this)">
+            <div id="BackToIndexButton">
+
             </div>
-            <div id="MainPanel">
-            </div>
-            <div id="BottomInfoPanel">
-            </div>
+        </div>
+        <div id="LoginDiv">
+            <p id="CreateAccountText">Baļķot iekšā</p>
+            <input class="CreateAccountStringInput" id="UsernameInput" type="text" spellcheck="false" autocapitalize="false" autocomplete="false"
+                placeholder="Lietotājvārds">
+            <input class="CreateAccountStringInput" id="PasswordInput" type="password" spellcheck="false" autocapitalize="false" autocomplete="false"
+                placeholder="Parole">
+        </div>
+        <div id="BottomInfoPanel">
         </div>
     </body>
 </html>

@@ -1,5 +1,6 @@
 // Fields.
 const TextShadowDefault = "3px 3px 3px rgba(0, 0, 0, 0.466)";
+const LoginCoverColor = "rgba(206, 180, 204, 1)";
 
 
 // Element hovers.
@@ -46,8 +47,8 @@ function OnTopPanelUnHoverEvent(panel)
 
     // Login cover.
     let LoginCover = document.getElementById("TopPanelLoginCover");
-    LoginCover.style.textShadow = "none";
-    LoginCover.style.color = "white";
+    LoginCover.style.textShadow = TextShadowDefault;
+    LoginCover.style.color = LoginCoverColor;
 
     // Login and sign up hyperlinks.
     let LoginHLink = document.getElementById("LoginHyperlink");
@@ -58,4 +59,9 @@ function OnTopPanelUnHoverEvent(panel)
     SignUpHLink.style.color = "transparent";
     SignUpHLink.style.top = "15px";
     SignUpHLink.style.textShadow = "none";
+}
+
+// Home button.
+function OnHomeButtonClickEvent(button) {
+    window.location.replace("login/login.html");
 }
