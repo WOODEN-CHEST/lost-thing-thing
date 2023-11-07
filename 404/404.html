@@ -1,15 +1,16 @@
 <!DOCTYPE html>
 
-<html lang="lv">
+<html>
     <meta charset="utf-8">
-    <link href="index.css" rel="stylesheet">
-    <link href="../common.css" rel="stylesheet">
-    <script src="../common.js"></script>
     <head>
-        <title>Pazaudētās mantas</title>
+        <title>404 Nav Atrasts</title>
+        <link href="../common.css" rel="stylesheet">
+        <link href="404.css" rel="stylesheet">
+        <script src="../common.js"></script>
     </head>
     <body>
         <div id="TopPanel" onmouseenter="OnTopPanelHoverEvent(this)" onmouseleave="OnTopPanelUnHoverEvent(this)">
+            <div id="BackToIndexButton" onclick="OnHomeButtonClickEvent(this)"></div>
             <p id="TopPanelLoginCover">
                 Baļķis iekšā
             </p>
@@ -19,6 +20,9 @@
             <a class="AccountHyperlink" id="SignUpHyperlink" href="../sign_up/sign_up.html">
                 Zīme augšā
             </a>
+        </div>
+        <div id="NotFoundDiv">
+            <p id="NotFoundMessage">404<br>Šī vietne netika atrasta :&#40</p>
         </div>
         <div id="BottomInfoPanel">
         </div>

@@ -70,7 +70,9 @@ div#TopPanel[IsHovered="true"] a.AccountHyperlink:hover {
 }
 
 div#BackToIndexButton {
-    background-color: white;
+    background-color: transparent;
+    background-image: url("assets/home.png");
+    background-size: contain;
 
     position: relative;
     left: 5px;
@@ -78,6 +80,15 @@ div#BackToIndexButton {
 
     width: 30px;
     height: 30px;
+
+    user-select: none;
+
+    transition: 125ms;
+}
+
+div#BackToIndexButton:hover {
+    cursor: pointer;
+    background-image: url("assets/home_hovered.png");
 }
 
 /* Info panel */

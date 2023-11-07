@@ -24,18 +24,35 @@ function OnTopPanelHoverEvent(panel)
 
     // Login cover.
     let LoginCover = document.getElementById("TopPanelLoginCover");
-    LoginCover.style.textShadow = "none";
-    LoginCover.style.color = "transparent";
+    if (LoginCover != null)
+    {
+        LoginCover.style.textShadow = "none";
+        LoginCover.style.color = "transparent";
+    }
 
     // Login and sign up hyperlinks.
     let LoginHLink = document.getElementById("LoginHyperlink");
-    LoginHLink.style.color = "white";
-    LoginHLink.style.textShadow = TextShadowDefault;
+    if (LoginHLink != null)
+    {
+        LoginHLink.style.color = "white";
+        LoginHLink.style.textShadow = TextShadowDefault;
+    }
 
     let SignUpHLink = document.getElementById("SignUpHyperlink");
-    SignUpHLink.style.color = "white";
-    SignUpHLink.style.top = "60px";
-    SignUpHLink.style.textShadow = TextShadowDefault;
+    if (SignUpHLink != null)
+    {
+        SignUpHLink.style.color = "white";
+        SignUpHLink.style.top = "60px";
+        SignUpHLink.style.textShadow = TextShadowDefault;
+    }
+
+    // Home button.
+    let HomeButton = document.getElementById("BackToIndexButton")
+    if (HomeButton != null)
+    {
+        HomeButton.style.width = "110px";
+        HomeButton.style.height = "110px";
+    }
 }
 
 function OnTopPanelUnHoverEvent(panel)
@@ -47,21 +64,38 @@ function OnTopPanelUnHoverEvent(panel)
 
     // Login cover.
     let LoginCover = document.getElementById("TopPanelLoginCover");
-    LoginCover.style.textShadow = TextShadowDefault;
-    LoginCover.style.color = LoginCoverColor;
+    if (LoginCover != null)
+    {
+        LoginCover.style.textShadow = TextShadowDefault;
+        LoginCover.style.color = LoginCoverColor;
+    }
 
     // Login and sign up hyperlinks.
     let LoginHLink = document.getElementById("LoginHyperlink");
-    LoginHLink.style.color = "transparent";
-    LoginHLink.style.textShadow = "none";
+    if (LoginHLink != null)
+    {
+        LoginHLink.style.color = "transparent";
+        LoginHLink.style.textShadow = "none";
+    }
 
     let SignUpHLink = document.getElementById("SignUpHyperlink");
-    SignUpHLink.style.color = "transparent";
-    SignUpHLink.style.top = "15px";
-    SignUpHLink.style.textShadow = "none";
+    if (SignUpHLink != null)
+    {
+        SignUpHLink.style.color = "transparent";
+        SignUpHLink.style.top = "15px";
+        SignUpHLink.style.textShadow = "none";
+    }
+
+    // Home button.
+    let HomeButton = document.getElementById("BackToIndexButton")
+    if (HomeButton != null)
+    {
+        HomeButton.style.width = "30px";
+        HomeButton.style.height = "30px";
+    }
 }
 
 // Home button.
 function OnHomeButtonClickEvent(button) {
-    window.location.replace("login/login.html");
+    window.location.replace("../index/index.html");
 }

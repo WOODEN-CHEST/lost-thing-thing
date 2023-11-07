@@ -67,7 +67,7 @@ input.CreateAccountStringInput {
     background-color: transparent;
 
     font-family: monospace;
-    font-size: x-large;
+    font-size: xx-large;
 }
 
 input.CreateAccountStringInput::placeholder {
