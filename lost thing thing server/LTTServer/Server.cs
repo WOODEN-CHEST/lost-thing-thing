@@ -1,4 +1,5 @@
 ﻿using LTTServer.Listening;
+using LTTServer.Logging;
 using System.Net;
 using System.Text;
 
@@ -13,17 +14,21 @@ internal class Server
 
     internal static string RootPath { get; private set; }
 
+    internal static Logger Logger { get; private set; }
+
 
     // Internal static methods.
     internal static void Main(string[] args)
     {
+        RootPath = @"D:/Workstations/Programming/Projects/lost thing thing";
+
+        Logger = new();
+
         if (!HttpListener.IsSupported)
         {
             OutputError("HttpListener is not supported.");
             return;
         }
-
-        RootPath = @"D:/Workstations/Programming/Projects/lost thing thing";
 
         try
         {

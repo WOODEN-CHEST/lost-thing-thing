@@ -87,7 +87,10 @@ internal class Listener
         }
         catch (Exception e)
         {
-            HTTPListener.Stop();
+            if (HTTPListener.IsListening)
+            {
+                HTTPListener.Stop();
+            }
             throw new Exception($"Exception during listening: {e}");
         }
     }
