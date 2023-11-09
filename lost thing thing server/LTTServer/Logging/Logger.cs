@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using static System.Net.Mime.MediaTypeNames;
 
 
 namespace LTTServer.Logging;
@@ -34,10 +35,8 @@ internal class Logger : IDisposable
         }
 
         _logStream = File.Open(LogPath, FileMode.OpenOrCreate);
-        _loggerTask = Task.Factory.StartNew(WriteMessagesTask, CancellationToken.None, 
+        _loggerTask = Task.Factory.StartNew(WriteMessagesTask, CancellationToken.None,
             TaskCreationOptions.LongRunning, TaskScheduler.Default);
-
-        Info("Server started.");
     }
 
 
@@ -54,8 +53,25 @@ internal class Logger : IDisposable
 
     internal void WriteMessage(LogLevel level, string message)
     {
-        _queuedMessages.Enqueue($"{GetFormattedDateAndTime(DateTime.Now)}[{level}] {message}{Environment.NewLine}");
+        if (message == null)
+        {
+            throw new ArgumentNullException(nameof(message));
+        }
+
+        string FormattedMessage = $"{GetFormattedDateAndTime(DateTime.Now)}[{level}] {message}{Environment.NewLine}";
+        _queuedMessages.Enqueue(FormattedMessage);
         _messageQueuedEvent.Set();
+
+        Console.ForegroundColor = level switch
+        {
+            LogLevel.Info => ConsoleColor.White,
+            LogLevel.Warning => ConsoleColor.Yellow,
+            LogLevel.Error => ConsoleColor.Red,
+            LogLevel.Critical => ConsoleColor.Magenta,
+            _ => ConsoleColor.White
+        };
+        Console.Write(FormattedMessage);
+        Console.ForegroundColor = ConsoleColor.White;
     }
 
     // Private methods.
@@ -97,7 +113,7 @@ internal class Logger : IDisposable
         {
             _loggerDisposed = true;
         }
-        Info("Server Stopped");
+        _messageQueuedEvent.Set();
         _loggerTask.Wait();
 
         _loggerTask.Dispose();

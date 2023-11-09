@@ -10,6 +10,8 @@ internal class Listener
     // Internal fields.
     internal string[] Prefixes => _prefixes .ToArray();
 
+    internal int RequestCount { get; private set; } = 0;
+
 
     // Private fields.
     private readonly HttpListener HTTPListener;
@@ -19,6 +21,7 @@ internal class Listener
     private readonly PageDataProvider _cssProvider;
     private readonly PageDataProvider _javascriptProvider;
     private readonly PageDataProvider _pngProvider;
+    private readonly PageDataProvider _iconProvider;
 
     private readonly string _pathToIndexHTML;
     private readonly string _pathTo404HTML;
@@ -31,6 +34,7 @@ internal class Listener
     private const string EXTENSION_CSS = ".css";
     private const string EXTENSION_JAVASCRIPT = ".js";
     private const string EXTENSION_PNG = ".png";
+    private const string EXTENSION_ICON = ".ico";
 
     private const string METHOD_GET = "GET";
     private const string METHOD_POST = "POST";
@@ -60,6 +64,7 @@ internal class Listener
         _cssProvider = new(EXTENSION_CSS);
         _javascriptProvider = new(EXTENSION_JAVASCRIPT);
         _pngProvider = new(EXTENSION_PNG);
+        _iconProvider = new(EXTENSION_ICON);
 
         foreach (string FilePath in _htmlProvider.Paths)
         {
@@ -83,7 +88,7 @@ internal class Listener
         try
         {
             HTTPListener.Start();
-            ListenForMessages();
+            ListenForMessagesAsync();
         }
         catch (Exception e)
         {
@@ -95,14 +100,24 @@ internal class Listener
         }
     }
 
+    internal void ReloadPageData()
+    {
+        _htmlProvider.LoadData();
+        _cssProvider.LoadData();
+        _javascriptProvider.LoadData();
+        _pngProvider.LoadData();
+        _iconProvider.LoadData();
+    }
+
 
     // Private methods.
-    private void ListenForMessages()
+    private async void ListenForMessagesAsync()
     {
-        while (true)
+        while (!Server.IsServerStopped)
         {
-            HttpListenerContext Context = HTTPListener.GetContext();
+            HttpListenerContext Context = await HTTPListener.GetContextAsync();
 
+            RequestCount++;
             string Method = Context.Request.HttpMethod;
             byte[] Response = Array.Empty<byte>();
 
@@ -150,6 +165,10 @@ internal class Listener
 
             case EXTENSION_PNG:
                 Data = _pngProvider.GetData(ResourcePath);
+                break;
+
+            case EXTENSION_ICON:
+                Data = _iconProvider.GetData(ResourcePath);
                 break;
 
             case "":

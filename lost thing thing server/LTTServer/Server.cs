@@ -1,38 +1,59 @@
-﻿using LTTServer.Listening;
+﻿using LTTServer.CMDControl;
+using LTTServer.HTML;
+using LTTServer.Listening;
 using LTTServer.Logging;
 using System.Net;
 using System.Text;
 
 namespace LTTServer;
 
-internal class Server
+internal static class Server
 {
     // Internal static fields.
-    internal static Listener ServerListener { get; private set; }
+    internal static int RequestCount => s_serverListener.RequestCount;
+
+    internal static DateTime StartupTime { get; private set; }
 
     internal static Encoding Encoding { get; private set; } = Encoding.UTF8;
 
     internal static string RootPath { get; private set; }
 
-    internal static Logger Logger { get; private set; }
+    internal static bool IsServerStopped
+    {
+        get
+        {
+            lock (s_status)
+            {
+                return s_status.IsStopped;
+            }
+        }
+    }
+
+
+    // Private static fields.
+    private static Listener s_serverListener;
+    private static CommandReader s_commandReader;
+    private readonly static ServerStatus s_status = new() { IsStopped = false };
+    private static Logger s_logger;
 
 
     // Internal static methods.
     internal static void Main(string[] args)
     {
+        StartupTime = DateTime.Now;
         RootPath = @"D:/Workstations/Programming/Projects/lost thing thing";
 
-        Logger = new();
+        s_logger = new();
 
         if (!HttpListener.IsSupported)
         {
-            OutputError("HttpListener is not supported.");
+            OutputCritical("HttpListener is not supported.");
             return;
         }
 
         try
         {
-            ServerListener = new("http://localhost/", "http://127.0.0.1/");
+            s_serverListener = new("http://localhost/", "http://127.0.0.1/");
         }
         catch (Exception e)
         {
@@ -40,47 +61,51 @@ internal class Server
             return;
         }
 
+        s_commandReader = new();
         ListenForMessages();
     }
 
-    internal static void OutputWarning(string text)
+    internal static void ReloadPageData() => s_serverListener.ReloadPageData();
+    internal static void ShutDown()
     {
-        if (text == null)
+        OutputInfo("Server stopped");
+        s_logger.Dispose();
+        lock (s_status)
         {
-            throw new ArgumentNullException(nameof(text));
+            s_status.IsStopped = true;
         }
-
-        Console.ForegroundColor = ConsoleColor.Yellow;
-        Console.WriteLine(text);
-        Console.ForegroundColor = ConsoleColor.White;
     }
 
-    internal static void OutputError(string text)
-    {
-        if (text == null)
-        {
-            throw new ArgumentNullException(nameof(text));
-        }
 
-        Console.ForegroundColor = ConsoleColor.Red;
-        Console.WriteLine(text);
-        Console.ForegroundColor = ConsoleColor.White;
-    }
+    /* Output. */
+    internal static void OutputInfo(string text) => s_logger.Info(text);
+
+    internal static void OutputWarning(string text) => s_logger.Warning(text);
+
+    internal static void OutputError(string text) => s_logger.Error(text);
+
+    internal static void OutputCritical(string text) => s_logger.Critical(text);
 
 
     // Private static methods.
     private static void ListenForMessages()
     {
-        while (true)
+        OutputInfo("Server started");
+
+        try
         {
-            try
-            {
-                ServerListener.Listen();
-            }
-            catch (Exception e)
-            {
-                OutputError(e.ToString());
-            }
+            s_serverListener.Listen();
+            s_commandReader.ReadCommand();
         }
+        catch (Exception e)
+        {
+            OutputCritical(e.ToString());
+        }
+
+        if (!s_status.IsStopped)
+        {
+            ShutDown();
+        }
+        
     }
 }

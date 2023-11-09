@@ -94,8 +94,3 @@ function OnTopPanelUnHoverEvent(panel)
         HomeButton.style.height = "30px";
     }
 }
-
-// Home button.
-function OnHomeButtonClickEvent(button) {
-    window.location.replace("../index/index.html");
-}

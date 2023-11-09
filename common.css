@@ -69,7 +69,9 @@ div#TopPanel[IsHovered="true"] a.AccountHyperlink:hover {
     color: rgba(247, 188, 255, 1);
 }
 
-div#BackToIndexButton {
+a#BackToIndexButton {
+    display: block;
+
     background-color: transparent;
     background-image: url("assets/home.png");
     background-size: contain;
@@ -81,12 +83,14 @@ div#BackToIndexButton {
     width: 30px;
     height: 30px;
 
-    user-select: none;
+    box-shadow: 6px, 6px, 6px, black;
+
+
 
     transition: 125ms;
 }
 
-div#BackToIndexButton:hover {
+a#BackToIndexButton:hover {
     cursor: pointer;
     background-image: url("assets/home_hovered.png");
 }

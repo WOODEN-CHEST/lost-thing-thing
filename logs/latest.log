@@ -1,2 +1,19 @@
-[08d;11m;2023y][10:10:25][Info] Server started.
-
+[08d;11m;2023y][23:51:58][Info] Server started
+[08d;11m;2023y][22:22:50][Info] {Input} reloa
+[08d;11m;2023y][22:22:50][Warning] Unknown command "reloa".Type "help" for a list of commands.
+[08d;11m;2023y][22:22:52][Info] {Input} reload
+[08d;11m;2023y][22:22:52][Info] Reloading page data...
+[08d;11m;2023y][22:22:52][Info] Reloaded
+p
+[08d;11m;2023y][22:07:08][Info] Server stopped
+in D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\Listening\Listener.cs:line 87
+   at LTTServer.Listening.Listener.Listen() in D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\Listening\Listener.cs:line 96
+   at LTTServer.Server.ListenForMessages() in D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\Server.cs:line 96
+[08d;11m;2023y][22:06:23][Info] Server stopped
+7:54:04][Warning] File with unknown extension requested: ".ico"
+[08d;11m;2023y][17:54:08][Info] [Input] query
+[08d;11m;2023y][17:54:08][Warning] Missing command arguments, expected [uptime | requests]
+ing server\LTTServer\CMDControl\CommandReader.cs:line 65
+   at LTTServer.CMDControl.CommandReader.ReadCommand() in D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\CMDControl\CommandReader.cs:line 41
+   at LTTServer.Server.ListenForMessages() in D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\Server.cs:line 97
+[08d;11m;2023y][17:49:35][Info] Server stopped
