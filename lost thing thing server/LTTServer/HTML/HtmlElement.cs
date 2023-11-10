@@ -64,7 +64,7 @@ internal class HtmlElement
 
         return tagName is "area" or "base" or "br" or "col" or "embed"
                 or "hr" or "img" or "input" or "link" or "meta" or "param"
-                or "source" or "track" or "wbr";
+                or "source" or "track" or "wbr" or "!doctype";
     }
 
 

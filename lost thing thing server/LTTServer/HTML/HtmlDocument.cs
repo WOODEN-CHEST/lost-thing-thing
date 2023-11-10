@@ -40,6 +40,10 @@ internal class HtmlDocument
     }
 
 
+    // Internal static methods.
+    internal static HtmlDocument FromFile(string path) => new HTMLReader().ReadFile(path);
+
+
     // Internal methods.
     internal HtmlElement? GetElementById(string searchedId)
     {

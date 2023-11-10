@@ -10,7 +10,9 @@ internal class HTMLReader
 {
     // Private fields.
     private string? _path;
-    private StreamReader _reader;
+    private string _htmlText;
+    private int _index;
+
 
     // Constructors.
     internal HTMLReader() { }
@@ -30,16 +32,14 @@ internal class HTMLReader
         }
         if (!File.Exists(path))
         {
-            throw new FileNotFoundException("HTML file does not exits.", path);
+            throw new FileNotFoundException("HTML file does not exist.", path);
         }
 
         _path = path;
         try
         {
-            using (_reader = new StreamReader(_path))
-            {
-                return ReadFileData();
-            }
+            _htmlText = File.ReadAllText(path);
+            return ReadFileData();
         }
         catch (IOException e)
         {
@@ -53,7 +53,7 @@ internal class HTMLReader
     {
         if (!VerifyDocType())
         {
-            throw new HTMLFileException("Missing <!DOCTYPE html>", _path);
+            throw new HtmlFileException("Missing <!DOCTYPE html>", _path);
         }
 
         HtmlDocument Document = new(true);
@@ -61,74 +61,20 @@ internal class HTMLReader
 
         if (RootElement == null || RootElement.TagName != "html")
         {
-            throw new HTMLFileException("First tag must be a <html> tag", _path);
+            throw new HtmlFileException("First tag must be a <html> tag", _path);
         }
         Document.HTMLRoot = RootElement;
         Document.Body = RootElement.GetFirstSubElementOfTag("body");
         Document.Head = RootElement.GetFirstSubElementOfTag("head");
-    }
 
-    private string[] SplitByTags()
-    {
-        if (!ReadUntilNonWS())
-        {
-            return Array.Empty<string>();
-        }
-
-        List<string> Parts = new();
-        StringBuilder CurrentPart = new();
-        bool InsideTag = false;
-        char Character;
-
-        while (_reader.BaseStream.Position < _reader.BaseStream.Length)
-        {
-            Character = ReadChar();
-            CurrentPart.Append(Character);
-        }
-
-
-
-
-        while (_reader.BaseStream.Position < _reader.BaseStream.Length)
-        {
-            Character = ReadChar();
-
-            if (!InsideTag)
-            {
-                if (char.IsWhiteSpace(Character))
-
-                    if (Character == '<')
-                    {
-                        InsideTag = true;
-                        continue;
-                    }
-
-                throw new HTMLFileException($"Unexpected character \'{Character}\'", _path);
-            }
-
-            if (Character != '>')
-            {
-                CurrentTag.Append(Character);
-                continue;
-            }
-
-            InsideTag = false;
-            Tags.Add(CurrentTag.ToString());
-        }
-
-        if (InsideTag)
-        {
-            throw new HTMLFileException("Found unclosed tag.", _path);
-        }
-
-        return Tags.ToArray();
+        return Document;
     }
 
     private bool VerifyDocType()
     {
         HtmlElement? DocElement = ReadElement();
 
-        return DocElement != null && DocElement.TagName == "!DOCTYPE"
+        return DocElement != null && DocElement.TagName == "!doctype"
             && DocElement.Attributes.ContainsKey("html");
     }
 
@@ -141,28 +87,50 @@ internal class HTMLReader
             return null;
         }
 
-        int Character;
+        char Character;
         if ((Character = ReadChar()) != '<')
         {
-            throw new HTMLFileException($"Expected start of tag, got \"{Character}\"", _path);
+            throw new HtmlFileException($"Expected start of tag, got \"{Character}\"", _path);
         }
 
-        string TagName = ReadASCIIWord();
+        string TagName = ReadLetterWord('!');
         if (TagName == string.Empty)
         {
-            throw new HTMLFileException("Missing tag name", _path);
+            throw new HtmlFileException("Missing tag name", _path);
+        }
+        (string Name, string? Value)[] Attributes = ReadTagAttributes();
+
+        SkipPastComments();
+
+        HtmlElement Element = new(TagName);
+        foreach (var Attribute in Attributes)
+        {
+            Element.AddAttribute(Attribute.Name,Attribute.Value);
         }
 
-        (string Name, string? Value)[] Attributes = ReadTagAttributes();
+        if (HtmlElement.IsTagVoid(TagName.ToLower()))
+        {
+            return Element;
+        }
+
+        (string? TextContent, HtmlElement[] SubElements) = ReadTagContents();
+        ReadTagEnd(TagName);
+
+        foreach (var SubElement in SubElements)
+        {
+            Element.AddSubElement(SubElement);
+        }
+        Element.Content = TextContent;
+        return Element;
     }
 
     private bool IsTagAComment()
     {
-        long CurrentPosition = _reader.BaseStream.Position;
+        int CurrentPosition = _index;
 
         if (ReadChar() != '!' || ReadChar() != '-' || ReadChar() != '-')
         {
-            _reader.BaseStream.Position = CurrentPosition;
+            _index = CurrentPosition;
             return false;
         }
         return true;
@@ -179,18 +147,34 @@ internal class HTMLReader
 
             if (ReadChar() != '<')
             {
-                _reader!.BaseStream.Position--;
+                _index--;
                 return;
             }
             if (!IsTagAComment())
             {
-                _reader!.BaseStream.Position--;
+                _index--;
                 return;
             }
 
             StringBuilder CommentEnd = new();
+            while (true)
+            {
+                char Character = ReadChar();
 
+                if (Character is '-' or '>')
+                {
+                    CommentEnd.Append(Character);
+                }
+                else
+                {
+                    CommentEnd.Clear();
+                }
 
+                if (CommentEnd.ToString() == "-->")
+                {
+                    break;
+                }
+            }
         }
     }
 
@@ -201,13 +185,13 @@ internal class HTMLReader
 
         while (Character != '>')
         {
-            Character = ReadChar();
-
             if (!char.IsWhiteSpace(Character))
             {
-                _reader!.BaseStream.Position--;
+                _index--;
                 Attributes.Add(ReadAttribute());
             }
+
+            Character = ReadChar();
         }
 
         return Attributes.ToArray();
@@ -215,30 +199,91 @@ internal class HTMLReader
 
     private (string, string?) ReadAttribute()
     {
-        StringBuilder AttributeName
-        char Character = ReadChar();
+        string AttributeName = ReadLetterWord();
 
-        while (char.IsAsciiLetter(Character))
+        if (string.IsNullOrWhiteSpace(AttributeName))
         {
-
+            throw new HtmlFileException("Empty attribute name", _path);
         }
+
+        ReadUntilNonWS();
+
+        if (ReadChar() != '=')
+        {
+            _index--;
+            return (AttributeName, null);
+        }
+
+        string AttributeValue = ReadString();
+        return (AttributeName, AttributeValue);
+    }
+
+    private (string?, HtmlElement[]) ReadTagContents()
+    {
+        string TextValue = string.Empty;
+        List<HtmlElement> SubElements = new();
+        
+        while (true)
+        {
+            SkipPastComments();
+            ReadUntilNonWS();
+            if (ReadChar() == '<')
+            {
+                if (ReadChar() == '/')
+                {
+                    _index -= 2;
+                    return (TextValue, SubElements.ToArray());
+                }
+
+                _index -= 2;
+                HtmlElement? SubElement = ReadElement();
+                if (SubElement != null) SubElements.Add(SubElement);
+                continue;
+            }
+
+            _index--;
+            TextValue = TextValue + ReadTextUntil('<', '\r', '\n');
+        }
+    }
+
+    private void ReadTagEnd(string tagName)
+    {
+        if (ReadChar() != '<')
+        {
+            throw new HtmlFileException("Expected '<'.", _path);
+        }
+        if (ReadChar() != '/')
+        {
+            throw new HtmlFileException("Expected '/'.", _path);
+        }
+
+        if (ReadTextUntil('>').Trim() != tagName)
+        {
+            throw new HtmlFileException("Wrong tag closed.", _path);
+        }
+        _index++;
     }
 
 
     /* Read helper methods. */
     private bool ReadUntilNonWS()
     {
-        int IntChar;
+        char Character;
 
-        while ((IntChar = _reader!.Read()) != -1)
+        while (_index < _htmlText.Length)
         {
-            if (char.IsWhiteSpace((char)IntChar))
+            Character = _htmlText[_index];
+            _index++;
+
+            if (char.IsWhiteSpace(Character))
             {
                 continue;
             }
-
-            _reader.BaseStream.Position--;
-            return true;
+            else
+            {
+                _index--;
+                return true;
+            }
         }
 
         return false;
@@ -246,14 +291,15 @@ internal class HTMLReader
 
     private char ReadChar()
     {
-        int IntChar = _reader!.Read();
-
-        if (IntChar == -1)
+        if (_index >= _htmlText.Length)
         {
-            throw new HTMLFileException("Unexpected end of file", _path);
+            throw new HtmlFileException("Unexpected end of file", _path);
         }
 
-        return (char)IntChar;
+        char Character = _htmlText[_index];
+        _index++;
+
+        return Character;
     }
 
     private string ReadString()
@@ -261,14 +307,15 @@ internal class HTMLReader
         StringBuilder Result = new();
 
         ReadUntilNonWS();
-        if ((ReadChar() is not '\'' and not '"'))
+        char ChosenQuote = ReadChar();
+        if (ChosenQuote is not '\'' and not '"')
         {
-            throw new HTMLFileException("Expected a string.", _path);
+            throw new HtmlFileException("Expected a string.", _path);
         }
 
         char Character = ReadChar();
 
-        while (Character is not '\'' and not '"')
+        while (Character != ChosenQuote)
         {
             Result.Append(Character);
             Character = ReadChar();
@@ -290,28 +337,29 @@ internal class HTMLReader
             Character = ReadChar();
         }
 
-        _reader!.BaseStream.Position--;
+        _index--;
         return Character.ToString();
     }
 
-    private string ReadASCIIWord()
+    private string ReadLetterWord(params char[] extraAllowedChars)
     {
+        extraAllowedChars ??= Array.Empty<char>();
         StringBuilder Word = new();
 
         ReadUntilNonWS();
         char Character = ReadChar();
 
-        while (char.IsAsciiLetter(Character))
+        while (char.IsLetter(Character) || extraAllowedChars.Contains(Character))
         {
             Word.Append(Character);
             Character = ReadChar();
         }
 
-        _reader!.BaseStream.Position--;
-        return Character.ToString();
+        _index--;
+        return Word.ToString();
     }
 
-    private string ReadStringUntil(params char[] targets)
+    private string ReadTextUntil(params char[] targets)
     {
         if (targets == null)
         {
@@ -328,7 +376,7 @@ internal class HTMLReader
             Character = ReadChar();
         }
 
-        _reader!.BaseStream.Position--;
+        _index--;
         return Result.ToString();
     }
 
@@ -344,6 +392,6 @@ internal class HTMLReader
             continue;
         }
 
-        _reader!.BaseStream.Position--;
+        _index--;
     }
 }

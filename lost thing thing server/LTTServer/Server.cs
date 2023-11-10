@@ -1,7 +1,9 @@
 ﻿using LTTServer.CMDControl;
+using LTTServer.Database;
 using LTTServer.HTML;
 using LTTServer.Listening;
 using LTTServer.Logging;
+using LTTServer.Users;
 using System.Net;
 using System.Text;
 
@@ -29,12 +31,16 @@ internal static class Server
         }
     }
 
+    internal static string SiteAddress { get; private set; } = "127.0.0.1";
+
 
     // Private static fields.
     private static Listener s_serverListener;
     private static CommandReader s_commandReader;
     private readonly static ServerStatus s_status = new() { IsStopped = false };
     private static Logger s_logger;
+    private static DatabaseManager _databaseManager;
+    private static UserManager _userManager;
 
 
     // Internal static methods.
@@ -44,6 +50,10 @@ internal static class Server
         RootPath = @"D:/Workstations/Programming/Projects/lost thing thing";
 
         s_logger = new();
+        _databaseManager = new();
+        _userManager = new();
+
+        _userManager.CreateProfile("aa", "aa", "aa", "thecsuniverse2@gmail.com");
 
         if (!HttpListener.IsSupported)
         {
@@ -53,11 +63,11 @@ internal static class Server
 
         try
         {
-            s_serverListener = new("http://localhost/", "http://127.0.0.1/");
+            s_serverListener = new($"http://{SiteAddress}/");
         }
         catch (Exception e)
         {
-            OutputError($"Failed to create server listener: {e}");
+            OutputCritical($"Failed to create server listener: {e}");
             return;
         }
 
@@ -68,6 +78,8 @@ internal static class Server
     internal static void ReloadPageData() => s_serverListener.ReloadPageData();
     internal static void ShutDown()
     {
+        _userManager.Dispose();
+
         OutputInfo("Server stopped");
         s_logger.Dispose();
         lock (s_status)
@@ -106,6 +118,5 @@ internal static class Server
         {
             ShutDown();
         }
-        
     }
 }

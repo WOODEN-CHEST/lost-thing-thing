@@ -17,11 +17,11 @@ internal class Listener
     private readonly HttpListener HTTPListener;
     private readonly string[] _prefixes;
 
-    private readonly PageDataProvider _htmlProvider;
-    private readonly PageDataProvider _cssProvider;
-    private readonly PageDataProvider _javascriptProvider;
-    private readonly PageDataProvider _pngProvider;
-    private readonly PageDataProvider _iconProvider;
+    private readonly IPageDataProvider _htmlProvider;
+    private readonly IPageDataProvider _cssProvider;
+    private readonly IPageDataProvider _javascriptProvider;
+    private readonly IPageDataProvider _pngProvider;
+    private readonly IPageDataProvider _iconProvider;
 
     private readonly string _pathToIndexHTML;
     private readonly string _pathTo404HTML;
@@ -38,8 +38,6 @@ internal class Listener
 
     private const string METHOD_GET = "GET";
     private const string METHOD_POST = "POST";
-
-    private const int STATUS_CODE_NOT_FOUND = 404;
 
 
     // Constructors.
@@ -60,11 +58,11 @@ internal class Listener
             HTTPListener.Prefixes.Add(Prefix);
         }
 
-        _htmlProvider = new(EXTENSION_HTML);
-        _cssProvider = new(EXTENSION_CSS);
-        _javascriptProvider = new(EXTENSION_JAVASCRIPT);
-        _pngProvider = new(EXTENSION_PNG);
-        _iconProvider = new(EXTENSION_ICON);
+        _htmlProvider = new HTMLProvider(EXTENSION_HTML);
+        _cssProvider = new BasicPageDataProvider(EXTENSION_CSS);
+        _javascriptProvider = new BasicPageDataProvider(EXTENSION_JAVASCRIPT);
+        _pngProvider = new BasicPageDataProvider(EXTENSION_PNG);
+        _iconProvider = new BasicPageDataProvider(EXTENSION_ICON);
 
         foreach (string FilePath in _htmlProvider.Paths)
         {
@@ -141,7 +139,7 @@ internal class Listener
     {
         string? ResourcePath = context.Request.RawUrl;
 
-        if ((ResourcePath == null) || (ResourcePath == PageDataProvider.EmptyPath))
+        if ((ResourcePath == null) || (ResourcePath == BasicPageDataProvider.EmptyPath))
         {
             context.Response.Redirect(_pathToIndexHTML);
             return Array.Empty<byte>();

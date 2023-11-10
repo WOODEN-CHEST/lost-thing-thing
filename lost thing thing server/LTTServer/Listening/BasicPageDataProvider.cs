@@ -6,24 +6,24 @@ using System.Threading.Tasks;
 
 namespace LTTServer.Listening;
 
-internal class PageDataProvider
+internal sealed class BasicPageDataProvider : IPageDataProvider
 {
     // Internal static fields.
     internal static string EmptyPath = "/";
 
 
     // Internal fields.
-    internal string SearchPattern { get; private init; }
+    public string SearchPattern { get; private init; }
 
-    internal string[] Paths => _data.Keys.ToArray();
+    public string[] Paths => PageData.Keys.ToArray();
 
 
     // Protected fields.
-    private readonly Dictionary<string, byte[]> _data = new();
+    protected Dictionary<string, byte[]> PageData { get; set; } = new();
 
 
     // Constructors.
-    internal PageDataProvider(string fileExtension)
+    internal BasicPageDataProvider(string fileExtension)
     {
         if (fileExtension == null)
         {
@@ -34,18 +34,14 @@ internal class PageDataProvider
     }
 
 
-    // Internal static methods.
-    internal static string FormatAsContentPath(string path) => '/' + path;
-
-
     // Internal methods.
-    internal byte[]? GetData(string path)
+    public byte[]? GetData(string path)
     {
-        _data.TryGetValue(path, out var Data);
+        PageData.TryGetValue(path, out var Data);
         return Data;
     }
 
-    internal string? GetDataAsText(string path)
+    public string? GetDataAsText(string path)
     {
         byte[]? Data = GetData(path);
 
@@ -56,9 +52,9 @@ internal class PageDataProvider
         return null;
     }
 
-    internal void LoadData()
+    public void LoadData()
     {
-        _data.Clear();
+        PageData.Clear();
         string CurrentPath = "Not Set";
 
         try
@@ -67,10 +63,10 @@ internal class PageDataProvider
             {
                 CurrentPath = FilePath;
 
-                byte[] PageData = File.ReadAllBytes(CurrentPath);
+                byte[] PageDataBytes = File.ReadAllBytes(CurrentPath);
                 string RelativePath = Path.GetRelativePath(Server.RootPath, CurrentPath);
 
-                _data.Add(('/' + RelativePath).Replace('\\', '/'), PageData);
+                PageData.Add(('/' + RelativePath).Replace('\\', '/'), PageDataBytes);
             }
         }
         catch (IOException e)

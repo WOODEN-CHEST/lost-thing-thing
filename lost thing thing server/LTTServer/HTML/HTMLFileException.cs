@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace LTTServer.HTML;
 
-internal class HTMLFileException : IOException
+internal class HtmlFileException : IOException
 {
-    internal HTMLFileException(string? message, string? filePath) : base($"Exception reading file \"{filePath}\": {message}") { }
+    internal HtmlFileException(string? message, string? filePath) : base($"Exception reading file \"{filePath}\": {message}") { }
 }
