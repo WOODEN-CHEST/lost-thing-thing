@@ -53,7 +53,7 @@ internal static class Server
         _databaseManager = new();
         _userManager = new();
 
-        _userManager.CreateProfile("aa", "aa", "aa", "thecsuniverse2@gmail.com");
+        //_userManager.CreateProfile("aa", "aa", "aa", "thecsuniverse2@gmail.com");
 
         if (!HttpListener.IsSupported)
         {

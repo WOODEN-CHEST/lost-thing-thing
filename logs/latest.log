@@ -1,13 +1,18 @@
-[10d;11m;2023y][23:51:55][Info] Read global user data.
-[10d;11m;2023y][23:52:05][Info] Server started
-arted
-[10d;11m;2023y][22:23:03][Critical] System.Exception: Exception during listening: System.Net.HttpListenerException (5): Access is denied.
-   at System.Net.HttpListener.AddPrefixCore(String registeredPrefix)
-   at System.Net.HttpListener.AddAllPrefixes()
-   at System.Net.HttpListener.Start()
-   at LTTServer.Listening.Listener.Listen() in D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\Listening\Listener.cs:line 88
-   at LTTServer.Listening.Listener.Listen() in D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\Listening\Listener.cs:line 97
-   at LTTServer.Server.ListenForMessages() in D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\Server.cs:line 105
+[11d;11m;2023y][16:07:25][Info] Read global user data.
+[11d;11m;2023y][16:07:25][Info] Server started
+[11d;11m;2023y][15:56:36][Info] {Input} query
+[11d;11m;2023y][15:56:36][Warning] Missing command arguments, expected [uptime | requests]
+[11d;11m;2023y][15:56:39][Info] {Input} help
+[11d;11m;2023y][15:56:39][Info] Commands available:
+help (Shows this)
+stop (stops the server)
+reload (reloads all server data like HTML pages, CSS style sheets, JavaScript scripts and PNG images)
+query [uptime | requests] (Queries info about the server)
+[11d;11m;2023y][15:56:42][Info] {Input} query uptime
+[11d;11m;2023y][15:56:42][Info] Uptime: 0 days, 0 hours, 0 minutes, 14 seconds
+[11d;11m;2023y][15:56:47][Info] {Input} query requests
+[11d;11m;2023y][15:56:47][Info] Total HTTP requests received: 5
+ogramming\Projects\lost thing thing\lost thing thing server\LTTServer\Server.cs:line 105
 [10d;11m;2023y][22:23:03][Info] Saved global user data.
 [10d;11m;2023y][22:23:03][Info] Server stopped
 °ƒÅ

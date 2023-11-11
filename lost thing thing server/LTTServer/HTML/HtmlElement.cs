@@ -1,13 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Text.Encodings.Web;
-using System.Threading.Tasks;
+﻿using System.Text;
 
 namespace LTTServer.HTML;
 
-internal class HtmlElement
+internal class HtmlElement : ICloneable
 {
     // Internal static fields.
     internal const string ATTRIBUTE_NAME_ID = "id";
@@ -43,7 +38,7 @@ internal class HtmlElement
         {
             throw new ArgumentException($"Invalid tag name: \"{tagName}\"", nameof(tagName));
         }
-        TagName = tagName.ToLower();
+        TagName = tagName;
 
         Content = content;
 
@@ -62,14 +57,14 @@ internal class HtmlElement
             throw new ArgumentNullException(nameof(tagName));
         }
 
-        return tagName is "area" or "base" or "br" or "col" or "embed"
+        return tagName.ToLower() is "area" or "base" or "br" or "col" or "embed"
                 or "hr" or "img" or "input" or "link" or "meta" or "param"
                 or "source" or "track" or "wbr" or "!doctype";
     }
 
 
     // Internal methods.
-    internal void AddAttribute(string name, string? value)
+    internal HtmlElement AddAttribute(string name, string? value)
     {
         if (string.IsNullOrWhiteSpace(name))
         {
@@ -78,9 +73,11 @@ internal class HtmlElement
 
         string FormattedName = name.Trim();
         Attributes[FormattedName] = value ?? string.Empty;
+
+        return this;
     }
 
-    internal void RemoveAttribute(string name)
+    internal HtmlElement RemoveAttribute(string name)
     {
         if (name == null)
         {
@@ -88,14 +85,17 @@ internal class HtmlElement
         }
 
         Attributes.Remove(name);
+
+        return this;
     }
 
-    internal void ClearAttributes()
+    internal HtmlElement ClearAttributes()
     {
         Attributes.Clear();
+        return this;
     }
 
-    internal void AddSubElement(HtmlElement element)
+    internal HtmlElement AddSubElement(HtmlElement element)
     {
         if (element == null)
         {
@@ -103,9 +103,18 @@ internal class HtmlElement
         }
 
         _subElements.Add(element);
+
+        return element;
     }
 
-    internal void RemoveSubElement(HtmlElement element)
+    internal HtmlElement AddSubElement(string tag) => AddSubElement(new HtmlElement(tag));
+
+    internal HtmlElement AddSubElement(string tag, string? content) => AddSubElement(new HtmlElement(tag, content));
+
+    internal HtmlElement AddSubElement(string tag, string? content, string? id) => AddSubElement(new HtmlElement(tag, content, id));
+
+
+    internal HtmlElement RemoveSubElement(HtmlElement element)
     {
         if (element == null)
         {
@@ -113,9 +122,15 @@ internal class HtmlElement
         }
 
         _subElements.Remove(element);
+
+        return element;
     }
 
-    internal void ClearSubElements() => _subElements.Clear();
+    internal HtmlElement ClearSubElements()
+    {
+        _subElements.Clear();
+        return this;
+    }
 
     internal HtmlElement? GetFirstSubElementOfTag(string tag)
     {
@@ -128,6 +143,33 @@ internal class HtmlElement
         }
 
         return null;
+    }
+
+    internal HtmlElement? GetElementByID(string id)
+    {
+        HtmlElement? SearchElement(HtmlElement element)
+        {
+            element.Attributes.TryGetValue(ATTRIBUTE_NAME_ID, out string? ID);
+
+            if ((ID != null) && (ID == id))
+            {
+                return element;
+            }
+
+            foreach (HtmlElement SubElement in element.SubElements)
+            {
+                HtmlElement? FoundElement = SearchElement(SubElement);
+
+                if (FoundElement != null)
+                {
+                    return FoundElement;
+                }
+            }
+
+            return null;
+        }
+
+        return SearchElement(this);
     }
 
 
@@ -165,5 +207,22 @@ internal class HtmlElement
         HTMLString.Append($"</{TagName}>");
 
         return HTMLString.ToString();
+    }
+
+    public object Clone()
+    {
+        HtmlElement NewElement = new(TagName, Content);
+
+        foreach (var Attribute in Attributes)
+        {
+            NewElement.AddAttribute(Attribute.Key, Attribute.Value);    
+        }
+
+        foreach (HtmlElement SubElement in SubElements)
+        {
+            NewElement.AddSubElement((HtmlElement)SubElement.Clone());
+        }
+
+        return NewElement;
     }
 }

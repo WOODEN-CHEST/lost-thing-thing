@@ -1,6 +1,5 @@
-﻿using System.Net;
-using System.Text;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+﻿using LTTServer.HTML;
+using System.Net;
 
 namespace LTTServer.Listening;
 
@@ -18,19 +17,12 @@ internal class Listener
     private readonly string[] _prefixes;
 
     private readonly IPageDataProvider _htmlProvider;
-    private readonly IPageDataProvider _cssProvider;
-    private readonly IPageDataProvider _javascriptProvider;
-    private readonly IPageDataProvider _pngProvider;
-    private readonly IPageDataProvider _iconProvider;
-
-    private readonly string _pathToIndexHTML;
-    private readonly string _pathTo404HTML;
+    private readonly IFilePageDataProvider _cssProvider;
+    private readonly IFilePageDataProvider _javascriptProvider;
+    private readonly IFilePageDataProvider _pngProvider;
+    private readonly IFilePageDataProvider _iconProvider;
 
     /* Constants. */
-    private const string INDEX_FILE_NAME = "index";
-    private const string NOT_FOUND_FILE_NAME = "404";
-
-    private const string EXTENSION_HTML = ".html";
     private const string EXTENSION_CSS = ".css";
     private const string EXTENSION_JAVASCRIPT = ".js";
     private const string EXTENSION_PNG = ".png";
@@ -58,25 +50,11 @@ internal class Listener
             HTTPListener.Prefixes.Add(Prefix);
         }
 
-        _htmlProvider = new HTMLProvider(EXTENSION_HTML);
-        _cssProvider = new BasicPageDataProvider(EXTENSION_CSS);
-        _javascriptProvider = new BasicPageDataProvider(EXTENSION_JAVASCRIPT);
-        _pngProvider = new BasicPageDataProvider(EXTENSION_PNG);
-        _iconProvider = new BasicPageDataProvider(EXTENSION_ICON);
-
-        foreach (string FilePath in _htmlProvider.Paths)
-        {
-            string FileName = Path.GetFileNameWithoutExtension(FilePath);
-
-            if (FileName == INDEX_FILE_NAME)
-            {
-                _pathToIndexHTML = FilePath;
-            }
-            else if (FileName == NOT_FOUND_FILE_NAME)
-            {
-                _pathTo404HTML = FilePath;
-            }
-        }
+        _htmlProvider = new HTMLProvider();
+        _cssProvider = new BasicFilePageDataProvider(EXTENSION_CSS);
+        _javascriptProvider = new BasicFilePageDataProvider(EXTENSION_JAVASCRIPT);
+        _pngProvider = new BasicFilePageDataProvider(EXTENSION_PNG);
+        _iconProvider = new BasicFilePageDataProvider(EXTENSION_ICON);
     }
 
 
@@ -100,7 +78,6 @@ internal class Listener
 
     internal void ReloadPageData()
     {
-        _htmlProvider.LoadData();
         _cssProvider.LoadData();
         _javascriptProvider.LoadData();
         _pngProvider.LoadData();
@@ -137,54 +114,36 @@ internal class Listener
     /* Getting data. */
     private byte[] GetResource(HttpListenerContext context)
     {
-        string? ResourcePath = context.Request.RawUrl;
-
-        if ((ResourcePath == null) || (ResourcePath == BasicPageDataProvider.EmptyPath))
-        {
-            context.Response.Redirect(_pathToIndexHTML);
-            return Array.Empty<byte>();
-        }
+        string? ResourcePath = context.Request.RawUrl ?? IFilePageDataProvider.EmptyPath;
 
         byte[]? Data = null;
-        string ResourcePathExtension = Path.GetExtension(ResourcePath);
+        string ResourcePathExtension = Path.GetExtension(ResourcePath)!;
+
         switch (ResourcePathExtension)
         {
-            case EXTENSION_HTML:
-                Data = _htmlProvider.GetData(ResourcePath);
-                break;
 
             case EXTENSION_CSS:
-                Data = _cssProvider.GetData(ResourcePath);
+                Data = _cssProvider.GetData(ResourcePath, context);
                 break;
 
             case EXTENSION_JAVASCRIPT:
-                Data = _javascriptProvider.GetData(ResourcePath);
+                Data = _javascriptProvider.GetData(ResourcePath, context);
                 break;
 
             case EXTENSION_PNG:
-                Data = _pngProvider.GetData(ResourcePath);
+                Data = _pngProvider.GetData(ResourcePath, context);
                 break;
 
             case EXTENSION_ICON:
-                Data = _iconProvider.GetData(ResourcePath);
-                break;
-
-            case "":
-                Data = null;
+                Data = _iconProvider.GetData(ResourcePath, context);
                 break;
 
             default:
-                Server.OutputWarning($"File with unknown extension requested: \"{ResourcePathExtension}\"");
+                Data = _htmlProvider.GetData(ResourcePath, context);
                 break;
         }
 
-        if (Data != null)
-        {
-            return Data;
-        }
-
-        context.Response.Redirect(_pathTo404HTML);
-        return Array.Empty<byte>();
+        return Data ?? Array.Empty<byte>();
     }
 
     /* Responses. */

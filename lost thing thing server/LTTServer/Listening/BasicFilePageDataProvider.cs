@@ -1,17 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace LTTServer.Listening;
 
-internal sealed class BasicPageDataProvider : IPageDataProvider
+internal sealed class BasicFilePageDataProvider : IFilePageDataProvider
 {
-    // Internal static fields.
-    internal static string EmptyPath = "/";
-
-
     // Internal fields.
     public string SearchPattern { get; private init; }
 
@@ -23,7 +20,7 @@ internal sealed class BasicPageDataProvider : IPageDataProvider
 
 
     // Constructors.
-    internal BasicPageDataProvider(string fileExtension)
+    internal BasicFilePageDataProvider(string fileExtension)
     {
         if (fileExtension == null)
         {
@@ -35,15 +32,15 @@ internal sealed class BasicPageDataProvider : IPageDataProvider
 
 
     // Internal methods.
-    public byte[]? GetData(string path)
+    public byte[]? GetData(string path, HttpListenerContext context)
     {
         PageData.TryGetValue(path, out var Data);
         return Data;
     }
 
-    public string? GetDataAsText(string path)
+    public string? GetDataAsText(string path, HttpListenerContext context)
     {
-        byte[]? Data = GetData(path);
+        byte[]? Data = GetData(path, context);
 
         if (Data != null)
         {

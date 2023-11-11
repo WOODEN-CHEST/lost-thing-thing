@@ -1,16 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection.Metadata;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace LTTServer.HTML;
 
-internal class HtmlDocument
+internal class HtmlDocument : ICloneable
 {
 
     // Internal fields.
-    internal HtmlElement HTMLRoot { get; set; }
+    internal HtmlElement? HTMLRoot { get; set; }
 
     internal HtmlElement? Head { get; set; }
 
@@ -45,31 +46,14 @@ internal class HtmlDocument
 
 
     // Internal methods.
-    internal HtmlElement? GetElementById(string searchedId)
+    internal HtmlElement? GetElementByID(string id)
     {
-        HtmlElement? SearchElement(HtmlElement element)
-        {
-            element.Attributes.TryGetValue(HtmlElement.ATTRIBUTE_NAME_ID, out string? ID);
+        return HTMLRoot?.GetElementByID(id);
+    }
 
-            if ((ID != null) && (ID == searchedId))
-            {
-                return element;
-            }
-
-            foreach (HtmlElement SubElement in element.SubElements)
-            {
-                HtmlElement? FoundElement = SearchElement(SubElement);
-
-                if (FoundElement != null)
-                {
-                    return FoundElement;
-                }
-            }
-
-            return null;
-        }
-
-        return SearchElement(HTMLRoot);
+    internal HtmlElement? GetFirstSubElementOfTag(string tag)
+    {
+        return HTMLRoot?.GetFirstSubElementOfTag(tag);
     }
 
 
@@ -77,5 +61,15 @@ internal class HtmlDocument
     public override string ToString()
     {
         return $"<!DOCTYPE html>{HTMLRoot}";
+    }
+
+    public object Clone()
+    {
+        HtmlDocument NewDocument = new(true);
+        NewDocument.HTMLRoot = (HtmlElement?)HTMLRoot?.Clone();
+        NewDocument.Head = NewDocument.HTMLRoot?.GetFirstSubElementOfTag("head");
+        NewDocument.Body = NewDocument.HTMLRoot?.GetFirstSubElementOfTag("body");
+
+        return NewDocument;
     }
 }
