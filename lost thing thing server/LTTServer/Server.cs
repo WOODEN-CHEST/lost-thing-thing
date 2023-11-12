@@ -1,4 +1,5 @@
-﻿using LTTServer.CMDControl;
+﻿using GHDataFile;
+using LTTServer.CMDControl;
 using LTTServer.Database;
 using LTTServer.HTML;
 using LTTServer.Listening;
@@ -40,12 +41,12 @@ internal static class Server
     private readonly static ServerStatus s_status = new() { IsStopped = false };
     private static Logger s_logger;
     private static DatabaseManager _databaseManager;
-    private static UserManager _userManager;
+    private static ProfileManager _userManager;
 
 
     // Internal static methods.
     internal static void Main(string[] args)
-    {
+    { 
         StartupTime = DateTime.Now;
         RootPath = @"D:/Workstations/Programming/Projects/lost thing thing";
 
@@ -53,7 +54,13 @@ internal static class Server
         _databaseManager = new();
         _userManager = new();
 
-        //_userManager.CreateProfile("aa", "aa", "aa", "thecsuniverse2@gmail.com");
+        _userManager.CreateUnverifiedProfile("name", "surname", "aaaaaa", "adbhujibdyhukabyuyhukjkl@aaa");
+        _userManager.CreateUnverifiedProfile("name", "surname", "aaaaaa", "adbhuajibdyhukabyuyhukjkl@aaa");
+        _userManager.CreateUnverifiedProfile("name", "surname", "aaaaaa", "adbhugjibdyhukabyuyhukjkl@aaa");
+        _userManager.CreateUnverifiedProfile("name", "surname", "aaaaaa", "adbhujqribdyhukabyuyhukjkl@aaa");
+        _userManager.CreateUnverifiedProfile("name", "surname", "aaaaaa", "adbhuhjibdyhukabyuyhukjkl@aaa");
+        _userManager.CreateUnverifiedProfile("name", "surname", "aaaaaa", "adbhujifgwbdyhukabyuyhukjkl@aaa");
+        _userManager.ForceVerifyProfiles();
 
         if (!HttpListener.IsSupported)
         {

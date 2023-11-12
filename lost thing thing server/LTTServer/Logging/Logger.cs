@@ -33,6 +33,10 @@ internal class Logger : IDisposable
         {
             Directory.CreateDirectory(LogDirectory);
         }
+        if (File.Exists(LogPath))
+        {
+            File.Delete(LogPath);
+        }
 
         _logStream = File.Open(LogPath, FileMode.OpenOrCreate);
         _loggerTask = Task.Factory.StartNew(WriteMessagesTask, CancellationToken.None,

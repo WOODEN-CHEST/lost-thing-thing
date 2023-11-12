@@ -1,0 +1,17 @@
+D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\bin\Release\net7.0\LTTServer.exe
+D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\bin\Release\net7.0\LTTServer.deps.json
+D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\bin\Release\net7.0\LTTServer.runtimeconfig.json
+D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\bin\Release\net7.0\LTTServer.dll
+D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\bin\Release\net7.0\LTTServer.pdb
+D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\bin\Release\net7.0\GHDataFile.dll
+D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\obj\Release\net7.0\LTTServer.csproj.AssemblyReference.cache
+D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\obj\Release\net7.0\LTTServer.GeneratedMSBuildEditorConfig.editorconfig
+D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\obj\Release\net7.0\LTTServer.AssemblyInfoInputs.cache
+D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\obj\Release\net7.0\LTTServer.AssemblyInfo.cs
+D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\obj\Release\net7.0\LTTServer.csproj.CoreCompileInputs.cache
+D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\obj\Release\net7.0\LTTServer.csproj.CopyComplete
+D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\obj\Release\net7.0\LTTServer.dll
+D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\obj\Release\net7.0\refint\LTTServer.dll
+D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\obj\Release\net7.0\LTTServer.pdb
+D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\obj\Release\net7.0\LTTServer.genruntimeconfig.cache
+D:\Workstations\Programming\Projects\lost thing thing\lost thing thing server\LTTServer\obj\Release\net7.0\ref\LTTServer.dll

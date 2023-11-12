@@ -15,7 +15,7 @@ internal class SMTServer
 
 
     // Private fields.
-    private readonly Dictionary<string, (string email, DateTime timeSent)> _verifications = new();
+    private readonly Dictionary<string, (ProfileInfo profileInfo, DateTime timeSent)> _verifications = new();
 
 
     // Constructors.
@@ -53,65 +53,13 @@ internal class SMTServer
         Message.Subject = subject;
 
         // Send.
-        Client.SendAsync(Message, null);
-    }
-
-    internal void SendVerificationEmail(string targetEmail)
-    {
-        string Verification = GenerateVerificationString();
-        UseVerificationString(Verification, targetEmail);
-
-        string Message = "Šis e-pasts ir nosūtīts, jo jūsu e-pasta adrese tika izmantota, lai veidotu kontu mājaslapā LostThingThing." +
-            $"\nLai apstiprinātu konta izveidi, lūdzu atveriet saiti: http://{Server.SiteAddress}/{Verification}" +
-            $"\nJa šī ir bijusi kļūda, varat e-pastu ignorēt.";
-
-        SendEmail(targetEmail, "LostThingThing konta izveides apstiprināšana.", Message);
-    }
-
-    internal bool VerifyEmail(string email, string verification)
-    {
-        if (!_verifications.ContainsKey(email))
+        try
         {
-            return false;
+            Client.SendAsync(Message, null);
         }
-        bool Result = _verifications[verification].email == email;
-
-        if (Result)
+        catch (Exception e)
         {
-            _verifications.Remove(verification);
+            Server.OutputError($"Failed to send an email to address \"{targetEmail}\" with the content \"{content}\". {e}");
         }
-        return Result;
-    }
-
-
-    // Private methods.
-    private string GenerateVerificationString()
-    {
-        StringBuilder VerificationString = new(64);
-
-        const int VERIFICATION_STRING_LENGTH = 64;
-        for (int i = 0; i < VERIFICATION_STRING_LENGTH; i++)
-        {
-            switch  (Random.Shared.Next(3))
-            {
-                case 1:
-                    VerificationString.Append((char)Random.Shared.Next('a', 'z'));
-                    break;
-                case 2:
-                    VerificationString.Append((char)Random.Shared.Next('A', 'Z'));
-                    break;
-                default:
-                    VerificationString.Append((char)Random.Shared.Next('0', '9'));
-                    break;
-            }
-            
-        }
-
-        return VerificationString.ToString();
-    }
-
-    private void UseVerificationString(string verification, string email)
-    {
-        _verifications.Add(verification, (email, DateTime.Now));
     }
 }
