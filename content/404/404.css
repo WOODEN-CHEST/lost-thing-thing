@@ -1,0 +1,33 @@
+/* Bottom info panel. */
+div#BottomInfoPanel {
+    top: 800px
+}
+
+/* Not found message. */
+div#NotFoundDiv {
+    position: relative;
+
+    margin: auto;
+
+    width: 1200px;
+    height: 300px;
+
+    text-align: center;
+
+    background-color: transparent;
+
+    border-width: 5px;
+    border-style: double;
+    border-color: rgba(0, 0, 0, 0.5);
+}
+
+p#NotFoundMessage {
+    position: absolute;
+
+    font-family: monospace;
+    font-size: 80px;
+    color: white;
+
+    text-shadow: 9px 9px 9px rgba(0, 0, 0, 0.466);
+    text-align: center;
+}
