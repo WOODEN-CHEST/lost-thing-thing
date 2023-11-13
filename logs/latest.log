@@ -1,20 +1,8 @@
-[12d;11m;2023y][20:05:24][Info] Read global user data.
-[12d;11m;2023y][20:05:24][Info] Reading user profiles.
-[12d;11m;2023y][20:05:24][Info] Read 6 user profiles.
-[12d;11m;2023y][20:05:25][Info] Server started
-[12d;11m;2023y][20:05:38][Info] {Input} help
-[12d;11m;2023y][20:05:38][Info] Commands available:
-help (Shows this)
-stop (stops the server)
-reload (reloads all server data like HTML pages, CSS style sheets, JavaScript scripts and PNG images)
-query [uptime | requests] (Queries info about the server)
-[12d;11m;2023y][20:05:43][Info] {Input} reload
-[12d;11m;2023y][20:05:43][Info] Reloading page data...
-[12d;11m;2023y][20:05:43][Info] Reloaded
-[12d;11m;2023y][20:05:48][Info] {Input} reload
-[12d;11m;2023y][20:05:48][Info] Reloading page data...
-[12d;11m;2023y][20:05:48][Info] Reloaded
-[12d;11m;2023y][20:05:50][Info] {Input} stop
-[12d;11m;2023y][20:05:50][Info] Saved global user data.
-[12d;11m;2023y][20:05:50][Info] Saved 6 user profiles.
-[12d;11m;2023y][20:05:50][Info] Server stopped
+[13d;11m;2023y][19:52:45][Warning] Created new global user data.
+[13d;11m;2023y][19:52:45][Info] Reading user profiles.
+[13d;11m;2023y][19:52:45][Info] Read 19 user profiles.
+[13d;11m;2023y][19:52:45][Info] Server started
+[13d;11m;2023y][19:52:47][Info] {Input} stop
+[13d;11m;2023y][19:52:47][Info] Saved global user data.
+[13d;11m;2023y][19:52:47][Info] Saved 19 user profiles.
+[13d;11m;2023y][19:52:47][Info] Server stopped
