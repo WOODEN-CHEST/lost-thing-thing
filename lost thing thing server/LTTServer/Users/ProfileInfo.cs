@@ -1,15 +1,11 @@
 ﻿using GHDataFile;
 using LTTServer.Database;
 using SkiaSharp;
-using System;
-using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static System.Net.Mime.MediaTypeNames;
+
 
 namespace LTTServer.Users;
+
 
 internal class ProfileInfo
 {
@@ -66,8 +62,6 @@ internal class ProfileInfo
 
     internal int[] Comments { get; set; } = Array.Empty<int>();
 
-    internal ulong ProfileIcon { get; set; } = 0;
-
 
     // Private static fields.
     private static HashSet<char> _allowedUsernameChars;
@@ -78,7 +72,7 @@ internal class ProfileInfo
         'h', 'i', 'ī', 'j', 'k', 'ķ', 'l', 'ļ', 'm', 'n', 'ņ',
         'o', 'q', 'p', 'r', 's', 'š', 't', 'u', 'ū', 'v', 'w', 'x', 'y', 'z', 'ž' 
     };
-    //private static readonly Dictionary<ulong, Image> _cachedProfileIcons = new();
+    private static readonly Dictionary<ulong, SKBitmap> _cachedProfileIcons = new();
 
 
     // Private fields.
@@ -96,7 +90,6 @@ internal class ProfileInfo
     private const int ID_PASSHASH2 = 6;
     private const int ID_POSTS = 7;
     private const int ID_COMMENTS = 8;
-    private const int ID_PROFILE_ICON = 9;
 
 
     // Static constructors.
@@ -125,8 +118,7 @@ internal class ProfileInfo
         TextHash password,
         string email,
         int[]? posts,
-        int[] comments,
-        ulong profileIcon)
+        int[]? comments)
     {
         ID = id;
         Name = name;
@@ -135,7 +127,6 @@ internal class ProfileInfo
         Email = email;
         Posts = posts ?? Array.Empty<int>();
         Comments = comments ?? Array.Empty<int>();
-        ProfileIcon = profileIcon;
     }
 
 
@@ -144,18 +135,19 @@ internal class ProfileInfo
         string name,
         string surname,
         string password,
-        string email)
+        string email,
+        string[]? allowedEmailSuffixes = null)
     {
-        if (!VerifyName(name) || !VerifyName(surname) || !VerifyEmail(email) || !VerifyPassword(password))
+        if (!VerifyName(name) || !VerifyName(surname) || !VerifyEmail(email, allowedEmailSuffixes) || !VerifyPassword(password))
         {
             return null;
         }
 
-        return new ProfileInfo(0, name, surname, TextHash.GetHash(password), email, null, null, 0);
+        return new ProfileInfo(0, name, surname, TextHash.GetHash(password), email, null, null);
     }
-        internal static ProfileInfo? TryCreateFromCompound(DataFileCompound compound)
+        internal static ProfileInfo? TryCreateFromCompound(DataFileCompound compound, string[]? allowedEmailSuffixes = null)
     {
-        ulong ID = 0L, ProfileIcon = 0L;
+        ulong ID = 0L;
         string? Name = null, Surname = null, Email = null;
         TextHash Password = new();
         int[]? Posts = null, Comments = null;
@@ -169,7 +161,6 @@ internal class ProfileInfo
             Email = compound.Get<string>(ID_EMAIL);
             Posts = compound.Get<int[]>(ID_POSTS);
             Comments = compound.Get<int[]>(ID_COMMENTS);
-            ProfileIcon = compound.Get<ulong>(ID_PROFILE_ICON);
         }
         catch (Exception e)
         {
@@ -177,25 +168,12 @@ internal class ProfileInfo
             return null;
         }
 
-        if (!VerifyName(Name) || !VerifyName(Surname) || !VerifyEmail(Email))
+        if (!VerifyName(Name) || !VerifyName(Surname) || !VerifyEmail(Email, allowedEmailSuffixes))
         {
             return null;
         }
 
-        Posts ??= Array.Empty<int>();
-        Comments ??= Array.Empty<int>();
-
-        return new ProfileInfo()
-        {
-            ID = ID,
-            Name = Name!.Trim(),
-            Surname = Surname!.Trim(),
-            Password = Password,
-            Email = Email!.Trim(),
-            Posts = Posts,
-            Comments = Comments,
-            ProfileIcon = ProfileIcon
-        };
+        return new ProfileInfo(ID, Name!, Surname!, Password, Email!, Posts, Comments!);
     }
 
     internal static bool VerifyName(string? username)
@@ -224,8 +202,9 @@ internal class ProfileInfo
         return true;
     }
 
-    internal static bool VerifyEmail(string? email)
+    internal static bool VerifyEmail(string? email, string[]? allowedSuffixes = null)
     {
+        // Structure.
         if (string.IsNullOrWhiteSpace(email))
         {
             return false;
@@ -233,12 +212,33 @@ internal class ProfileInfo
 
         email = email.Trim();
 
+        // Length.
         const int MAX_LENGTH = 100;
         if ((email.Length > MAX_LENGTH) || (email.Length == 0))
         {
             return false;
         }
 
+        // Suffix.
+        if  (allowedSuffixes != null)
+        {
+            bool HasSuffix = false;
+            foreach (string Suffix in allowedSuffixes)
+            {
+                if (email.EndsWith(Suffix))
+                {
+                    HasSuffix = true;
+                    break;
+                }
+            }
+
+            if (!HasSuffix)
+            {
+                return false;
+            }
+        }
+
+        // Characters.
         bool? CurrentLetterSpecial = false;
         bool ContainsAt = false;
 
@@ -326,9 +326,9 @@ internal class ProfileInfo
         return false;
     }
 
-    internal bool TrySetEmail(string email)
+    internal bool TrySetEmail(string email, string[]? allowedSuffixes = null)
     {
-        if (VerifyEmail(email))
+        if (VerifyEmail(email, allowedSuffixes))
         {
             Email = email.Trim();
             return true;

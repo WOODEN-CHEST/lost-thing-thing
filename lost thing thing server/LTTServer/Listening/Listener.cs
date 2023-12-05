@@ -1,5 +1,6 @@
 ﻿using LTTServer.HTML;
 using System.Net;
+using System.Text;
 
 namespace LTTServer.Listening;
 
@@ -13,6 +14,7 @@ internal class Listener
 
 
     // Private fields.
+    private readonly Dictionary<IPAddress, (ulong RequestCount, DateTime firstRequestTime)> _requests = new();
     private readonly HttpListener HTTPListener;
     private readonly string[] _prefixes;
 
@@ -23,6 +25,8 @@ internal class Listener
     private readonly IFilePageDataProvider _iconProvider;
 
     /* Constants. */
+    private const ulong MAX_REQUESTS_PER_5_SECONDS = 15 * 5;
+
     private const string EXTENSION_CSS = ".css";
     private const string EXTENSION_JAVASCRIPT = ".js";
     private const string EXTENSION_PNG = ".png";
@@ -93,13 +97,24 @@ internal class Listener
             HttpListenerContext Context = await HTTPListener.GetContextAsync();
 
             RequestCount++;
-            string Method = Context.Request.HttpMethod;
             byte[] Response = Array.Empty<byte>();
+
+            if (AreRequestsSpammed(Context.Request.RemoteEndPoint.Address))
+            {
+                continue;
+            }
+
+
+            string Method = Context.Request.HttpMethod;
 
             switch (Method)
             {
                 case METHOD_GET:
                     Response = GetResource(Context);
+                    break;
+
+                case METHOD_POST:
+                    Response = ReadPostMethod(Context);
                     break;
 
                 default:
@@ -112,6 +127,34 @@ internal class Listener
     }
 
     /* Getting data. */
+    private bool AreRequestsSpammed(IPAddress address)
+    {
+        if (_requests.TryGetValue(address, out (ulong RequestCount, DateTime FirstRequestTime) RequestData))
+        {
+            RequestData.RequestCount++;
+            _requests[address] = RequestData;
+
+            TimeSpan TimePassed = DateTime.Now - RequestData.FirstRequestTime;
+
+            if (TimePassed.TotalSeconds > 5d)
+            {
+                RequestData.RequestCount = 0;
+                RequestData.FirstRequestTime = DateTime.Now;
+                _requests[address] = RequestData;
+                return false;
+            }
+
+            if (RequestData.RequestCount > MAX_REQUESTS_PER_5_SECONDS)
+            {
+                return true;
+            }
+            return false;
+        }
+
+        _requests[address] = (1, DateTime.Now);
+        return false;
+    }
+
     private byte[] GetResource(HttpListenerContext context)
     {
         string? ResourcePath = context.Request.RawUrl ?? IFilePageDataProvider.EmptyPath;
@@ -144,6 +187,25 @@ internal class Listener
         }
 
         return Data ?? Array.Empty<byte>();
+    }
+
+    private byte[]? ReadPostMethod(HttpListenerContext context)
+    {
+        byte[] Response = Array.Empty<byte>();
+        string Body = GetRequestBody(context);
+
+        if (string.IsNullOrEmpty(Body))
+        {
+            return Response;
+        }
+
+        return Response ?? Array.Empty<byte>();
+    }
+
+    private string GetRequestBody(HttpListenerContext context)
+    {
+        using StreamReader Reader = new(context.Request.InputStream);
+        return Reader.ReadToEnd();
     }
 
     /* Responses. */

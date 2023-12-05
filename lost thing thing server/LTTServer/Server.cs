@@ -1,5 +1,6 @@
 ﻿using GHDataFile;
 using LTTServer.CMDControl;
+using LTTServer.Config;
 using LTTServer.Database;
 using LTTServer.HTML;
 using LTTServer.Listening;
@@ -45,27 +46,30 @@ internal static class Server
 
 
     // Private static fields.
-
     private static CommandReader s_commandReader;
     private readonly static ServerStatus s_status = new() { IsStopped = false };
     private static Logger s_logger;
-    
-    
 
 
     // Static constructors.
     static Server()
     {
         StartupTime = DateTime.Now;
-        RootPath = @"D:\Workstations\Programming\Projects\lost thing thing\content";
+        RootPath = @"D:\Workstations\Programming\Projects\lost-thing-thing\content";
 
         s_logger = new();
         try
         {
-            DatabaseManager = new();
-            ProfileManager = new();
+            const string CONFIG_FILE_NAME = "server.cfg";
+            Configuration ServerConfig = new();
+            ServerConfig.ReadFromFile(Path.Combine(RootPath, CONFIG_FILE_NAME));
 
-            ProfileInfo[] FoundProfiles = ProfileManager.GetProfiles("Am");
+            string SiteAddress = ServerConfig.GetOrDefault("address", "127.0.0.1")![0];
+            string[]? AcceptedEmails = ServerConfig.GetOrDefault("accepted-email", null);
+            string DefaultIconName = ServerConfig.GetOrDefault("default-icon", "default.png")![0];
+
+            DatabaseManager = new();
+            ProfileManager = new(DefaultIconName, AcceptedEmails);
 
             if (!HttpListener.IsSupported)
             {
@@ -81,6 +85,8 @@ internal static class Server
             OutputCritical($"Failed to start server! {e}");
             return;
         }
+
+        OutputInfo("Server Initialized");
     }
 
 
@@ -117,10 +123,9 @@ internal static class Server
     // Private static methods.
     private static void ListenForMessages()
     {
-        OutputInfo("Server started");
-
         try
         {
+            OutputInfo("Started listening for HTTP requests.");
             ServerListener.Listen();
             s_commandReader.ReadCommand();
         }

@@ -1,13 +1,9 @@
 ﻿using LTTServer.Listening;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Net;
-using System.Text;
-using System.Threading.Tasks;
+
 
 namespace LTTServer.HTML;
+
 
 internal class HTMLProvider : IPageDataProvider
 {
@@ -74,9 +70,23 @@ internal class HTMLProvider : IPageDataProvider
     private void SetupPageIndex()
     {
         _indexPage = (HtmlDocument)_templatePage.Clone();
-        _indexPage.Head.AddSubElement("link")
+        _indexPage.Head!.AddSubElement("link")
             .AddAttribute("href", "index/index.css")
             .AddAttribute("rel", "stylesheet");
+
+        HtmlElement Form = new("form", null, "MyForm");
+        Form.AddAttribute("method", "post");
+
+        Form.AddSubElement("input", null)
+            .AddAttribute("class", "UserInput")
+            .AddAttribute("placeholder", "username");
+        Form.AddSubElement("input", null)
+            .AddAttribute("class", "UserInput")
+            .AddAttribute("placeholder", "password");
+        Form.AddSubElement("button", "click me!")
+            .AddAttribute("type", "submit")
+            .AddAttribute("enctype", "application/x-www-form-urlencoded");
+        _indexPage.Body!.AddSubElement(Form);
     }
 
 
@@ -129,7 +139,6 @@ internal class HTMLProvider : IPageDataProvider
     public byte[]? GetData(string path, HttpListenerContext context)
     {
         return Server.Encoding.GetBytes(GetPageText(path, context));
-        
     }
 
     public string? GetDataAsText(string path, HttpListenerContext context) => GetPageText(path, context);

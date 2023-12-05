@@ -1,16 +1,11 @@
 ﻿using GHDataFile;
-using LTTServer.Database;
-using LTTServer.Logging;
 using LTTServer.Search;
 using LTTServer.Users.SMTS;
-using System;
-using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+
 
 namespace LTTServer.Users;
+
 
 internal class ProfileManager : IDisposable
 {
@@ -29,8 +24,13 @@ internal class ProfileManager : IDisposable
 
 
     // Private fields.
-    private SMTServer _emailServer;
     private Dictionary<string, (ProfileInfo ProfileInfo, DateTime CreationTime)> _unverifiedProfiles = new();
+    private string[]? _allowedEmailSuffixes;
+
+    /* Components. */
+    private SMTServer _emailServer;
+    private ProfileIconManager _iconManager;
+
 
     /* Users. */
     private ulong _availableSessionID;
@@ -45,19 +45,19 @@ internal class ProfileManager : IDisposable
     private const int DEFAULT_SESSION_ID = 0;
     private const int ID_USER_ID = 2;
     private const int DEFAULT_USER_ID = 0;
-    private const int ID_PROFILE_ICON = 3;
-    private const int DEFAULT_PROFILE_ICON = 1;
 
     /* Users file */
     private const int ID_USERS_ARRAY = 1;
 
 
     // Constructors.
-    internal ProfileManager()
+    internal ProfileManager(string defaultIconName, string[]? allowedEmailSuffixes)
     {
         UsersDir = Path.Combine(Server.DatabaseManager.DatabasePath, "users");
         UserEntriesPath = Path.Combine(UsersDir, "entries" + IDataFile.FileExtension);
         GlobalUserDataPath = Path.Combine(UsersDir, "global" + IDataFile.FileExtension);
+        _iconManager = new(UsersDir, defaultIconName);
+        _allowedEmailSuffixes = allowedEmailSuffixes;
 
         if (!Directory.Exists(UsersDir))
         {
@@ -75,10 +75,35 @@ internal class ProfileManager : IDisposable
     }
 
 
+    // Internal static methods.
+    internal static string GenerateVerificationCode()
+    {
+        StringBuilder VerificationString = new(VERIFICATION_CODE_LENGTH);
+
+        for (int i = 0; i < VERIFICATION_CODE_LENGTH; i++)
+        {
+            switch (Random.Shared.Next(3))
+            {
+                case 1:
+                    VerificationString.Append((char)Random.Shared.Next('a', 'z' + 1));
+                    break;
+                case 2:
+                    VerificationString.Append((char)Random.Shared.Next('A', 'Z' + 1));
+                    break;
+                default:
+                    VerificationString.Append((char)Random.Shared.Next('0', '9' + 1));
+                    break;
+            }
+        }
+
+        return VerificationString.ToString();
+    }
+
+
     // Internal methods.
     internal bool CreateUnverifiedProfile(string name, string surname, string password, string email)
     {
-        ProfileInfo? Profile = ProfileInfo.TryCreateUnverifiedProfile(name, surname, password, email);
+        ProfileInfo? Profile = ProfileInfo.TryCreateUnverifiedProfile(name, surname, password, email, _allowedEmailSuffixes);
 
         if (Profile == null)
         {
@@ -183,7 +208,6 @@ internal class ProfileManager : IDisposable
 
         _availableSessionID = UserDataCompound.GetOrDefault<ulong>(ID_SESSION_ID, DEFAULT_SESSION_ID);
         _availableUserID = UserDataCompound.GetOrDefault<ulong>(ID_USER_ID, DEFAULT_USER_ID);
-        _availableProfileIcon = UserDataCompound.GetOrDefault<ulong>(ID_PROFILE_ICON, DEFAULT_PROFILE_ICON);
         Server.OutputInfo("Read global user data.");
     }
 
@@ -192,7 +216,6 @@ internal class ProfileManager : IDisposable
         DataFileCompound UserDataCompound = new();
         UserDataCompound.Add(ID_SESSION_ID, _availableSessionID);
         UserDataCompound.Add(ID_USER_ID, _availableUserID);
-        UserDataCompound.Add(ID_PROFILE_ICON, _availableProfileIcon);
 
         DataFileWriter.GetWriter().Write(GlobalUserDataPath, UserDataCompound);
 
@@ -203,7 +226,6 @@ internal class ProfileManager : IDisposable
     { 
         _availableSessionID = DEFAULT_SESSION_ID;
         _availableUserID = DEFAULT_USER_ID;
-        _availableProfileIcon = DEFAULT_PROFILE_ICON;
         Server.OutputWarning("Created new global user data.");
     }
 
@@ -223,7 +245,7 @@ internal class ProfileManager : IDisposable
 
         foreach (DataFileCompound ProfileCompound in AllProfilesCompound.Get<DataFileCompound[]>(ID_USERS_ARRAY)!)
         {
-            ProfileInfo? Profile = ProfileInfo.TryCreateFromCompound(ProfileCompound);
+            ProfileInfo? Profile = ProfileInfo.TryCreateFromCompound(ProfileCompound, _allowedEmailSuffixes);
 
             if (Profile != null)
             {
@@ -260,29 +282,6 @@ internal class ProfileManager : IDisposable
             $"\nJa šī ir bijusi kļūda, varat e-pastu ignorēt. AAAAAAA";
 
         _emailServer.SendEmail(email, "LostThingThing konta izveides apstiprināšana.", Message);
-    }
-
-    private string GenerateVerificationCode()
-    {
-        StringBuilder VerificationString = new(VERIFICATION_CODE_LENGTH);
-
-        for (int i = 0; i < VERIFICATION_CODE_LENGTH; i++)
-        {
-            switch (Random.Shared.Next(3))
-            {
-                case 1:
-                    VerificationString.Append((char)Random.Shared.Next('a', 'z' + 1));
-                    break;
-                case 2:
-                    VerificationString.Append((char)Random.Shared.Next('A', 'Z' + 1));
-                    break;
-                default:
-                    VerificationString.Append((char)Random.Shared.Next('0', '9' + 1));
-                    break;
-            }
-        }
-
-        return VerificationString.ToString();
     }
 
     private void AddUnverifiedProfile(string code, ProfileInfo profile)
