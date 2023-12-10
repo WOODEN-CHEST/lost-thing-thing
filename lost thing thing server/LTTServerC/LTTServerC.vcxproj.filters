@@ -1,0 +1,87 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;c++;cppm;ixx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;h++;hm;inl;inc;ipp;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+    <Filter Include="Source Files\DataStructures">
+      <UniqueIdentifier>{6655f89b-c41d-4dc4-ae95-e50c556dada0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\DataStructures\String">
+      <UniqueIdentifier>{3d1078e2-653b-47e6-a83b-c7206357c1ad}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Errors">
+      <UniqueIdentifier>{67d9b874-876d-4d15-899c-4e971dc820dc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Memory">
+      <UniqueIdentifier>{310283ba-9efd-4f60-b27b-3abd9b2b79f7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\DataStructures\List">
+      <UniqueIdentifier>{9cbd4b7a-c4e5-43a5-bce6-b1ad1e2823e9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\Math">
+      <UniqueIdentifier>{b0dfd3d3-8f89-4404-9c21-000423439cfc}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\IO">
+      <UniqueIdentifier>{adb32f64-25d4-44cb-b1f4-0f8ca7098794}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\HttpListener">
+      <UniqueIdentifier>{5a6b1d8c-6056-4aa5-b9de-5e4695cf964c}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="LTTServerC.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="LttString.c">
+      <Filter>Source Files\DataStructures\String</Filter>
+    </ClCompile>
+    <ClCompile Include="ErrorCodes.c">
+      <Filter>Source Files\Errors</Filter>
+    </ClCompile>
+    <ClCompile Include="Memory.c">
+      <Filter>Source Files\Memory</Filter>
+    </ClCompile>
+    <ClCompile Include="Math.c">
+      <Filter>Source Files\Math</Filter>
+    </ClCompile>
+    <ClCompile Include="File.c">
+      <Filter>Source Files\IO</Filter>
+    </ClCompile>
+    <ClCompile Include="HttpListener.c">
+      <Filter>Source Files\HttpListener</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="LttString.h">
+      <Filter>Source Files\DataStructures\String</Filter>
+    </ClInclude>
+    <ClInclude Include="ErrorCodes.h">
+      <Filter>Source Files\Errors</Filter>
+    </ClInclude>
+    <ClInclude Include="Memory.h">
+      <Filter>Source Files\Memory</Filter>
+    </ClInclude>
+    <ClInclude Include="List.h">
+      <Filter>Source Files\DataStructures\List</Filter>
+    </ClInclude>
+    <ClInclude Include="Math.h">
+      <Filter>Source Files\Math</Filter>
+    </ClInclude>
+    <ClInclude Include="File.h">
+      <Filter>Source Files\IO</Filter>
+    </ClInclude>
+    <ClInclude Include="HttpListener.h">
+      <Filter>Source Files\HttpListener</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>

@@ -77,7 +77,7 @@ internal static class Server
                 return;
             }
 
-            ServerListener = new($"http://{SiteAddress}/");
+            ServerListener = new($"https://{SiteAddress}/");
             s_commandReader = new();
         }
         catch (Exception e)
