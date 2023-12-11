@@ -7,77 +7,28 @@
 #include <ctype.h>
 
 // Functions.
-string* String_Construct()
+int String_IndexOf(char* string, const char character)
 {
-	string* NewString;
-
-	NewString = SafeMalloc(sizeof(string));
-
-	NewString->Data = SafeMalloc(sizeof(char));
-	NewString->Data = 0;
-	NewString->Length = 0;
-
-	return NewString;
-}
-
-string* String_Construct2(const char* value, const bool copyValue)
-{
-	if (value == NULL)
-	{
-		return NULL;
-	}
-
-	string* NewString = SafeMalloc(sizeof(string));
-	int StringLength = strlen(value);
-	int TotalStringLength = StringLength + 1;
-
-	if (copyValue)
-	{
-		char* NewValue = SafeMalloc(TotalStringLength);
-		strcpy_s(NewValue, TotalStringLength, value);
-		NewString->Data = NewValue;
-	}
-	else
-	{
-		NewString->Data = value;
-	}
-	NewString->Length = StringLength;
-
-	return NewString;
-}
-
-int String_Deconstruct(string* this)
-{
-	if (this == NULL)
-	{
-		return NULL_REFERENCE_ERRCODE;
-	}
-
-	free(this->Data);
-	free(this);
-
-	return SUCCESS_CODE;
-}
-
-int String_IndexOf(string* this, const char character)
-{
-	if (this == NULL)
+	if (string == NULL)
 	{
 		return -1;
 	}
 
-	for (int i = 0; i < this->Length; i++)
+	int Index = 0;
+	while (string[Index] != '\0')
 	{
-		if (this->Data[i] == character)
+		if (string[Index] == character)
 		{
-			return i;
+			return Index;
 		}
+
+		Index++;
 	}
 
 	return -1;
 }
 
-int String_LastIndexOf(string* this, const char character)
+int String_LastIndexOf(char* string, const char character)
 {
 	if (this == NULL)
 	{
@@ -90,6 +41,25 @@ int String_LastIndexOf(string* this, const char character)
 		{
 			return i;
 		}
+	}
+
+	return -1;
+
+	if (string == NULL)
+	{
+		return -1;
+	}
+
+	int Length = strlen();
+	int Index = 0;
+	while (string[Index] != '\0')
+	{
+		if (string[Index] == character)
+		{
+			return Index;
+		}
+
+		Index++;
 	}
 
 	return -1;

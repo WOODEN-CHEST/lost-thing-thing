@@ -5,16 +5,12 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <String.h>
+#include <sys/stat.h>
 
 #define MODE_STRING_LENGTH 3
 
 // Functions.
-int File_DeleteFile(string* path)
-{
-
-}
-
-FileStream* File_Open(string* path, File_OpenMode mode)
+FILE* File_Open(char* path, File_OpenMode mode)
 {
 	if ((path == NULL) || (mode == NULL))
 	{
@@ -53,27 +49,39 @@ FileStream* File_Open(string* path, File_OpenMode mode)
 	}
 
 	FILE* File;
-	fopen_s(&File, path->Data, OpenMode);
+	fopen_s(&File, path, OpenMode);
 	if (File == NULL)
 	{
 		return NULL;
 	}
 
-	FileStream* Stream = SafeMalloc(sizeof(FileStream));
-	Stream->Path = path;
-	Stream->File = File;
-
-	return Stream;
+	return File;
 }
 
-int File_Flush(FileStream* this)
+int File_Write(FILE* file, char* data, size_t dataLength)
 {
-	if (this == NULL)
+	if ((file == NULL) || (data == NULL))
 	{
 		return NULL_REFERENCE_ERRCODE;
 	}
 
-	int Success = fflush(this->File);
+	size_t Result = fwrite(data, 1, dataLength, file);
+	if (Result != dataLength)
+	{
+		return IO_ERROR_ERRCODE;
+	}
+
+	return 0;
+}
+
+int File_Flush(FILE* file)
+{
+	if (file == NULL)
+	{
+		return NULL_REFERENCE_ERRCODE;
+	}
+
+	int Success = fflush(file);
 
 	if (Success != 0)
 	{
@@ -82,14 +90,14 @@ int File_Flush(FileStream* this)
 	return 0;
 }
 
-int File_Close(FileStream* this)
+int File_Close(FILE* file)
 {
-	if (this == NULL)
+	if (file == NULL)
 	{
 		return NULL_REFERENCE_ERRCODE;
 	}
 
-	int Success = fclose(this->File);
+	int Success = fclose(file);
 
 	if (Success != 0)
 	{
@@ -98,23 +106,31 @@ int File_Close(FileStream* this)
 	return 0;
 }
 
-bool File_FileExists(string* path)
+bool File_Exists(char* path)
 {
-	
+	if (path == NULL)
+	{
+		return false;
+	}
+
+	struct stat FileStats;
+	int Result = stat(path, &FileStats);
+
+	return Result == 0;
 }
 
-int File_Write(FileStream* this, string* text)
+int File_Delete(char* path)
 {
-	if ((this == NULL) || (text == NULL))
+	if (path == NULL)
 	{
 		return NULL_REFERENCE_ERRCODE;
 	}
 
-	int Success = fprintf(this->File, text->Data);
-	if (Success < 0)
-	{
-		return IO_ERROR_ERRCODE;
-	}
+	int Result = remove(path);
 
-	return 0;
+	if (Result == 0)
+	{
+		return 0;
+	}
+	return IO_ERROR_ERRCODE;
 }

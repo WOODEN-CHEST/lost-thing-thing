@@ -7,6 +7,9 @@
 
 int main()
 {
-	Main();
+	char Path[] = "C:\\Users\\KČerņavskis\\Desktop\\tests\\file_to_delete.txt";
+
+	File_Delete(Path);
+
 	return 0;
 }

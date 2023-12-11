@@ -127,20 +127,20 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Directory.c" />
     <ClCompile Include="ErrorCodes.c" />
     <ClCompile Include="File.c" />
     <ClCompile Include="HttpListener.c" />
     <ClCompile Include="LTTServerC.c" />
-    <ClCompile Include="LttString.c" />
     <ClCompile Include="Math.c" />
     <ClCompile Include="Memory.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Directory.h" />
     <ClInclude Include="ErrorCodes.h" />
     <ClInclude Include="File.h" />
     <ClInclude Include="HttpListener.h" />
     <ClInclude Include="List.h" />
-    <ClInclude Include="LttString.h" />
     <ClInclude Include="Math.h" />
     <ClInclude Include="Memory.h" />
   </ItemGroup>

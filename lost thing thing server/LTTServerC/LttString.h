@@ -2,14 +2,6 @@
 #include <stdbool.h>
 
 // Structures.
-struct String
-{
-	char* Data;
-	int Length;
-};
-
-typedef struct String string;
-
 struct StringBuilderStruct
 {
 	char* Data;
@@ -21,25 +13,19 @@ typedef struct StringBuilderStruct StringBuilder;
 
 // Functions.
 // String.
-string* String_Construct();
+int String_IndexOf(char* string, const char character);
 
-string* String_Construct2(const char* value, const bool copyValue);
+int String_LastIndexOf(char* string, const char character);
 
-int String_Deconstruct(string* this);
+char* String_CreateCopy(char* string);
 
-int String_IndexOf(string* this, const char character);
+char* String_Substring(char* string, const int startIndex, const int endIndex);
 
-int String_LastIndexOf(string* this, const char character);
+char* String_Trim(char* string);
 
-string* String_CreateCopy(string* this);
+char* String_ToLower(char* string);
 
-string* String_Substring(string* this, const int startIndex, const int endIndex);
-
-string* String_Trim(string* this);
-
-string* String_ToLower(string* this);
-
-string* String_ToUpper(string* this);
+char* String_ToUpper(char* string);
 
 
 // String builder.

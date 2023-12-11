@@ -3,14 +3,6 @@
 #include <stdio.h>
 
 // Structures.
-struct FileStreamStruct
-{
-	string* Path;
-	FILE* File;
-};
-
-typedef struct FileStreamStruct FileStream;
-
 enum File_OpenModeEnum
 {
 	Read = 1,
@@ -25,12 +17,14 @@ typedef enum File_OpenModeEnum File_OpenMode;
 
 
 // Functions.
-int File_DeleteFile(string* path);
+FILE* File_Open(char* path, File_OpenMode mode);
 
-FileStream* File_Open(string* path, File_OpenMode mode);
+int File_Write(FILE* file, char* data, size_t dataLength);
 
-int File_Flush(FileStream* this);
+int File_Flush(FILE* file);
 
-int File_Close(FileStream* this);
+int File_Close(FILE* file);
 
-int File_Write(FileStream* this, string* text);
+int File_Delete(char* path);
+
+bool File_Exists(char* path);
