@@ -4,99 +4,141 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
-#include <ctype.h>
+#include "ArrayList.h"
 
 // Functions.
-int String_IndexOf(char* string, const char character)
+int String_LengthCodepoints(char* string)
+{
+
+}
+
+int String_LengthBytes(char* string)
 {
 	if (string == NULL)
 	{
-		return -1;
+		return 0;
 	}
 
-	int Index = 0;
-	while (string[Index] != '\0')
+	int Length = 0;
+	while (string[Length] != '\0')
 	{
-		if (string[Index] == character)
-		{
-			return Index;
-		}
-
-		Index++;
+		Length++;
 	}
 
-	return -1;
+	return Length;
 }
 
-int String_LastIndexOf(char* string, const char character)
+char* String_CreateCopy(char* string)
 {
-	if (this == NULL)
-	{
-		return -1;
-	}
-
-	for (int i = this->Length - 1; i >= 0; i--)
-	{
-		if (this->Data[i] == character)
-		{
-			return i;
-		}
-	}
-
-	return -1;
-
 	if (string == NULL)
-	{
-		return -1;
-	}
-
-	int Length = strlen();
-	int Index = 0;
-	while (string[Index] != '\0')
-	{
-		if (string[Index] == character)
-		{
-			return Index;
-		}
-
-		Index++;
-	}
-
-	return -1;
-}
-
-string* String_CreateCopy(string* this)
-{
-	if (this == NULL)
 	{
 		return NULL;
 	}
 
-	string* NewString = String_Construct2(this->Data, true);
+	int StringLengthBytes = String_LengthBytes(string) + 1;
+	char* NewString = SafeMalloc(StringLengthBytes);
+
+	for (int i = 0; i < StringLengthBytes; i++)
+	{
+		NewString[i] = string[i];
+	}
+
 	return NewString;
 }
 
-string* String_Substring(string* this, const int startIndex, const int endIndex)
+int String_ByteIndexOf(char* string, char* sequence)
 {
-	if ((this == NULL) || (startIndex < 0) || (endIndex < 0) || (endIndex < startIndex)
-		|| (startIndex > this->Length) || (endIndex > this->Length))
+	if ((string == NULL) || (sequence == NULL) || (sequence[0] == '\0'))
+	{
+		return -1;
+	}
+
+	int SequenceByteLength = String_LengthBytes(sequence);
+	int Index = 0, SequenceIndex = 0, StartIndex = -1;
+
+	while (string[Index] != '\0')
+	{
+		if (string[Index] == sequence[SequenceIndex])
+		{
+			if (StartIndex == -1)
+			{
+				StartIndex = Index;
+			}
+
+			SequenceIndex++;
+			if (SequenceIndex >= SequenceByteLength)
+			{
+				return StartIndex;
+			}
+		}
+		else
+		{
+			SequenceIndex = 0;
+			StartIndex = -1;
+		}
+
+		Index++;
+	}
+
+	return -1;
+}
+
+int String_LastByteIndexOf(char* string, char* sequence)
+{
+	if ((string == NULL) || (sequence == NULL) || (sequence[0] == '\0'))
+	{
+		return -1;
+	}
+
+	int StringLengthBytes = String_LengthBytes(string);
+	int MaxSequenceIndex = String_LengthBytes(sequence) - 1;
+	int Index = StringLengthBytes - 1, SequenceIndex = MaxSequenceIndex;
+
+	while (Index >= 0)
+	{
+		if (string[Index] == sequence[SequenceIndex])
+		{
+			SequenceIndex--;
+			if (SequenceIndex < 0)
+			{
+				return Index;
+			}
+		}
+		else
+		{
+			SequenceIndex = MaxSequenceIndex;
+		}
+
+		Index--;
+	}
+
+	return -1;
+}
+
+char* String_SubString(char* string, const int startIndex, const int endIndex)
+{
+	if ((string == NULL) || (startIndex < 0) || (endIndex < 0) || (endIndex < startIndex))
 	{
 		return NULL;
 	}
 
-	int StringLength = endIndex - startIndex;
-	int TotalStringLength = StringLength + 1;
+	int ByteLength = String_LengthBytes(string);
+	if ((startIndex > ByteLength) || (endIndex > ByteLength))
+	{
+		return NULL;
+	}
+
+	int SubStringLength = endIndex - startIndex;
+	int TotalStringLength = SubStringLength + 1;
 
 	char* NewValue = SafeMalloc(TotalStringLength);
 	for (int Cur = startIndex, New = 0; Cur < endIndex; Cur++, New++)
 	{
-		NewValue[New] = this->Data[Cur];
+		NewValue[New] = string[Cur];
 	}
-	NewValue[StringLength] = '\0';
+	NewValue[SubStringLength] = '\0';
 
-	string* NewString = String_Construct2(NewValue, false);
-
-	return NewString;
+	return NewValue;
 }
 
 bool IsCharWhitespace(char character)
@@ -104,67 +146,138 @@ bool IsCharWhitespace(char character)
 	return (character == ' ') || (character == '\n') || (character == '\r') || (character == '\t');
 }
 
-string* String_Trim(string* this)
+char* String_Trim(char* string)
 {
-	if (this == NULL)
+	if (string == NULL)
 	{
 		return NULL;
 	}
-	if (this->Length == 0)
-	{
-		return String_Construct();
-	}
 
 	int StartIndex = 0;
-	while (IsCharWhitespace(this->Data[StartIndex]))
+	while (IsCharWhitespace(string[StartIndex]))
 	{
 		StartIndex++;
 		
-		if (StartIndex >= this->Length)
+		if (string[StartIndex] == '\0')
 		{
 			StartIndex--;
 			break;
 		}
 	}
 
-	int EndIndex = this->Length - 1;
-	while ((EndIndex >= 0) && (EndIndex >= StartIndex) && IsCharWhitespace(this->Data[EndIndex]))
+	int EndIndex = String_LengthBytes(string) - 1;
+	while ((EndIndex >= StartIndex) && IsCharWhitespace(string[EndIndex]))
 	{
 		EndIndex--;
 	}
 	EndIndex++;
 
-	return String_Substring(this, StartIndex, EndIndex);
+	return String_SubString(string, StartIndex, EndIndex);
 }
 
-string* String_ToLower(string* this)
+char* String_ToLower(char* string)
 {
-	if (this == NULL)
+	if (string == NULL)
 	{
 		return NULL;
 	}
-
-	string* NewString = String_CreateCopy(this);
-	for (int i = 0; i < NewString->Length; i++)
-	{
-		NewString->Data[i] = tolower(NewString->Data[i]);
-	}
-
-	return NewString;
 }
 
-string* String_ToUpper(string* this)
+char* String_ToUpper(char* string)
 {
-	if (this == NULL)
+	if (string == NULL)
 	{
 		return NULL;
 	}
+}
 
-	string* NewString = String_CreateCopy(this);
-	for (int i = 0; i < NewString->Length; i++)
+int String_Count(char* string, char* sequence)
+{
+
+}
+
+bool String_Contains(char* string, char* sequence)
+{
+	return String_ByteIndexOf(string, sequence) != -1;
+}
+
+bool String_StartsWith(char* string, char* sequence)
+{
+	if ((string == NULL) || (sequence == NULL))
 	{
-		NewString->Data[i] = toupper(NewString->Data[i]);
+		return false;
+	}
+	if (sequence[0] == '\0')
+	{
+		return false;
 	}
 
-	return NewString;
+
+	for (int Index = 0; sequence[Index] != '\0'; Index++)
+	{
+		if (string[Index] != sequence[Index])
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+bool String_EndsWith(char* string, char* sequence)
+{
+	if ((string == NULL) || (sequence == NULL))
+	{
+		return false;
+	}
+	if (sequence[0] == '\0')
+	{
+		return false;
+	}
+
+	int StringLength = String_LengthBytes(string);
+	int SequenceLength = String_LengthBytes(sequence);
+
+	if (StringLength < SequenceLength)
+	{
+		return false;
+	}
+
+	for (int Index = StringLength - 1, SequenceIndex = SequenceLength - 1; SequenceIndex >= 0; Index--, SequenceIndex--)
+	{
+		if (string[Index] != sequence[SequenceIndex])
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+ArrayList String_Split(char* string, char* sequence)
+{
+
+}
+
+bool String_Equals(char* string1, char* string2)
+{
+	if ((string1 == NULL) || (string2 == NULL))
+	{
+		return false;
+	}
+
+	for (int i = 0; (string1[i] != '\0') && (string2[i] != '\0'); i++)
+	{
+		if (string1[i] != string2[i])
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+char* String_Replace(char* string, char* oldSequence, char* newSequence)
+{
+
 }

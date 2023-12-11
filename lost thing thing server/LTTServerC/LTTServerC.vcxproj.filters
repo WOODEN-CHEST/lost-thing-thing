@@ -13,20 +13,11 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
-    <Filter Include="Source Files\DataStructures">
-      <UniqueIdentifier>{6655f89b-c41d-4dc4-ae95-e50c556dada0}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\DataStructures\String">
-      <UniqueIdentifier>{3d1078e2-653b-47e6-a83b-c7206357c1ad}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\Errors">
       <UniqueIdentifier>{67d9b874-876d-4d15-899c-4e971dc820dc}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files\Memory">
       <UniqueIdentifier>{310283ba-9efd-4f60-b27b-3abd9b2b79f7}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\DataStructures\List">
-      <UniqueIdentifier>{9cbd4b7a-c4e5-43a5-bce6-b1ad1e2823e9}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files\Math">
       <UniqueIdentifier>{b0dfd3d3-8f89-4404-9c21-000423439cfc}</UniqueIdentifier>
@@ -36,6 +27,12 @@
     </Filter>
     <Filter Include="Source Files\HttpListener">
       <UniqueIdentifier>{5a6b1d8c-6056-4aa5-b9de-5e4695cf964c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\String">
+      <UniqueIdentifier>{1f1f2198-75a8-48cb-adb6-e61504e4e779}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\ArrayList">
+      <UniqueIdentifier>{24f6a627-e065-47ef-955c-cddb6d867f17}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -60,6 +57,12 @@
     <ClCompile Include="Directory.c">
       <Filter>Source Files\IO</Filter>
     </ClCompile>
+    <ClCompile Include="LttString.c">
+      <Filter>Source Files\String</Filter>
+    </ClCompile>
+    <ClCompile Include="ArrayList.c">
+      <Filter>Source Files\ArrayList</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="ErrorCodes.h">
@@ -67,9 +70,6 @@
     </ClInclude>
     <ClInclude Include="Memory.h">
       <Filter>Source Files\Memory</Filter>
-    </ClInclude>
-    <ClInclude Include="List.h">
-      <Filter>Source Files\DataStructures\List</Filter>
     </ClInclude>
     <ClInclude Include="Math.h">
       <Filter>Source Files\Math</Filter>
@@ -82,6 +82,12 @@
     </ClInclude>
     <ClInclude Include="Directory.h">
       <Filter>Source Files\IO</Filter>
+    </ClInclude>
+    <ClInclude Include="LttString.h">
+      <Filter>Source Files\String</Filter>
+    </ClInclude>
+    <ClInclude Include="ArrayList.h">
+      <Filter>Source Files\ArrayList</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

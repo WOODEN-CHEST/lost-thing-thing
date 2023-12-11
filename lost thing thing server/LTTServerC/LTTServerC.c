@@ -4,12 +4,14 @@
 #include <string.h>
 #include "File.h"
 #include "HttpListener.h"
+#include "Directory.h"
+
 
 int main()
 {
-	char Path[] = "C:\\Users\\KČerņavskis\\Desktop\\tests\\file_to_delete.txt";
-
-	File_Delete(Path);
+	char Path[] = "/////";
+	Directory_GetDirectoriesInPath(Path);
+	//Directory_Create(Path);
 
 	return 0;
 }
