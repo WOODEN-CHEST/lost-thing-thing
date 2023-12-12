@@ -316,7 +316,7 @@ static void StringBuilder_EnsureCapacity(StringBuilder* this, int capacity)
 
 int StringBuilder_Append(StringBuilder* this, char* string)
 {
-	if (this == NULL)
+	if ((this == NULL) || (string == NULL))
 	{
 		return NULL_REFERENCE_ERRCODE;
 	}
@@ -353,9 +353,17 @@ int StringBuilder_AppendChar(StringBuilder* this, char character)
 
 int StringBuilder_Insert(StringBuilder* this, char* string, int byteIndex)
 {
-	if (this == NULL)
+	if ((this == NULL) || (string == NULL))
 	{
 		return NULL_REFERENCE_ERRCODE;
+	}
+
+	const int StringLength = String_LengthBytes(string);
+	StringBuilder_EnsureCapacity(this, this->Length + StringLength + 1);
+
+	for (int i = this->Length - 1 + StringLength; i >= byteIndex + StringLength)
+	{
+		this->Data[i] = this->Data
 	}
 }
 
