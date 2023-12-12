@@ -1,25 +1,17 @@
 #pragma once
+#include <stdbool.h>
 
 // Functions.
+#define Math_Max(a, b) a > b ? a : b
 
-int Math_MinInt(int a, int b);
+#define Math_Min(a, b) a < b ? a : b
 
-int Math_MaxInt(int a, int b);
+#define Math_Clamp(value, minValue, maxValue) value < minValue ? minValue : (value > maxValue ? maxValue : value)
 
-int Math_MinFloat(float a, float b);
+int Math_RandomInt();
 
-int Math_MaxFloat(float a, float b);
-
-int Math_MinDouble (double a, double b);
-
-int Math_MaxDouble(double a, double b);
-
-int Math_ClampInt(int value, int min, int max);
-
-float Math_ClampFloat(float value, float min, float max);
-
-double Math_ClampDouble(double value, double min, double max);
-
-int Math_RandomInt(int min, int maxExclusive);
+int Math_RandomIntInRange(int min, int maxExclusive);
 
 float Math_RandomFloat();
+
+#define Math_TryWithChance(chance) chance <= Math_RandomFloat()

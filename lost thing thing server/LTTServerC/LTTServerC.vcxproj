@@ -143,6 +143,8 @@
     <ClInclude Include="ErrorCodes.h" />
     <ClInclude Include="File.h" />
     <ClInclude Include="HttpListener.h" />
+    <ClInclude Include="LttCommon.h" />
+    <ClInclude Include="LttIO.h" />
     <ClInclude Include="LttString.h" />
     <ClInclude Include="Math.h" />
     <ClInclude Include="Memory.h" />

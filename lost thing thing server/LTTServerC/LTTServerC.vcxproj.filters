@@ -89,5 +89,11 @@
     <ClInclude Include="ArrayList.h">
       <Filter>Source Files\ArrayList</Filter>
     </ClInclude>
+    <ClInclude Include="LttIO.h">
+      <Filter>Source Files\IO</Filter>
+    </ClInclude>
+    <ClInclude Include="LttCommon.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

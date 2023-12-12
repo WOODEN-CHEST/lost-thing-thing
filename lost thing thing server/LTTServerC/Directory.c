@@ -2,9 +2,9 @@
 #include "ErrorCodes.h"
 #include "ArrayList.h"
 #include "LttString.h"
+#include "Memory.h"
 #include <Windows.h>
 #include <sys/stat.h>
-#include <fileapi.h>
 
 #define DIR_NAME_MAX_LENGTH 512
 
@@ -33,6 +33,34 @@ int Directory_Create(char* path)
 	bool Result = CreateDirectoryA(path, NULL);
 
 	return Result ? 0 : IO_ERROR_ERRCODE;
+}
+
+int Directory_CreateAll(char* path)
+{
+	if (path == NULL)
+	{
+		return NULL_REFERENCE_ERRCODE;
+	}
+
+	if (path[0] == '\0')
+	{
+		return 0;
+	}
+
+	for (int i = 0; path[i] != '\0'; i++)
+	{
+		if (IsPathSeparator(path[i]))
+		{
+			char ValueAtIndex = path[i];
+			path[i] = '\0';
+			Directory_Create(path);
+			path[i] = ValueAtIndex;
+		}
+	}
+
+	Directory_Create(path);
+
+	return 0;
 }
 
 ArrayList* Directory_GetDirectoriesInPath(char* path)
@@ -74,11 +102,6 @@ ArrayList* Directory_GetDirectoriesInPath(char* path)
 	}
 
 	return List;
-}
-
-int Directory_CreateAll(char* path)
-{
-
 }
 
 int Directory_Delete(char* path)

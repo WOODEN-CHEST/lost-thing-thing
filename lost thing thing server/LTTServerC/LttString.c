@@ -6,7 +6,10 @@
 #include <stdlib.h>
 #include "ArrayList.h"
 
+#define STRING_BUILDER_CAPACITY_GROWTH 4
+
 // Functions.
+// String.
 int String_LengthCodepoints(char* string)
 {
 
@@ -254,11 +257,6 @@ bool String_EndsWith(char* string, char* sequence)
 	return true;
 }
 
-ArrayList String_Split(char* string, char* sequence)
-{
-
-}
-
 bool String_Equals(char* string1, char* string2)
 {
 	if ((string1 == NULL) || (string2 == NULL))
@@ -280,4 +278,104 @@ bool String_Equals(char* string1, char* string2)
 char* String_Replace(char* string, char* oldSequence, char* newSequence)
 {
 
+}
+
+// StringBuilder
+void StringBuilder_Construct(StringBuilder* builder, int capacity)
+{
+	if (builder == NULL)
+	{
+		return NULL_REFERENCE_ERRCODE;
+	}
+	if (capacity <= 1)
+	{
+		capacity = DEFAULT_STRING_BUILDER_CAPACITY;
+	}
+
+	builder->_capacity = capacity;
+	builder->Length = 0;
+	builder->Data = SafeMalloc(capacity);
+	builder->Data[0] = '\0';
+}
+
+StringBuilder* StringBuilder_Construct2(int capacity)
+{
+	StringBuilder* Builder = SafeMalloc(sizeof(Builder));
+	StringBuilder_Construct(&Builder, capacity);
+	return Builder;
+}
+
+static void StringBuilder_EnsureCapacity(StringBuilder* this, int capacity)
+{
+	while (this->_capacity < capacity)
+	{
+		this->_capacity *= STRING_BUILDER_CAPACITY_GROWTH;
+		SafeRealloc(this->Data, this->_capacity);
+	}
+}
+
+int StringBuilder_Append(StringBuilder* this, char* string)
+{
+	if (this == NULL)
+	{
+		return NULL_REFERENCE_ERRCODE;
+	}
+
+	int AppendLength = String_LengthBytes(string);
+	StringBuilder_EnsureCapacity(this, this->Length + AppendLength + 1);
+
+	for (int i = 0; i < AppendLength; i++)
+	{
+		this->Data[this->Length + i] = string[i];
+	}
+	
+	this->Length += AppendLength;
+	this->Data[this->Length] = '\0';
+
+	return 0;
+}
+
+int StringBuilder_AppendChar(StringBuilder* this, char character)
+{
+	if (this == NULL)
+	{
+		return NULL_REFERENCE_ERRCODE;
+	}
+
+	StringBuilder_EnsureCapacity(this, this->Length + 2);
+
+	this->Data[this->Length] = character;
+	this->Data[this->Length + 1] = '\0';
+	this->Length += 1;
+
+	return 0;
+}
+
+int StringBuilder_Insert(StringBuilder* this, char* string, int byteIndex)
+{
+	if (this == NULL)
+	{
+		return NULL_REFERENCE_ERRCODE;
+	}
+}
+
+int StringBuilder_InsertCharacter(StringBuilder* this, char character, int byteIndex)
+{
+
+}
+
+int StringBuilder_Remove(StringBuilder* this, int startIndex, int endIndex)
+{
+
+}
+
+int StringBuilder_Clear(StringBuilder* this)
+{
+	if (this == NULL)
+	{
+		return NULL_REFERENCE_ERRCODE;
+	}
+
+	this->Length = 1;
+	this->Data = '\0';
 }

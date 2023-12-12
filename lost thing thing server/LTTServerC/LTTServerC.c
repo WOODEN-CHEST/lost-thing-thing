@@ -1,17 +1,13 @@
-﻿#include "LttString.h"
-#include "Math.h"
-#include <stdbool.h>
-#include <string.h>
-#include "File.h"
-#include "HttpListener.h"
-#include "Directory.h"
-
+﻿#include <stdbool.h>
+#include "LttCommon.h"
+#include <stdio.h>
 
 int main()
 {
-	char Path[] = "/////";
-	Directory_GetDirectoriesInPath(Path);
-	//Directory_Create(Path);
+	StringBuilder Builder;
+	StringBuilder_Construct(&Builder, DEFAULT_STRING_BUILDER_CAPACITY);
+
+	StringBuilder_AppendChar(&Builder, 'h');
 
 	return 0;
 }
