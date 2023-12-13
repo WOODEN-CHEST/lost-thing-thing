@@ -1,5 +1,6 @@
 #pragma once
 #include <stdbool.h>
+#include "ArrayList.h"
 
 #define DEFAULT_STRING_BUILDER_CAPACITY 128
 
@@ -16,7 +17,7 @@ typedef struct StringBuilderStruct StringBuilder;
 
 // Functions.
 // String.
-int String_LengthCodepoints(char* string);
+int String_LengthCodepointsUTF8(char* string);
 
 int String_LengthBytes(char* string);
 
@@ -30,9 +31,15 @@ char* String_SubString(char* string, const int startIndex, const int endIndex);
 
 char* String_Trim(char* string);
 
-char* String_ToLower(char* string);
+/// <summary>
+/// Only supports Latvian and English alphabet.
+/// </summary>
+char* String_ToLowerUTF8(char* string);
 
-char* String_ToUpper(char* string);
+/// <summary>
+/// Only supports Latvian and English alphabet.
+/// </summary>
+char* String_ToUpperUTF8(char* string);
 
 int String_Count(char* string, char* sequence);
 
@@ -46,9 +53,11 @@ bool String_Equals(char* string1, char* string2);
 
 char* String_Replace(char* string, char* oldSequence, char* newSequence);
 
+ArrayList Split(char* string, char* sequence);
+
 
 // StringBuilder
-void StringBuilder_Construct(StringBuilder* builder, int capacity);
+int StringBuilder_Construct(StringBuilder* builder, int capacity);
 
 StringBuilder* StringBuilder_Construct2(int capacity);
 
@@ -58,7 +67,7 @@ int StringBuilder_AppendChar(StringBuilder* this, char character);
 
 int StringBuilder_Insert(StringBuilder* this, char* string, int byteIndex);
 
-int StringBuilder_InsertCharacter(StringBuilder* this, char character, int byteIndex);
+int StringBuilder_InsertChar(StringBuilder* this, char character, int byteIndex);
 
 int StringBuilder_Remove(StringBuilder* this, int startIndex, int endIndex);
 

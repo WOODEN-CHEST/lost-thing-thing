@@ -31,3 +31,8 @@ void* SafeRealloc(void* ptr, const int size)
 
 	return Pointer;
 }
+
+void FreeMemory(void* ptr)
+{
+	free(ptr);
+}

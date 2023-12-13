@@ -21,10 +21,14 @@ FILE* File_Open(char* path, File_OpenMode mode);
 
 int File_Write(FILE* file, char* data, size_t dataLength);
 
+int File_WriteString(FILE* file, char* string);
+
 int File_Flush(FILE* file);
 
 int File_Close(FILE* file);
 
 int File_Delete(char* path);
+
+char* File_ReadAllText(FILE* file);
 
 bool File_Exists(char* path);

@@ -74,6 +74,18 @@ int File_Write(FILE* file, char* data, size_t dataLength)
 	return 0;
 }
 
+int File_WriteString(FILE* file, char* string)
+{
+	if ((file == NULL) || (string == NULL))
+	{
+		return NULL_REFERENCE_ERRCODE;
+	}
+
+	int Result = fputs(string, file);
+
+	return Result != EOF ? 0 : IO_ERROR_ERRCODE;
+}
+
 int File_Flush(FILE* file)
 {
 	if (file == NULL)
@@ -104,6 +116,44 @@ int File_Close(FILE* file)
 		return IO_ERROR_ERRCODE;
 	}
 	return 0;
+}
+
+char* File_ReadAllText(FILE* file)
+{
+	if (file == NULL)
+	{
+		return NULL;
+	}
+
+	int Result = fseek(file, 0, SEEK_END);
+	if (Result != 0)
+	{
+		return NULL;
+	}
+
+	long long Length = ftell(file);
+	if (Length == -1)
+	{
+		return NULL;
+	}
+
+	Result = fseek(file, 0, SEEK_SET);
+	if (Result != 0)
+	{
+		return NULL;
+	}
+
+	char* Buffer = SafeMalloc(Length + 1);
+	Result = fread_s(Buffer, Length, sizeof(char), Length, file);
+
+	if (Result != Length)
+	{
+		FreeMemory(Buffer);
+		return NULL;
+	}
+
+	Buffer[Length] = '\0';
+	return Buffer;
 }
 
 bool File_Exists(char* path)

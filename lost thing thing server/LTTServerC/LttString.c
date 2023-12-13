@@ -8,11 +8,48 @@
 
 #define STRING_BUILDER_CAPACITY_GROWTH 4
 
+#define UTF8_TWO_BYTES  0b11000000
+#define UTF8_THREE_BYTES 0b11100000
+#define UTF8_FOUR_BYTES 0b11110000
+#define UTF8_TWO_BYTES_COMBINED 0b11100000
+#define UTF8_THREE_BYTES_COMBINED 0b11110000
+#define UTF8_FOUR_BYTES_COMBINED 0b11111000
+
+#define ASCII_OFFSET 32
+
 // Functions.
 // String.
-int String_LengthCodepoints(char* string)
+int String_LengthCodepointsUTF8(char* string)
 {
+	if (string == NULL)
+	{
+		return 0;
+	}
 
+	int Length = 0;
+	char Character;
+
+	for (int i = 0; string[i] != '\0'; i++)
+	{
+		Character = string[i];
+
+		if ((Character & UTF8_TWO_BYTES_COMBINED) == UTF8_TWO_BYTES)
+		{
+			i += 1;
+		}
+		else if ((Character & UTF8_THREE_BYTES_COMBINED) == UTF8_THREE_BYTES)
+		{
+			i += 2;
+		}
+		else if ((Character & UTF8_FOUR_BYTES_COMBINED) == UTF8_FOUR_BYTES)
+		{
+			i += 3;
+		}
+
+		Length++;
+	}
+
+	return Length;
 }
 
 int String_LengthBytes(char* string)
@@ -178,15 +215,33 @@ char* String_Trim(char* string)
 	return String_SubString(string, StartIndex, EndIndex);
 }
 
-char* String_ToLower(char* string)
+static int String_ChangeCase(char* string, signed char step)
+{
+	
+}
+
+int String_ToLowerUTF8(char* string)
 {
 	if (string == NULL)
 	{
-		return NULL;
+		return NULL_REFERENCE_ERRCODE;
+	}
+
+	for (int i = 0; string[i] != '\0'; i++)
+	{
+		if ((string[i] >= 'A') && (string[i] <= 'Z'))
+		{
+			string[i] += ASCII_OFFSET;
+		}
+		else if (((string[i] & UTF8_TWO_BYTES_COMBINED) == UTF8_TWO_BYTES)
+			)
+		{
+
+		}
 	}
 }
 
-char* String_ToUpper(char* string)
+int String_ToUpperUTF8(char* string)
 {
 	if (string == NULL)
 	{
@@ -280,8 +335,13 @@ char* String_Replace(char* string, char* oldSequence, char* newSequence)
 
 }
 
+ArrayList Split(char* string, char* sequence)
+{
+
+}
+
 // StringBuilder
-void StringBuilder_Construct(StringBuilder* builder, int capacity)
+int StringBuilder_Construct(StringBuilder* builder, int capacity)
 {
 	if (builder == NULL)
 	{
@@ -294,8 +354,10 @@ void StringBuilder_Construct(StringBuilder* builder, int capacity)
 
 	builder->_capacity = capacity;
 	builder->Length = 0;
-	builder->Data = SafeMalloc(capacity);
+	builder->Data = SafeMalloc(capacity * sizeof(char));
 	builder->Data[0] = '\0';
+
+	return 0;
 }
 
 StringBuilder* StringBuilder_Construct2(int capacity)
@@ -310,7 +372,7 @@ static void StringBuilder_EnsureCapacity(StringBuilder* this, int capacity)
 	while (this->_capacity < capacity)
 	{
 		this->_capacity *= STRING_BUILDER_CAPACITY_GROWTH;
-		SafeRealloc(this->Data, this->_capacity);
+		this->Data = SafeRealloc(this->Data, this->_capacity * sizeof(char));
 	}
 }
 
@@ -357,24 +419,86 @@ int StringBuilder_Insert(StringBuilder* this, char* string, int byteIndex)
 	{
 		return NULL_REFERENCE_ERRCODE;
 	}
+	if ((byteIndex > this->Length) || (byteIndex < 0))
+	{
+		return INDEX_OUT_OF_RANGE_ERRCODE;
+	}
 
 	const int StringLength = String_LengthBytes(string);
-	StringBuilder_EnsureCapacity(this, this->Length + StringLength + 1);
-
-	for (int i = this->Length - 1 + StringLength; i >= byteIndex + StringLength)
+	if (StringLength == 0)
 	{
-		this->Data[i] = this->Data
+		return 0;
 	}
+
+	StringBuilder_EnsureCapacity(this, this->Length + 1 + StringLength);
+
+	for (int i = this->Length - 1 + StringLength; i >= byteIndex + StringLength; i--)
+	{
+		this->Data[i] = this->Data[i - StringLength];
+	}
+
+	for (int i = 0; i < StringLength; i++)
+	{
+		this->Data[byteIndex + i] = string[i];
+	}
+
+	this->Length += StringLength;
+	this->Data[this->Length] = '\0';
+
+	return 0;
 }
 
-int StringBuilder_InsertCharacter(StringBuilder* this, char character, int byteIndex)
+int StringBuilder_InsertChar(StringBuilder* this, char character, int byteIndex)
 {
+	if (this == NULL)
+	{
+		return NULL_REFERENCE_ERRCODE;
+	}
 
+	if ((byteIndex > this->Length) || (byteIndex < 0))
+	{
+		return ARGUMENT_OUT_OF_RANGE_ERRCODE;
+	}
+
+	for (int i = this->Length; i > byteIndex; i--)
+	{
+		this->Data[i] = this->Data[i - 1];
+	}
+
+	this->Data[byteIndex] = character;
+	this->Length += 1;
+	this->Data[this->Length] = '\0';
+
+	return 0;
 }
 
 int StringBuilder_Remove(StringBuilder* this, int startIndex, int endIndex)
 {
+	if (this == NULL)
+	{
+		return NULL_REFERENCE_ERRCODE;
+	}
 
+	if ((startIndex > endIndex) || (startIndex < 0) || (endIndex > this->Length))
+	{
+		return INDEX_OUT_OF_RANGE_ERRCODE;
+	}
+
+	int RemovedLength = endIndex - startIndex;
+	if (RemovedLength == 0)
+	{
+		return;
+	}
+	
+	for (int i = endIndex; i < this->Length; i++)
+	{
+		this->Data[i - RemovedLength] = this->Data[i];
+	}
+
+	this->Length -= RemovedLength;
+	this->Data[this->Length] = '\0';
+
+	return 0;
 }
 
 int StringBuilder_Clear(StringBuilder* this)
@@ -384,6 +508,8 @@ int StringBuilder_Clear(StringBuilder* this)
 		return NULL_REFERENCE_ERRCODE;
 	}
 
-	this->Length = 1;
-	this->Data = '\0';
+	this->Length = 0;
+	this->Data[0] = '\0';
+
+	return 0;
 }

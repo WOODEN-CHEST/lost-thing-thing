@@ -51,7 +51,7 @@ static void ArrayList_EnsureCapacity(ArrayList* this, int capacity)
 	}
 
 	this->_capacity *= CAPACITY_GROWTH;
-	SafeRealloc(this->Data, sizeof(void*) * this->_capacity);
+	this->Data = SafeRealloc(this->Data, sizeof(void*) * this->_capacity);
 }
 
 int ArrayList_Add(ArrayList* this, void* objectPointer)
