@@ -2,8 +2,13 @@
 #include <stdio.h>
 #include <WS2tcpip.h>
 #include <WinSock2.h>
+#include "LttCommon.h"
 
 #pragma comment(lib, "Ws2_32.lib")
+
+
+static char* RequestMessageBuffer;
+#define REQUEST_MESSAGE_BUFFER_LENGTH 16384
 
 void Main()
 {
@@ -15,6 +20,7 @@ void Main()
 	{
 		return;
 	}
+	RequestMessageBuffer = SafeMalloc(REQUEST_MESSAGE_BUFFER_LENGTH);
 
 	// Create socket.
 	SOCKET Socket = INVALID_SOCKET;
@@ -57,7 +63,13 @@ void Main()
 		return;
 	}
 
-	char Data[1000];
-	recv(ClientSocket, Data, 1000, 0);
+
+	int Length = recv(ClientSocket, RequestMessageBuffer, 1000, 0);
+	RequestMessageBuffer[Length] = '\0';
+
+	char DataToSend[] = "<!DOCTYPE html> <html lang=\"lv\"><body><h1>Hello World!</h1></body></html>";
+	send(ClientSocket, DataToSend, String_LengthBytes(DataToSend), 0);
+
+	
 	int a = 5;
 }

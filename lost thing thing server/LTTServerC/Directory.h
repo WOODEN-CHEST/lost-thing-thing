@@ -13,6 +13,4 @@ int Directory_Create(char* path);
 
 int Directory_CreateAll(char* path);
 
-ArrayList* Directory_GetDirectoriesInPath(char* path);
-
 int Directory_Delete(char* path);

@@ -3,31 +3,34 @@
 #include "ErrorCodes.h"
 #include <stdlib.h>
 
-#define DEFAULT_CAPACITY 16
-#define CAPACITY_GROWTH 4
+#define ARRAYLIST_CAPACITY_GROWTH 4
 
 // Functions.
 // All objects stored in ArrayList must be on the heap.
-int ArrayList_Construct(ArrayList* arrayList)
+int ArrayList_Construct(ArrayList* arrayList, size_t capacity)
 {
 	if (arrayList == NULL)
 	{
 		return NULL_REFERENCE_ERRCODE;
 	}
+	if (capacity < 1)
+	{
+		capacity = ARRAYLIST_DEFAULT_CAPACITY;
+	}
 
-	void** Data = SafeMalloc(sizeof(void*) * DEFAULT_CAPACITY);
+	void** Data = SafeMalloc(sizeof(void*) * capacity);
 
 	arrayList->Data = Data;
 	arrayList->Length = 0;
-	arrayList->_capacity = DEFAULT_CAPACITY;
+	arrayList->_capacity = capacity;
 
 	return 0;
 }
 
-ArrayList* ArrayList_Construct2()
+ArrayList* ArrayList_Construct2(size_t capacity)
 {
 	ArrayList* List = SafeMalloc(sizeof(ArrayList));
-	ArrayList_Construct(List);
+	ArrayList_Construct(List, capacity);
 	return List;
 }
 
@@ -50,7 +53,7 @@ static void ArrayList_EnsureCapacity(ArrayList* this, int capacity)
 		return;
 	}
 
-	this->_capacity *= CAPACITY_GROWTH;
+	this->_capacity *= ARRAYLIST_CAPACITY_GROWTH;
 	this->Data = SafeRealloc(this->Data, sizeof(void*) * this->_capacity);
 }
 
@@ -144,11 +147,13 @@ int ArrayList_RemoveLast(ArrayList* this)
 	}
 
 	ArrayList_RemoveAt(this, this->Length - 1);
+
+	return 0;
 }
 
 int ArrayList_RemoveFirst(ArrayList* this)
 {
-	ArrayList_RemoveAt(this, 0);
+	return ArrayList_RemoveAt(this, 0);
 }
 
 int ArrayList_Clear(ArrayList* this)
@@ -163,4 +168,6 @@ int ArrayList_Clear(ArrayList* this)
 		free(this->Data[i]);
 		this->Data[i] = NULL;
 	}
+
+	return 0;
 }

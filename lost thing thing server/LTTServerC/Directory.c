@@ -63,47 +63,6 @@ int Directory_CreateAll(char* path)
 	return 0;
 }
 
-ArrayList* Directory_GetDirectoriesInPath(char* path)
-{
-	if (path == NULL)
-	{
-		return NULL;
-	}
-
-	ArrayList* List = ArrayList_Construct2();
-
-	char DirectoryName[DIR_NAME_MAX_LENGTH] = "\0";
-	int PathIndex = 0, DirIndex = 0;
-	for (; path[PathIndex] != '\0'; PathIndex++, DirIndex++)
-	{
-		if (DirIndex >= DIR_NAME_MAX_LENGTH)
-		{
-			return NULL;
-		}
-
-		if ((path[PathIndex] == '\\') || (path[PathIndex] == '/'))
-		{
-			DirectoryName[DirIndex] = '\0';
-			ArrayList_Add(List, String_CreateCopy(DirectoryName));
-
-			DirIndex = -1;
-			DirectoryName[0] = '\0';
-		}
-		else
-		{
-			DirectoryName[DirIndex] = path[PathIndex];
-		}
-	}
-
-	if (DirectoryName[0] != '\0')
-	{
-		DirectoryName[DirIndex] = '\0';
-		ArrayList_Add(List, String_CreateCopy(DirectoryName));
-	}
-
-	return List;
-}
-
 int Directory_Delete(char* path)
 {
 	if (path == NULL)

@@ -1,19 +1,21 @@
 #pragma once
 
+#define ARRAYLIST_DEFAULT_CAPACITY 16
+
 // Structures.
 struct ArrayListStruct
 {
 	void** Data;
-	int Length;
-	int _capacity;
+	size_t Length;
+	size_t _capacity;
 };
 
 typedef struct ArrayListStruct ArrayList;
 
 // Functions.
-int ArrayList_Construct(ArrayList* arrayList);
+int ArrayList_Construct(ArrayList* arrayList, size_t capacity);
 
-ArrayList* ArrayList_Construct2();
+ArrayList* ArrayList_Construct2(size_t capacity);
 
 int ArrayList_Deconstruct(ArrayList* this);
 

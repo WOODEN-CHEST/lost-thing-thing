@@ -17,6 +17,22 @@
 
 #define ASCII_OFFSET 32
 
+#define UTF8_AA_1 0x0100
+#define UTF8_AA_2 0x0100
+#define UTF8_CH 0x010C
+#define UTF8_EE 0x0112
+#define UTF8_GJ 0x0122
+#define UTF8_II 0x012A
+#define UTF8_KJ 0x0136
+#define UTF8_LJ 0x013B
+#define UTF8_NJ 0x0145
+#define UTF8_SH 0x0160
+#define UTF8_UU 0x016A
+#define UTF8_ZU 0x017D
+
+short* CharacterLookupTable;
+#define LOOKUP_TABLE_OFFSET 256
+
 // Functions.
 // String.
 int String_LengthCodepointsUTF8(char* string)
@@ -215,11 +231,6 @@ char* String_Trim(char* string)
 	return String_SubString(string, StartIndex, EndIndex);
 }
 
-static int String_ChangeCase(char* string, signed char step)
-{
-	
-}
-
 int String_ToLowerUTF8(char* string)
 {
 	if (string == NULL)
@@ -232,12 +243,15 @@ int String_ToLowerUTF8(char* string)
 		if ((string[i] >= 'A') && (string[i] <= 'Z'))
 		{
 			string[i] += ASCII_OFFSET;
+			continue;
 		}
-		else if (((string[i] & UTF8_TWO_BYTES_COMBINED) == UTF8_TWO_BYTES)
-			)
-		{
 
+		if ((string[i] & UTF8_TWO_BYTES_COMBINED) != UTF8_TWO_BYTES)
+		{
+			continue;
 		}
+
+		*((short*)(string + i)) += 1;
 	}
 }
 
@@ -251,7 +265,31 @@ int String_ToUpperUTF8(char* string)
 
 int String_Count(char* string, char* sequence)
 {
+	if ((string == NULL) || (sequence == NULL) || (sequence[0] == '\0'))
+	{
+		return 0;
+	}
 
+	int Count = 0;
+	for (int Index = 0, SequenceIndex = 0; string[Index] != '\0'; Index++)
+	{
+		if (string[Index] == sequence[SequenceIndex])
+		{
+			SequenceIndex++;
+
+			if (sequence[SequenceIndex] == '\0')
+			{
+				SequenceIndex = 0;
+				Count++;
+			}
+		}
+		else
+		{
+			SequenceIndex = 0;
+		}
+	}
+
+	return Count;
 }
 
 bool String_Contains(char* string, char* sequence)
@@ -332,12 +370,81 @@ bool String_Equals(char* string1, char* string2)
 
 char* String_Replace(char* string, char* oldSequence, char* newSequence)
 {
+	if ((string == NULL) || (oldSequence == NULL) || (newSequence == NULL))
+	{
+		return NULL;
+	}
 
+	if ((oldSequence[0] == '\0'))
+	{
+		return string;
+	}
+
+	StringBuilder Builder;
+	StringBuilder_Construct(&Builder, DEFAULT_STRING_BUILDER_CAPACITY);
+
+	for (int Index = 0, SequenceIndex = 0; string[Index] != '\0'; Index++)
+	{
+		if (string[Index] == oldSequence[SequenceIndex])
+		{
+			SequenceIndex++;
+			if (oldSequence[SequenceIndex] == '\0')
+			{
+				SequenceIndex = 0;
+				StringBuilder_Append(&Builder, newSequence);
+			}
+		}
+		else
+		{
+			StringBuilder_AppendChar(&Builder, string[Index]);
+			SequenceIndex = 0;
+		}
+	}
+
+	return Builder.Data;
 }
 
-ArrayList Split(char* string, char* sequence)
+int String_Split(char* string, char* sequence, ArrayList* listOfNewStrings)
 {
+	if ((string == NULL) || (sequence == NULL) || (listOfNewStrings == NULL))
+	{
+		return NULL_REFERENCE_ERRCODE;
+	}
 
+	int SequenceStartIndex = 0;
+	int StringStartIndex = 0;
+	for (int Index = 0, SequenceIndex = 0; string[Index] != '\0'; Index++)
+	{
+		if (string[Index] == sequence[SequenceIndex])
+		{
+			if (SequenceIndex == 0)
+			{
+				SequenceStartIndex = Index;
+			}
+
+			SequenceIndex++;
+
+			if (sequence[SequenceIndex] == '\0')
+			{
+				SequenceIndex = 0;
+
+				string[SequenceStartIndex] = '\0';
+				ArrayList_Add(listOfNewStrings, string + StringStartIndex);
+				StringStartIndex = Index + 1;
+			}
+		}
+		else
+		{
+			SequenceIndex = 0;
+		}
+	}
+
+	if (string[StringStartIndex] != '\0')
+	{
+		ArrayList_Add(listOfNewStrings, string + StringStartIndex);
+	}
+
+	return 0;
 }
 
 // StringBuilder

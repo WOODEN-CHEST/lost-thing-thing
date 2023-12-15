@@ -17,8 +17,16 @@ typedef struct StringBuilderStruct StringBuilder;
 
 // Functions.
 // String.
+
+/// <summary>
+/// Returns the amount of UTF8 code-points in the string, excluding the null terminator.
+/// A badly formatted  string may result in buffer over-read.
+/// </summary>
 int String_LengthCodepointsUTF8(char* string);
 
+/// <summary>
+/// Returns the amount of bytes in the provided string, excluding the null terminator.
+/// </summary>
 int String_LengthBytes(char* string);
 
 int String_ByteIndexOf(char* string, char* sequence);
@@ -34,12 +42,12 @@ char* String_Trim(char* string);
 /// <summary>
 /// Only supports Latvian and English alphabet.
 /// </summary>
-char* String_ToLowerUTF8(char* string);
+int String_ToLowerUTF8(char* string);
 
 /// <summary>
 /// Only supports Latvian and English alphabet.
 /// </summary>
-char* String_ToUpperUTF8(char* string);
+int String_ToUpperUTF8(char* string);
 
 int String_Count(char* string, char* sequence);
 
@@ -53,7 +61,7 @@ bool String_Equals(char* string1, char* string2);
 
 char* String_Replace(char* string, char* oldSequence, char* newSequence);
 
-ArrayList Split(char* string, char* sequence);
+int String_Split(char* string, char* sequence, ArrayList* listOfNewStrings);
 
 
 // StringBuilder

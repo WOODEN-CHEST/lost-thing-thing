@@ -34,6 +34,9 @@
     <Filter Include="Source Files\ArrayList">
       <UniqueIdentifier>{24f6a627-e065-47ef-955c-cddb6d867f17}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\Dictionary">
+      <UniqueIdentifier>{21a83fc3-f1be-487a-8806-79af672ae378}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LTTServerC.c">
