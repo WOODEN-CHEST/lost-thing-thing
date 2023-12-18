@@ -46,19 +46,25 @@ int Directory_CreateAll(char* path)
 	{
 		return 0;
 	}
+	char* Path = String_CreateCopy(path);
 
-	for (int i = 0; path[i] != '\0'; i++)
+	int LastSeparatorIndex = 0;
+	for (int i = 0; Path[i] != '\0'; i++)
 	{
-		if (IsPathSeparator(path[i]))
+		if (IsPathSeparator(Path[i]))
 		{
-			char ValueAtIndex = path[i];
-			path[i] = '\0';
-			Directory_Create(path);
-			path[i] = ValueAtIndex;
+			LastSeparatorIndex = i;
+			char ValueAtIndex = Path[i];
+			Path[i] = '\0';
+			Directory_Create(Path);
+			Path[i] = ValueAtIndex;
 		}
 	}
 
-	Directory_Create(path);
+	if (!String_Contains(path + LastSeparatorIndex, "."))
+	{
+		Directory_Create(Path);
+	}
 
 	return 0;
 }

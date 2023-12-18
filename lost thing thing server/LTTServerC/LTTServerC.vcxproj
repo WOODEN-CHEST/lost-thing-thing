@@ -132,6 +132,7 @@
     <ClCompile Include="ErrorCodes.c" />
     <ClCompile Include="File.c" />
     <ClCompile Include="HttpListener.c" />
+    <ClCompile Include="Logger.c" />
     <ClCompile Include="LTTServerC.c" />
     <ClCompile Include="LttString.c" />
     <ClCompile Include="Math.c" />
@@ -143,6 +144,7 @@
     <ClInclude Include="ErrorCodes.h" />
     <ClInclude Include="File.h" />
     <ClInclude Include="HttpListener.h" />
+    <ClInclude Include="Logger.h" />
     <ClInclude Include="LttCommon.h" />
     <ClInclude Include="LttIO.h" />
     <ClInclude Include="LttString.h" />

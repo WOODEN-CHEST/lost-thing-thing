@@ -34,8 +34,8 @@
     <Filter Include="Source Files\ArrayList">
       <UniqueIdentifier>{24f6a627-e065-47ef-955c-cddb6d867f17}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Dictionary">
-      <UniqueIdentifier>{21a83fc3-f1be-487a-8806-79af672ae378}</UniqueIdentifier>
+    <Filter Include="Source Files\Logger">
+      <UniqueIdentifier>{ca543281-98ad-4a03-ae1c-9fb08298a8ce}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -65,6 +65,9 @@
     </ClCompile>
     <ClCompile Include="ArrayList.c">
       <Filter>Source Files\ArrayList</Filter>
+    </ClCompile>
+    <ClCompile Include="Logger.c">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -97,6 +100,9 @@
     </ClInclude>
     <ClInclude Include="LttCommon.h">
       <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Logger.h">
+      <Filter>Source Files\Logger</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
