@@ -66,12 +66,8 @@ int File_Write(FILE* file, char* data, size_t dataLength)
 	}
 
 	size_t Result = fwrite(data, 1, dataLength, file);
-	if (Result != dataLength)
-	{
-		return IO_ERROR_ERRCODE;
-	}
 
-	return 0;
+	return Result != dataLength ? IO_ERROR_ERRCODE : 0;
 }
 
 int File_WriteString(FILE* file, char* string)

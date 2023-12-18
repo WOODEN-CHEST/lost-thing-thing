@@ -4,6 +4,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include "ArrayList.h"
 
 #define STRING_BUILDER_CAPACITY_GROWTH 4
@@ -16,6 +17,8 @@
 #define UTF8_FOUR_BYTES_COMBINED 0b11111000
 
 #define ASCII_OFFSET 32
+
+
 
 #define UTF8_AA_1 0x0100
 #define UTF8_AA_2 0x0100
@@ -231,6 +234,23 @@ char* String_Trim(char* string)
 	return String_SubString(string, StartIndex, EndIndex);
 }
 
+static unsigned short String_GetTwoByteUTF8Number(unsigned short value)
+{
+	return ((value & 0b00011111) << 6) | ((value & 0b0011111100000000) >> 8);
+}
+
+static unsigned short String_AddUTF8TwoByte(unsigned short value, short amountToAdd)
+{
+	unsigned short RawValue = String_GetTwoByteUTF8Number(value);
+	RawValue += amountToAdd;
+
+	unsigned short FullValue = ((RawValue & 0b111111) << 8) | ((RawValue & 0b11111000000) >> 6) | 0b1000000011000000;
+
+	return FullValue;
+}
+
+#define IsLatinACharacter(characterNumber) ((256 <= characterNumber) && (characterNumber <= 383))
+
 int String_ToLowerUTF8(char* string)
 {
 	if (string == NULL)
@@ -251,7 +271,13 @@ int String_ToLowerUTF8(char* string)
 			continue;
 		}
 
-		*((short*)(string + i)) += 1;
+		unsigned short* ValuePointer = ((unsigned short*)(string + i));
+		unsigned short CharacterNumber = String_GetTwoByteUTF8Number(*ValuePointer);
+
+		if (IsLatinACharacter(CharacterNumber) && (CharacterNumber % 2 == 0))
+		{
+			*ValuePointer = String_AddUTF8TwoByte(*ValuePointer, 1);
+		}
 	}
 }
 
@@ -260,6 +286,28 @@ int String_ToUpperUTF8(char* string)
 	if (string == NULL)
 	{
 		return NULL;
+	}
+
+	for (int i = 0; string[i] != '\0'; i++)
+	{
+		if ((string[i] >= 'a') && (string[i] <= 'z'))
+		{
+			string[i] -= ASCII_OFFSET;
+			continue;
+		}
+
+		if ((string[i] & UTF8_TWO_BYTES_COMBINED) != UTF8_TWO_BYTES)
+		{
+			continue;
+		}
+
+		unsigned short* ValuePointer = ((unsigned short*)(string + i));
+		unsigned short CharacterNumber = String_GetTwoByteUTF8Number(*ValuePointer);
+
+		if (IsLatinACharacter(CharacterNumber) && (CharacterNumber % 2 == 1))
+		{
+			*ValuePointer = String_AddUTF8TwoByte(*ValuePointer, -1);
+		}
 	}
 }
 

@@ -33,10 +33,20 @@ int String_ByteIndexOf(char* string, char* sequence);
 
 int String_LastByteIndexOf(char* string, char* sequence);
 
+/// <summary>
+/// Creates a copy of the string.
+/// </summary>
+/// <param name="string">The string to copy.</param>
+/// <returns>A pointer to the copied string.</returns>
 char* String_CreateCopy(char* string);
 
 char* String_SubString(char* string, const int startIndex, const int endIndex);
 
+/// <summary>
+/// Creates a trimmed copy of the string. Trims whitespace characters '\n', '\t', ' ' and '\r'.
+/// </summary>
+/// <param name="string">A null terminated string.</param>
+/// <returns>A pointer to the trimmed string.</returns>
 char* String_Trim(char* string);
 
 /// <summary>
