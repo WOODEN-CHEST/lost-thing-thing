@@ -67,7 +67,7 @@
       <Filter>Source Files\ArrayList</Filter>
     </ClCompile>
     <ClCompile Include="Logger.c">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\Logger</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

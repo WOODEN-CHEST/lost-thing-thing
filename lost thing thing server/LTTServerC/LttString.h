@@ -90,3 +90,5 @@ int StringBuilder_InsertChar(StringBuilder* this, char character, int byteIndex)
 int StringBuilder_Remove(StringBuilder* this, int startIndex, int endIndex);
 
 int StringBuilder_Clear(StringBuilder* this);
+
+int StringBuilder_Deconstruct(StringBuilder* this);

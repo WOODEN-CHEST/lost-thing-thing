@@ -668,3 +668,14 @@ int StringBuilder_Clear(StringBuilder* this)
 
 	return 0;
 }
+
+int StringBuilder_Deconstruct(StringBuilder* this)
+{
+	if (this == NULL)
+	{
+		return NULL_REFERENCE_ERRCODE;
+	}
+
+	FreeMemory(this->Data);
+	return 0;
+}

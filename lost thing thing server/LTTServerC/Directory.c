@@ -48,22 +48,15 @@ int Directory_CreateAll(char* path)
 	}
 	char* Path = String_CreateCopy(path);
 
-	int LastSeparatorIndex = 0;
 	for (int i = 0; Path[i] != '\0'; i++)
 	{
 		if (IsPathSeparator(Path[i]))
 		{
-			LastSeparatorIndex = i;
 			char ValueAtIndex = Path[i];
 			Path[i] = '\0';
 			Directory_Create(Path);
 			Path[i] = ValueAtIndex;
 		}
-	}
-
-	if (!String_Contains(path + LastSeparatorIndex, "."))
-	{
-		Directory_Create(Path);
 	}
 
 	return 0;
@@ -78,4 +71,43 @@ int Directory_Delete(char* path)
 
 	bool Result = RemoveDirectory(path);
 	return Result ? 0 : IO_ERROR_ERRCODE;
+}
+
+char* Directory_GetParentDirectory(char* path)
+{
+	if (path == NULL)
+	{
+		return NULL;
+	}
+
+	char* PathCopy = String_CreateCopy(path);
+
+	int LastSeparatorIndex = 0;
+	for (int i = 0; PathCopy[i] != '\0'; i++)
+	{
+		if (IsPathSeparator(PathCopy[i]))
+		{
+			LastSeparatorIndex = i;
+		}
+	}
+
+	PathCopy[LastSeparatorIndex] = '\0';
+	return PathCopy;
+}
+
+char* Directory_Combine(char* path1, char* path2)
+{
+	if ((path1 == NULL) || (path2 == NULL))
+	{
+		return NULL;
+	}
+
+	StringBuilder Builder;
+	StringBuilder_Construct(&Builder, DEFAULT_STRING_BUILDER_CAPACITY);
+
+	StringBuilder_Append(&Builder, path1);
+	StringBuilder_AppendChar(&Builder, PathSeparator);
+	StringBuilder_Append(&Builder, path2);
+
+	return Builder.Data;
 }

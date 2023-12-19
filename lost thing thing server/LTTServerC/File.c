@@ -50,11 +50,6 @@ FILE* File_Open(char* path, File_OpenMode mode)
 
 	FILE* File;
 	fopen_s(&File, path, OpenMode);
-	if (File == NULL)
-	{
-		return NULL;
-	}
-
 	return File;
 }
 
