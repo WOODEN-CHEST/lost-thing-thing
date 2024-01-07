@@ -18,21 +18,6 @@
 
 #define ASCII_OFFSET 32
 
-
-
-#define UTF8_AA_1 0x0100
-#define UTF8_AA_2 0x0100
-#define UTF8_CH 0x010C
-#define UTF8_EE 0x0112
-#define UTF8_GJ 0x0122
-#define UTF8_II 0x012A
-#define UTF8_KJ 0x0136
-#define UTF8_LJ 0x013B
-#define UTF8_NJ 0x0145
-#define UTF8_SH 0x0160
-#define UTF8_UU 0x016A
-#define UTF8_ZU 0x017D
-
 short* CharacterLookupTable;
 #define LOOKUP_TABLE_OFFSET 256
 
@@ -311,7 +296,7 @@ int String_ToUpperUTF8(char* string)
 	}
 }
 
-int String_Count(char* string, char* sequence)
+int String_Count(const char* string, char* sequence)
 {
 	if ((string == NULL) || (sequence == NULL) || (sequence[0] == '\0'))
 	{
@@ -340,12 +325,12 @@ int String_Count(char* string, char* sequence)
 	return Count;
 }
 
-bool String_Contains(char* string, char* sequence)
+bool String_Contains(const char* string, char* sequence)
 {
 	return String_ByteIndexOf(string, sequence) != -1;
 }
 
-bool String_StartsWith(char* string, char* sequence)
+bool String_StartsWith(const char* string, char* sequence)
 {
 	if ((string == NULL) || (sequence == NULL))
 	{

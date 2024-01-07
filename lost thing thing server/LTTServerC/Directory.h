@@ -5,7 +5,7 @@
 #include "ArrayList.h"
 
 #define IsPathSeparator(character) (character == '\\') || (character == '/')
-#define PathSeparator '/'
+#define PATH_SEPARATOR '/'
 
 // Functions.
 /// <summary>
@@ -50,3 +50,10 @@ char* Directory_GetParentDirectory(char* path);
 /// <param name="path2">Second path</param>
 /// <returns>Combined path (stored on the heap)</returns>
 char* Directory_Combine(char* path1, char* path2);
+
+/// <summary>
+/// Gets the name of the final directory or file in a path.
+/// </summary>
+/// <param name="path">The full path of the file or directory.</param>
+/// <returns>Name of the file or directory (stored on the heap)</returns>
+char* Directory_GetName(char* path);

@@ -5,9 +5,12 @@
 #include "Memory.h"
 #include <stdbool.h>
 #include <time.h>
+#include <sys/stat.h>
 
 #define LOG_TEMP_BUFFER_SIZE 20
 #define YEAR_MEASURE_START 1900
+#define OLD_LOG_DIR_NAME "old"
+#define NEW_LOG_FILE_NAME "latest_log"
 
 // Variables.
 static FILE* LogFile = NULL;
@@ -82,35 +85,50 @@ static void Logger_AddLevel(StringBuilder* builder, Logger_LogLevel level)
 	StringBuilder_AppendChar(builder, ']');
 }
 
-// Functions.
-int Logger_Initialize(char* path)
+static void Logger_BackupLog(char* oldLogFilePath, char* oldLogDirectoryPath)
 {
+	// Create file name.
+	StringBuilder FileNameBuilder;
+	StringBuilder_Construct(&FileNameBuilder, DEFAULT_STRING_BUILDER_CAPACITY);
+
+	struct stat FileInfo;
+	stat(oldLogFilePath, &FileInfo);
+
+
+
+	// Backup log.
+
+
+}
+
+// Functions.
+int Logger_Initialize(char* rootDirectoryPath)
+{
+	// Verify state and args.
 	if (LogFile != NULL)
 	{
 		return ILLEGAL_OPERATION_ERRCODE;
 	}
-	if (path == NULL)
+	if (rootDirectoryPath == NULL)
 	{
 		return NULL_REFERENCE_ERRCODE;
 	}
 
+	char* LogFilePath = Directory_Combine(rootDirectoryPath, NEW_LOG_FILE_NAME);
+
 	// Create directories.
-	Directory_CreateAll(path);
+	Directory_CreateAll(rootDirectoryPath);
 
 	StringBuilder Builder;
 	StringBuilder_Construct(&Builder, DEFAULT_STRING_BUILDER_CAPACITY);
-	StringBuilder_Append(&Builder, path);
-	StringBuilder_AppendChar(&Builder, PathSeparator);
-	StringBuilder_Append(&Builder, "old");
-	
-
+	char BackupDir = Directory_Combine(rootDirectoryPath, OLD_LOG_DIR_NAME);
 
 	// Backup old logs.
+	Logger_BackupLog(LogFilePath, BackupDir);
 
-
-
-	File_Delete(path);
-	LogFile = File_Open(path, Write);
+	// Create current log  file.
+	File_Delete(rootDirectoryPath);
+	LogFile = File_Open(rootDirectoryPath, Write);
 
 	if (LogFile == NULL)
 	{
@@ -118,6 +136,11 @@ int Logger_Initialize(char* path)
 	}
 
 	StringBuilder_Construct(&TextBuilder, DEFAULT_STRING_BUILDER_CAPACITY);
+
+
+	// Free memory.
+	FreeMemory(LogFilePath);
+	FreeMemory(BackupDir);
 
 	return 0;
 }

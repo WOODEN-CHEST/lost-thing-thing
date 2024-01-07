@@ -106,8 +106,33 @@ char* Directory_Combine(char* path1, char* path2)
 	StringBuilder_Construct(&Builder, DEFAULT_STRING_BUILDER_CAPACITY);
 
 	StringBuilder_Append(&Builder, path1);
-	StringBuilder_AppendChar(&Builder, PathSeparator);
+	StringBuilder_AppendChar(&Builder, PATH_SEPARATOR);
 	StringBuilder_Append(&Builder, path2);
 
 	return Builder.Data;
+}
+
+char* Directory_GetName(char* path)
+{
+	if (path == NULL)
+	{
+		return NULL;
+	}
+
+	int LastSeparatorIndex = 0;
+	int Length = 0;
+	for (int i = 0; path[i] != '\0'; i++)
+	{
+		if (IsPathSeparator(path[i]))
+		{
+			LastSeparatorIndex = i;
+		}
+		Length++;
+	}
+
+	if (LastSeparatorIndex >= Length)
+	{
+		return "";
+	}
+	return String_SubString(path, LastSeparatorIndex + 1, Length);
 }
