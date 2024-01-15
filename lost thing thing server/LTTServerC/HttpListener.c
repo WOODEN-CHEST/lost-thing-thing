@@ -20,7 +20,7 @@ void Main()
 	{
 		return;
 	}
-	RequestMessageBuffer = SafeMalloc(REQUEST_MESSAGE_BUFFER_LENGTH);
+	RequestMessageBuffer = Memory_SafeMalloc(REQUEST_MESSAGE_BUFFER_LENGTH);
 
 	// Create socket.
 	SOCKET Socket = INVALID_SOCKET;

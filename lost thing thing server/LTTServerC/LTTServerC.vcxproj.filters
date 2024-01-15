@@ -34,7 +34,7 @@
     <Filter Include="Source Files\ArrayList">
       <UniqueIdentifier>{24f6a627-e065-47ef-955c-cddb6d867f17}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\Logger">
+    <Filter Include="Source Files\IO\Logger">
       <UniqueIdentifier>{ca543281-98ad-4a03-ae1c-9fb08298a8ce}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
@@ -42,7 +42,7 @@
     <ClCompile Include="LTTServerC.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ErrorCodes.c">
+    <ClCompile Include="LttErrors.c">
       <Filter>Source Files\Errors</Filter>
     </ClCompile>
     <ClCompile Include="Memory.c">
@@ -67,11 +67,11 @@
       <Filter>Source Files\ArrayList</Filter>
     </ClCompile>
     <ClCompile Include="Logger.c">
-      <Filter>Source Files\Logger</Filter>
+      <Filter>Source Files\IO\Logger</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="ErrorCodes.h">
+    <ClInclude Include="LttErrors.h">
       <Filter>Source Files\Errors</Filter>
     </ClInclude>
     <ClInclude Include="Memory.h">
@@ -102,7 +102,7 @@
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="Logger.h">
-      <Filter>Source Files\Logger</Filter>
+      <Filter>Source Files\IO\Logger</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

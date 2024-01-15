@@ -134,12 +134,12 @@ char* File_ReadAllText(FILE* file)
 		return NULL;
 	}
 
-	char* Buffer = SafeMalloc(Length + 1);
+	char* Buffer = Memory_SafeMalloc(Length + 1);
 	Result = fread_s(Buffer, Length, sizeof(char), Length, file);
 
 	if (Result != Length)
 	{
-		FreeMemory(Buffer);
+		Memory_Free(Buffer);
 		return NULL;
 	}
 

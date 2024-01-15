@@ -129,7 +129,7 @@
   <ItemGroup>
     <ClCompile Include="ArrayList.c" />
     <ClCompile Include="Directory.c" />
-    <ClCompile Include="ErrorCodes.c" />
+    <ClCompile Include="LttErrors.c" />
     <ClCompile Include="File.c" />
     <ClCompile Include="HttpListener.c" />
     <ClCompile Include="Logger.c" />
@@ -141,7 +141,7 @@
   <ItemGroup>
     <ClInclude Include="ArrayList.h" />
     <ClInclude Include="Directory.h" />
-    <ClInclude Include="ErrorCodes.h" />
+    <ClInclude Include="LttErrors.h" />
     <ClInclude Include="File.h" />
     <ClInclude Include="HttpListener.h" />
     <ClInclude Include="Logger.h" />

@@ -1,38 +1,35 @@
 #include <stdlib.h>
 #include "Memory.h"
-#include "ErrorCodes.h"
+#include "LttErrors.h"
 
 // Functions.
-void* SafeMalloc(const int size)
+void* Memory_SafeMalloc(const size_t size)
 {
 	void* Pointer = malloc(size);
 
 	if (Pointer == NULL)
 	{
-		AbortProgram(MEMORY_ALLOCATION_FAILED_ERRCODE);
+		Error_AbortProgram("Failed to safely allocate memory.");
+		return NULL;
 	}
 
 	return Pointer;
 }
 
-void* SafeRealloc(void* ptr, const int size)
+void* Memory_SafeRealloc(void* ptr, const size_t size)
 {
-	if (ptr == NULL)
-	{
-		return NULL;
-	}
-
 	void* Pointer = realloc(ptr, size);
 
 	if (Pointer == NULL)
 	{
-		AbortProgram(MEMORY_ALLOCATION_FAILED_ERRCODE);
+		Error_AbortProgram("Failed to safely reallocate memory.");
+		return NULL;
 	}
 
 	return Pointer;
 }
 
-void FreeMemory(void* ptr)
+void Memory_Free(void* ptr)
 {
 	free(ptr);
 }

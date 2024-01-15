@@ -1,8 +1,8 @@
 #pragma once
 
 // Functions.
-void* SafeMalloc(const int size);
+void* Memory_SafeMalloc(const int size);
 
-void* SafeRealloc(void* ptr, const int size);
+void* Memory_SafeRealloc(void* ptr, const int size);
 
-void FreeMemory(void* ptr);
+void Memory_Free(void* ptr);

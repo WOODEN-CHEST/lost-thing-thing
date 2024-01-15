@@ -1,5 +1,5 @@
 #include "LttString.h"
-#include "ErrorCodes.h"
+#include "LttErrors.h"
 #include "Memory.h"
 #include <stdbool.h>
 #include <string.h>
@@ -18,22 +18,14 @@
 
 #define ASCII_OFFSET 32
 
-short* CharacterLookupTable;
-#define LOOKUP_TABLE_OFFSET 256
-
 // Functions.
 // String.
-int String_LengthCodepointsUTF8(char* string)
+size_t String_LengthCodepointsUTF8(const char* string)
 {
-	if (string == NULL)
-	{
-		return 0;
-	}
-
-	int Length = 0;
+	size_t Length = 0;
 	char Character;
 
-	for (int i = 0; string[i] != '\0'; i++)
+	for (size_t i = 0; string[i] != '\0'; i++)
 	{
 		Character = string[i];
 
@@ -56,14 +48,9 @@ int String_LengthCodepointsUTF8(char* string)
 	return Length;
 }
 
-int String_LengthBytes(char* string)
+size_t String_LengthBytes(const char* string)
 {
-	if (string == NULL)
-	{
-		return 0;
-	}
-
-	int Length = 0;
+	size_t Length = 0;
 	while (string[Length] != '\0')
 	{
 		Length++;
@@ -72,17 +59,12 @@ int String_LengthBytes(char* string)
 	return Length;
 }
 
-char* String_CreateCopy(char* string)
+char* String_CreateCopy(const char* stringToCopy)
 {
-	if (string == NULL)
-	{
-		return NULL;
-	}
+	size_t StringLengthBytes = String_LengthBytes(string) + 1;
+	char* NewString = Memory_SafeMalloc(StringLengthBytes);
 
-	int StringLengthBytes = String_LengthBytes(string) + 1;
-	char* NewString = SafeMalloc(StringLengthBytes);
-
-	for (int i = 0; i < StringLengthBytes; i++)
+	for (size_t i = 0; i < StringLengthBytes; i++)
 	{
 		NewString[i] = string[i];
 	}
@@ -90,9 +72,19 @@ char* String_CreateCopy(char* string)
 	return NewString;
 }
 
-int String_ByteIndexOf(char* string, char* sequence)
+void String_CopyTo(const char* sourceString, char* destinationString)
 {
-	if ((string == NULL) || (sequence == NULL) || (sequence[0] == '\0'))
+	size_t Index;
+	for (Index = 0; sourceString[Index] != '\0'; sourceString++)
+	{
+		destinationString[Index] = sourceString[Index];
+	}
+	destinationString[Index] = '\0';
+}
+
+int String_CharIndexOf(const char* string, const char* sequence)
+{
+	if (sequence[0] == '\0')
 	{
 		return -1;
 	}
@@ -127,9 +119,9 @@ int String_ByteIndexOf(char* string, char* sequence)
 	return -1;
 }
 
-int String_LastByteIndexOf(char* string, char* sequence)
+int String_LastCharIndexOf(const char* string, const char* sequence)
 {
-	if ((string == NULL) || (sequence == NULL) || (sequence[0] == '\0'))
+	if (sequence[0] == '\0')
 	{
 		return -1;
 	}
@@ -159,24 +151,31 @@ int String_LastByteIndexOf(char* string, char* sequence)
 	return -1;
 }
 
-char* String_SubString(char* string, const int startIndex, const int endIndex)
+char* String_SubString(const char* string, size_t startIndex, size_t endIndex)
 {
-	if ((string == NULL) || (startIndex < 0) || (endIndex < 0) || (endIndex < startIndex))
+	if (endIndex < startIndex)
 	{
+		Error_SetError(ErrorCode_IndexOutOfRange, "String_SubString: endIndex is lower than startIndex");
 		return NULL;
 	}
 
 	int ByteLength = String_LengthBytes(string);
-	if ((startIndex > ByteLength) || (endIndex > ByteLength))
+	if (startIndex > ByteLength)
 	{
+		Error_SetError(ErrorCode_IndexOutOfRange, "String_SubString: startIndex is greater than the length of the string.");
+		return NULL;
+	}
+	if (endIndex > ByteLength)
+	{
+		Error_SetError(ErrorCode_IndexOutOfRange, "String_SubString: endIndex is greater than the length of the string.");
 		return NULL;
 	}
 
-	int SubStringLength = endIndex - startIndex;
-	int TotalStringLength = SubStringLength + 1;
+	size_t SubStringLength = endIndex - startIndex;
+	size_t TotalStringLength = SubStringLength + 1;
 
-	char* NewValue = SafeMalloc(TotalStringLength);
-	for (int Cur = startIndex, New = 0; Cur < endIndex; Cur++, New++)
+	char* NewValue = Memory_SafeMalloc(TotalStringLength);
+	for (size_t Cur = startIndex, New = 0; Cur < endIndex; Cur++, New++)
 	{
 		NewValue[New] = string[Cur];
 	}
@@ -327,7 +326,7 @@ int String_Count(const char* string, char* sequence)
 
 bool String_Contains(const char* string, char* sequence)
 {
-	return String_ByteIndexOf(string, sequence) != -1;
+	return String_CharIndexOf(string, sequence) != -1;
 }
 
 bool String_StartsWith(const char* string, char* sequence)
@@ -494,7 +493,7 @@ int StringBuilder_Construct(StringBuilder* builder, int capacity)
 
 	builder->_capacity = capacity;
 	builder->Length = 0;
-	builder->Data = SafeMalloc(capacity * sizeof(char));
+	builder->Data = Memory_SafeMalloc(capacity * sizeof(char));
 	builder->Data[0] = '\0';
 
 	return 0;
@@ -502,7 +501,7 @@ int StringBuilder_Construct(StringBuilder* builder, int capacity)
 
 StringBuilder* StringBuilder_Construct2(int capacity)
 {
-	StringBuilder* Builder = SafeMalloc(sizeof(Builder));
+	StringBuilder* Builder = Memory_SafeMalloc(sizeof(Builder));
 	StringBuilder_Construct(&Builder, capacity);
 	return Builder;
 }
@@ -512,7 +511,7 @@ static void StringBuilder_EnsureCapacity(StringBuilder* this, int capacity)
 	while (this->_capacity < capacity)
 	{
 		this->_capacity *= STRING_BUILDER_CAPACITY_GROWTH;
-		this->Data = SafeRealloc(this->Data, this->_capacity * sizeof(char));
+		this->Data = Memory_SafeRealloc(this->Data, this->_capacity * sizeof(char));
 	}
 }
 
@@ -661,6 +660,6 @@ int StringBuilder_Deconstruct(StringBuilder* this)
 		return NULL_REFERENCE_ERRCODE;
 	}
 
-	FreeMemory(this->Data);
+	Memory_Free(this->Data);
 	return 0;
 }

@@ -5,26 +5,28 @@
 // Structures.
 enum Logger_LogLevelEnum
 {
-	Info = 0,
-	Warning = 2,
-	Error = 3,
-	Critical = 4
+	LogLevel_Info,
+	LogLevel_Warning,
+	LogLevel_Error,
+	LogLevel_Critical
 };
 
 typedef enum Logger_LogLevelEnum Logger_LogLevel;
 
 
 // Functions.
-int Logger_Initialize(char* path);
+int Logger_Initialize(const char* path);
+
+_Bool Logger_IsInitialized();
 
 int Logger_Close();
 
-int Logger_Log(Logger_LogLevel level, char* string);
+int Logger_Log(Logger_LogLevel level, const char* string);
 
-int Logger_LogInfo(char* string);
+int Logger_LogInfo(const char* string);
 
-int Logger_LogWarning(char* string);
+int Logger_LogWarning(const char* string);
 
-int Logger_LogError(char* string);
+int Logger_LogError(const char* string);
 
-int Logger_LogCritical(char* string);
+int Logger_LogCritical(const char* string);

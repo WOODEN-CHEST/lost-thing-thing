@@ -18,7 +18,7 @@ int ArrayList_Construct(ArrayList* arrayList, size_t capacity)
 		capacity = ARRAYLIST_DEFAULT_CAPACITY;
 	}
 
-	void** Data = SafeMalloc(sizeof(void*) * capacity);
+	void** Data = Memory_SafeMalloc(sizeof(void*) * capacity);
 
 	arrayList->Data = Data;
 	arrayList->Length = 0;
@@ -29,7 +29,7 @@ int ArrayList_Construct(ArrayList* arrayList, size_t capacity)
 
 ArrayList* ArrayList_Construct2(size_t capacity)
 {
-	ArrayList* List = SafeMalloc(sizeof(ArrayList));
+	ArrayList* List = Memory_SafeMalloc(sizeof(ArrayList));
 	ArrayList_Construct(List, capacity);
 	return List;
 }
@@ -54,7 +54,7 @@ static void ArrayList_EnsureCapacity(ArrayList* this, int capacity)
 	}
 
 	this->_capacity *= ARRAYLIST_CAPACITY_GROWTH;
-	this->Data = SafeRealloc(this->Data, sizeof(void*) * this->_capacity);
+	this->Data = Memory_SafeRealloc(this->Data, sizeof(void*) * this->_capacity);
 }
 
 int ArrayList_Add(ArrayList* this, void* objectPointer)

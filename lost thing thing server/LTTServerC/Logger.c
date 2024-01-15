@@ -66,16 +66,16 @@ static void Logger_AddLevel(StringBuilder* builder, Logger_LogLevel level)
 
 	switch (level)
 	{
-		case Info:
+		case LogLevel_Info:
 			StringBuilder_Append(builder, "Info");
 			break;
-		case Warning:
+		case LogLevel_Warning:
 			StringBuilder_Append(builder, "Warning");
 			break;
-		case Error:
+		case LogLevel_Error:
 			StringBuilder_Append(builder, "Error");
 			break;
-		case Critical:
+		case LogLevel_Critical:
 			StringBuilder_Append(builder, "CRITICAL");
 			break;
 		default:
@@ -139,8 +139,8 @@ int Logger_Initialize(char* rootDirectoryPath)
 
 
 	// Free memory.
-	FreeMemory(LogFilePath);
-	FreeMemory(BackupDir);
+	Memory_Free(LogFilePath);
+	Memory_Free(BackupDir);
 
 	return 0;
 }
@@ -176,20 +176,20 @@ int Logger_Log(Logger_LogLevel level, char* string)
 
 int Logger_LogInfo(char* string)
 {
-	return Logger_Log(Info, string);
+	return Logger_Log(LogLevel_Info, string);
 }
 
 int Logger_LogWarning(char* string)
 {
-	return Logger_Log(Warning, string);
+	return Logger_Log(LogLevel_Warning, string);
 }
 
 int Logger_LogError(char* string)
 {
-	return Logger_Log(Error, string);
+	return Logger_Log(LogLevel_Error, string);
 }
 
 int Logger_LogCritical(char* string)
 {
-	return Logger_Log(Critical, string);
+	return Logger_Log(LogLevel_Critical, string);
 }
