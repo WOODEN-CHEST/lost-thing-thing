@@ -7,6 +7,8 @@
 #include <stdio.h>
 #include "ArrayList.h"
 
+
+// Macros.
 #define STRING_BUILDER_CAPACITY_GROWTH 4
 
 #define UTF8_TWO_BYTES  0b11000000
@@ -17,6 +19,26 @@
 #define UTF8_FOUR_BYTES_COMBINED 0b11111000
 
 #define ASCII_OFFSET 32
+
+#define IsLatinACharacter(characterNumber) ((256 <= characterNumber) && (characterNumber <= 383))
+
+
+// Static functions.
+static inline unsigned short GetTwoByteUTF8Number(unsigned short value)
+{
+	return ((value & 0b00011111) << 6) | ((value & 0b0011111100000000) >> 8);
+}
+
+static inline unsigned short AddUTF8TwoByte(unsigned short value, short amountToAdd)
+{
+	unsigned short RawValue = GetTwoByteUTF8Number(value);
+	RawValue += amountToAdd;
+
+	unsigned short FullValue = ((RawValue & 0b111111) << 8) | ((RawValue & 0b11111000000) >> 6) | 0b1000000011000000;
+
+	return FullValue;
+}
+
 
 // Functions.
 // String.
@@ -61,12 +83,12 @@ size_t String_LengthBytes(const char* string)
 
 char* String_CreateCopy(const char* stringToCopy)
 {
-	size_t StringLengthBytes = String_LengthBytes(string) + 1;
+	size_t StringLengthBytes = String_LengthBytes(stringToCopy) + 1;
 	char* NewString = Memory_SafeMalloc(StringLengthBytes);
 
-	for (size_t i = 0; i < StringLengthBytes; i++)
+	for (int i = 0; i < StringLengthBytes; i++)
 	{
-		NewString[i] = string[i];
+		NewString[i] = stringToCopy[i];
 	}
 
 	return NewString;
@@ -74,8 +96,8 @@ char* String_CreateCopy(const char* stringToCopy)
 
 void String_CopyTo(const char* sourceString, char* destinationString)
 {
-	size_t Index;
-	for (Index = 0; sourceString[Index] != '\0'; sourceString++)
+	int Index;
+	for (Index = 0; sourceString[Index] != '\0'; Index++)
 	{
 		destinationString[Index] = sourceString[Index];
 	}
@@ -126,7 +148,7 @@ int String_LastCharIndexOf(const char* string, const char* sequence)
 		return -1;
 	}
 
-	int StringLengthBytes = String_LengthBytes(string);
+	size_t StringLengthBytes = String_LengthBytes(string);
 	int MaxSequenceIndex = String_LengthBytes(sequence) - 1;
 	int Index = StringLengthBytes - 1, SequenceIndex = MaxSequenceIndex;
 
@@ -175,7 +197,7 @@ char* String_SubString(const char* string, size_t startIndex, size_t endIndex)
 	size_t TotalStringLength = SubStringLength + 1;
 
 	char* NewValue = Memory_SafeMalloc(TotalStringLength);
-	for (size_t Cur = startIndex, New = 0; Cur < endIndex; Cur++, New++)
+	for (int Cur = startIndex, New = 0; Cur < endIndex; Cur++, New++)
 	{
 		NewValue[New] = string[Cur];
 	}
@@ -189,13 +211,8 @@ bool IsCharWhitespace(char character)
 	return (character == ' ') || (character == '\n') || (character == '\r') || (character == '\t');
 }
 
-char* String_Trim(char* string)
+char* String_Trim(const char* string)
 {
-	if (string == NULL)
-	{
-		return NULL;
-	}
-
 	int StartIndex = 0;
 	while (IsCharWhitespace(string[StartIndex]))
 	{
@@ -218,30 +235,8 @@ char* String_Trim(char* string)
 	return String_SubString(string, StartIndex, EndIndex);
 }
 
-static unsigned short String_GetTwoByteUTF8Number(unsigned short value)
-{
-	return ((value & 0b00011111) << 6) | ((value & 0b0011111100000000) >> 8);
-}
-
-static unsigned short String_AddUTF8TwoByte(unsigned short value, short amountToAdd)
-{
-	unsigned short RawValue = String_GetTwoByteUTF8Number(value);
-	RawValue += amountToAdd;
-
-	unsigned short FullValue = ((RawValue & 0b111111) << 8) | ((RawValue & 0b11111000000) >> 6) | 0b1000000011000000;
-
-	return FullValue;
-}
-
-#define IsLatinACharacter(characterNumber) ((256 <= characterNumber) && (characterNumber <= 383))
-
 int String_ToLowerUTF8(char* string)
 {
-	if (string == NULL)
-	{
-		return NULL_REFERENCE_ERRCODE;
-	}
-
 	for (int i = 0; string[i] != '\0'; i++)
 	{
 		if ((string[i] >= 'A') && (string[i] <= 'Z'))
@@ -256,22 +251,17 @@ int String_ToLowerUTF8(char* string)
 		}
 
 		unsigned short* ValuePointer = ((unsigned short*)(string + i));
-		unsigned short CharacterNumber = String_GetTwoByteUTF8Number(*ValuePointer);
+		unsigned short CharacterNumber = GetTwoByteUTF8Number(*ValuePointer);
 
 		if (IsLatinACharacter(CharacterNumber) && (CharacterNumber % 2 == 0))
 		{
-			*ValuePointer = String_AddUTF8TwoByte(*ValuePointer, 1);
+			*ValuePointer = AddUTF8TwoByte(*ValuePointer, 1);
 		}
 	}
 }
 
 int String_ToUpperUTF8(char* string)
 {
-	if (string == NULL)
-	{
-		return NULL;
-	}
-
 	for (int i = 0; string[i] != '\0'; i++)
 	{
 		if ((string[i] >= 'a') && (string[i] <= 'z'))
@@ -286,23 +276,23 @@ int String_ToUpperUTF8(char* string)
 		}
 
 		unsigned short* ValuePointer = ((unsigned short*)(string + i));
-		unsigned short CharacterNumber = String_GetTwoByteUTF8Number(*ValuePointer);
+		unsigned short CharacterNumber = GetTwoByteUTF8Number(*ValuePointer);
 
 		if (IsLatinACharacter(CharacterNumber) && (CharacterNumber % 2 == 1))
 		{
-			*ValuePointer = String_AddUTF8TwoByte(*ValuePointer, -1);
+			*ValuePointer = AddUTF8TwoByte(*ValuePointer, -1);
 		}
 	}
 }
 
-int String_Count(const char* string, char* sequence)
+size_t String_Count(const char* string, const char* sequence)
 {
-	if ((string == NULL) || (sequence == NULL) || (sequence[0] == '\0'))
+	if (sequence[0] == '\0')
 	{
 		return 0;
 	}
 
-	int Count = 0;
+	size_t Count = 0;
 	for (int Index = 0, SequenceIndex = 0; string[Index] != '\0'; Index++)
 	{
 		if (string[Index] == sequence[SequenceIndex])
@@ -324,22 +314,17 @@ int String_Count(const char* string, char* sequence)
 	return Count;
 }
 
-bool String_Contains(const char* string, char* sequence)
+bool String_Contains(const char* string, const char* sequence)
 {
 	return String_CharIndexOf(string, sequence) != -1;
 }
 
-bool String_StartsWith(const char* string, char* sequence)
+bool String_StartsWith(const char* string, const char* sequence)
 {
-	if ((string == NULL) || (sequence == NULL))
-	{
-		return false;
-	}
 	if (sequence[0] == '\0')
 	{
 		return false;
 	}
-
 
 	for (int Index = 0; sequence[Index] != '\0'; Index++)
 	{
@@ -354,10 +339,6 @@ bool String_StartsWith(const char* string, char* sequence)
 
 bool String_EndsWith(char* string, char* sequence)
 {
-	if ((string == NULL) || (sequence == NULL))
-	{
-		return false;
-	}
 	if (sequence[0] == '\0')
 	{
 		return false;
@@ -384,12 +365,7 @@ bool String_EndsWith(char* string, char* sequence)
 
 bool String_Equals(char* string1, char* string2)
 {
-	if ((string1 == NULL) || (string2 == NULL))
-	{
-		return false;
-	}
-
-	for (int i = 0; (string1[i] != '\0') && (string2[i] != '\0'); i++)
+	for (int i = 0; string1[i] != '\0'; i++)
 	{
 		if (string1[i] != string2[i])
 		{
@@ -402,12 +378,7 @@ bool String_Equals(char* string1, char* string2)
 
 char* String_Replace(char* string, char* oldSequence, char* newSequence)
 {
-	if ((string == NULL) || (oldSequence == NULL) || (newSequence == NULL))
-	{
-		return NULL;
-	}
-
-	if ((oldSequence[0] == '\0'))
+	if (oldSequence[0] == '\0')
 	{
 		return string;
 	}
@@ -438,11 +409,6 @@ char* String_Replace(char* string, char* oldSequence, char* newSequence)
 
 int String_Split(char* string, char* sequence, ArrayList* listOfNewStrings)
 {
-	if ((string == NULL) || (sequence == NULL) || (listOfNewStrings == NULL))
-	{
-		return NULL_REFERENCE_ERRCODE;
-	}
-
 	int SequenceStartIndex = 0;
 	int StringStartIndex = 0;
 	for (int Index = 0, SequenceIndex = 0; string[Index] != '\0'; Index++)
