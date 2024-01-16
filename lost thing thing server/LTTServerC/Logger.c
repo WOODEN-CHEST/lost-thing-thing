@@ -18,7 +18,7 @@ static StringBuilder TextBuilder;
 
 
 // Static functions.
-static void Logger_AddTwoDigitNumber(StringBuilder* builder, int number, char separator)
+static void AddTwoDigitNumber(StringBuilder* builder, int number, char separator)
 {
 	if (number < 10)
 	{
@@ -36,7 +36,7 @@ static void Logger_AddTwoDigitNumber(StringBuilder* builder, int number, char se
 	}
 }
 
-static void Logger_AddDateTime(StringBuilder* builder)
+static void AddDateTime(StringBuilder* builder)
 {
 	time_t CurrentTime = time(NULL);
 	struct tm DateTime;
@@ -49,18 +49,18 @@ static void Logger_AddDateTime(StringBuilder* builder)
 	StringBuilder_Append(builder, Year);
 	StringBuilder_Append(builder, "y;");
 	
-	Logger_AddTwoDigitNumber(builder, DateTime.tm_mon, 0);
+	AddTwoDigitNumber(builder, DateTime.tm_mon, 0);
 	StringBuilder_Append(builder, "m;");
-	Logger_AddTwoDigitNumber(builder, DateTime.tm_mday, 0);
+	AddTwoDigitNumber(builder, DateTime.tm_mday, 0);
 	StringBuilder_Append(builder, "d][");
 
-	Logger_AddTwoDigitNumber(builder, DateTime.tm_hour, ':');
-	Logger_AddTwoDigitNumber(builder, DateTime.tm_min, ':');
-	Logger_AddTwoDigitNumber(builder, DateTime.tm_sec, 0);
+	AddTwoDigitNumber(builder, DateTime.tm_hour, ':');
+	AddTwoDigitNumber(builder, DateTime.tm_min, ':');
+	AddTwoDigitNumber(builder, DateTime.tm_sec, 0);
 	StringBuilder_AppendChar(builder, ']');
 }
 
-static void Logger_AddLevel(StringBuilder* builder, Logger_LogLevel level)
+static void AddLevel(StringBuilder* builder, Logger_LogLevel level)
 {
 	StringBuilder_AppendChar(builder, '[');
 
@@ -85,7 +85,7 @@ static void Logger_AddLevel(StringBuilder* builder, Logger_LogLevel level)
 	StringBuilder_AppendChar(builder, ']');
 }
 
-static void Logger_BackupLog(char* oldLogFilePath, char* oldLogDirectoryPath)
+static ErrorCode BackupLog(char* oldLogFilePath, char* oldLogDirectoryPath)
 {
 	// Create file name.
 	StringBuilder FileNameBuilder;
@@ -102,7 +102,7 @@ static void Logger_BackupLog(char* oldLogFilePath, char* oldLogDirectoryPath)
 }
 
 // Functions.
-int Logger_Initialize(char* rootDirectoryPath)
+ErrorCode Logger_Initialize(char* rootDirectoryPath)
 {
 	// Verify state and args.
 	if (LogFile != NULL)
@@ -124,11 +124,11 @@ int Logger_Initialize(char* rootDirectoryPath)
 	char BackupDir = Directory_Combine(rootDirectoryPath, OLD_LOG_DIR_NAME);
 
 	// Backup old logs.
-	Logger_BackupLog(LogFilePath, BackupDir);
+	BackupLog(LogFilePath, BackupDir);
 
 	// Create current log  file.
 	File_Delete(rootDirectoryPath);
-	LogFile = File_Open(rootDirectoryPath, Write);
+	LogFile = File_Open(rootDirectoryPath, FileOpenMode_Write);
 
 	if (LogFile == NULL)
 	{
@@ -163,8 +163,8 @@ int Logger_Log(Logger_LogLevel level, char* string)
 		return ILLEGAL_OPERATION_ERRCODE;
 	}
 
-	Logger_AddDateTime(&TextBuilder);
-	Logger_AddLevel(&TextBuilder, level);
+	AddDateTime(&TextBuilder);
+	AddLevel(&TextBuilder, level);
 	StringBuilder_AppendChar(&TextBuilder, ' ');
 	StringBuilder_Append(&TextBuilder, string);
 	StringBuilder_AppendChar(&TextBuilder, '\n');

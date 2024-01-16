@@ -235,7 +235,7 @@ char* String_Trim(const char* string)
 	return String_SubString(string, StartIndex, EndIndex);
 }
 
-int String_ToLowerUTF8(char* string)
+void String_ToLowerUTF8(char* string)
 {
 	for (int i = 0; string[i] != '\0'; i++)
 	{
@@ -260,7 +260,7 @@ int String_ToLowerUTF8(char* string)
 	}
 }
 
-int String_ToUpperUTF8(char* string)
+void String_ToUpperUTF8(char* string)
 {
 	for (int i = 0; string[i] != '\0'; i++)
 	{
@@ -407,7 +407,7 @@ char* String_Replace(char* string, char* oldSequence, char* newSequence)
 	return Builder.Data;
 }
 
-int String_Split(char* string, char* sequence, ArrayList* listOfNewStrings)
+void String_Split(char* string, const char* sequence, ArrayList* listOfNewStrings)
 {
 	int SequenceStartIndex = 0;
 	int StringStartIndex = 0;
@@ -441,18 +441,12 @@ int String_Split(char* string, char* sequence, ArrayList* listOfNewStrings)
 	{
 		ArrayList_Add(listOfNewStrings, string + StringStartIndex);
 	}
-
-	return 0;
 }
 
 // StringBuilder
-int StringBuilder_Construct(StringBuilder* builder, int capacity)
+void StringBuilder_Construct(StringBuilder* builder, size_t capacity)
 {
-	if (builder == NULL)
-	{
-		return NULL_REFERENCE_ERRCODE;
-	}
-	if (capacity <= 1)
+	if (capacity < 1)
 	{
 		capacity = DEFAULT_STRING_BUILDER_CAPACITY;
 	}
@@ -461,13 +455,11 @@ int StringBuilder_Construct(StringBuilder* builder, int capacity)
 	builder->Length = 0;
 	builder->Data = Memory_SafeMalloc(capacity * sizeof(char));
 	builder->Data[0] = '\0';
-
-	return 0;
 }
 
-StringBuilder* StringBuilder_Construct2(int capacity)
+StringBuilder* StringBuilder_Construct2(size_t capacity)
 {
-	StringBuilder* Builder = Memory_SafeMalloc(sizeof(Builder));
+	StringBuilder* Builder = Memory_SafeMalloc(sizeof(StringBuilder));
 	StringBuilder_Construct(&Builder, capacity);
 	return Builder;
 }
@@ -481,13 +473,8 @@ static void StringBuilder_EnsureCapacity(StringBuilder* this, int capacity)
 	}
 }
 
-int StringBuilder_Append(StringBuilder* this, char* string)
+void StringBuilder_Append(StringBuilder* this, const char* string)
 {
-	if ((this == NULL) || (string == NULL))
-	{
-		return NULL_REFERENCE_ERRCODE;
-	}
-
 	int AppendLength = String_LengthBytes(string);
 	StringBuilder_EnsureCapacity(this, this->Length + AppendLength + 1);
 
@@ -502,31 +489,20 @@ int StringBuilder_Append(StringBuilder* this, char* string)
 	return 0;
 }
 
-int StringBuilder_AppendChar(StringBuilder* this, char character)
+void StringBuilder_AppendChar(StringBuilder* this, char character)
 {
-	if (this == NULL)
-	{
-		return NULL_REFERENCE_ERRCODE;
-	}
-
 	StringBuilder_EnsureCapacity(this, this->Length + 2);
 
 	this->Data[this->Length] = character;
 	this->Data[this->Length + 1] = '\0';
-	this->Length += 1;
-
-	return 0;
+	this->Length++;
 }
 
-int StringBuilder_Insert(StringBuilder* this, char* string, int byteIndex)
+ErrorCode StringBuilder_Insert(StringBuilder* this, char* string, size_t charIndex)
 {
-	if ((this == NULL) || (string == NULL))
+	if (charIndex > this->Length)
 	{
-		return NULL_REFERENCE_ERRCODE;
-	}
-	if ((byteIndex > this->Length) || (byteIndex < 0))
-	{
-		return INDEX_OUT_OF_RANGE_ERRCODE;
+		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Insert: Index is larger than the length of the string.");
 	}
 
 	const int StringLength = String_LengthBytes(string);
@@ -537,14 +513,14 @@ int StringBuilder_Insert(StringBuilder* this, char* string, int byteIndex)
 
 	StringBuilder_EnsureCapacity(this, this->Length + 1 + StringLength);
 
-	for (int i = this->Length - 1 + StringLength; i >= byteIndex + StringLength; i--)
+	for (int i = this->Length - 1 + StringLength; i >= charIndex + StringLength; i--)
 	{
 		this->Data[i] = this->Data[i - StringLength];
 	}
 
 	for (int i = 0; i < StringLength; i++)
 	{
-		this->Data[byteIndex + i] = string[i];
+		this->Data[charIndex + i] = string[i];
 	}
 
 	this->Length += StringLength;
@@ -553,40 +529,38 @@ int StringBuilder_Insert(StringBuilder* this, char* string, int byteIndex)
 	return 0;
 }
 
-int StringBuilder_InsertChar(StringBuilder* this, char character, int byteIndex)
+ErrorCode StringBuilder_InsertChar(StringBuilder* this, char character, size_t charIndex)
 {
-	if (this == NULL)
+	if (charIndex > this->Length)
 	{
-		return NULL_REFERENCE_ERRCODE;
+		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_InsertChar: Index is larger than the length of the string.");
 	}
 
-	if ((byteIndex > this->Length) || (byteIndex < 0))
-	{
-		return ARGUMENT_OUT_OF_RANGE_ERRCODE;
-	}
-
-	for (int i = this->Length; i > byteIndex; i--)
+	for (int i = this->Length; i > charIndex; i--)
 	{
 		this->Data[i] = this->Data[i - 1];
 	}
 
-	this->Data[byteIndex] = character;
+	this->Data[charIndex] = character;
 	this->Length += 1;
 	this->Data[this->Length] = '\0';
 
 	return 0;
 }
 
-int StringBuilder_Remove(StringBuilder* this, int startIndex, int endIndex)
+ErrorCode StringBuilder_Remove(StringBuilder* this, size_t startIndex, size_t endIndex)
 {
-	if (this == NULL)
+	if (startIndex > endIndex)
 	{
-		return NULL_REFERENCE_ERRCODE;
+		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: startIndex is greater than endIndex.");
 	}
-
-	if ((startIndex > endIndex) || (startIndex < 0) || (endIndex > this->Length))
+	if (startIndex > this->Length)
 	{
-		return INDEX_OUT_OF_RANGE_ERRCODE;
+		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: startIndex is greater than the string's length.");
+	}
+	if (endIndex > this->Length)
+	{
+		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: endIndex is greater than the string's length.");
 	}
 
 	int RemovedLength = endIndex - startIndex;
@@ -606,26 +580,15 @@ int StringBuilder_Remove(StringBuilder* this, int startIndex, int endIndex)
 	return 0;
 }
 
-int StringBuilder_Clear(StringBuilder* this)
+void StringBuilder_Clear(StringBuilder* this)
 {
-	if (this == NULL)
-	{
-		return NULL_REFERENCE_ERRCODE;
-	}
-
 	this->Length = 0;
 	this->Data[0] = '\0';
 
 	return 0;
 }
 
-int StringBuilder_Deconstruct(StringBuilder* this)
+void StringBuilder_Deconstruct(StringBuilder* this)
 {
-	if (this == NULL)
-	{
-		return NULL_REFERENCE_ERRCODE;
-	}
-
 	Memory_Free(this->Data);
-	return 0;
 }

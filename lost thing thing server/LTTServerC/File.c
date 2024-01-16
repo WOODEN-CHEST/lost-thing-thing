@@ -1,55 +1,102 @@
 #include "File.h"
 #include "LttString.h"
-#include "ErrorCodes.h"
+#include "Errors.h"
 #include "Memory.h"
 #include <stdio.h>
 #include <stdbool.h>
 #include <String.h>
 #include <sys/stat.h>
 
+
+// Macros.
 #define MODE_STRING_LENGTH 3
+
+
+// Static functions.
+static char* AllocateMemoryForFileRead(FILE* file)
+{
+	long long CurPosition = ftell(file);
+	if (CurPosition == -1)
+	{
+		Error_SetError(ErrorCode_IO, "(File) AllocateMemoryForFileRead: Failed to tell current position.");
+		return NULL;
+	}
+
+	int Result = fseek(file, 0, SEEK_END);
+	if (Result)
+	{
+		Error_SetError(ErrorCode_IO, "File_ReadAllText: Failed to seek to file end.");
+		return NULL;
+	}
+
+	long long Length = ftell(file);
+	if (Length == -1)
+	{
+		Error_SetError(ErrorCode_IO, "File_ReadAllText: Failed to tell the file's stream position.");
+		return NULL;
+	}
+
+	Result = fseek(file, 0, SEEK_SET);
+	if (Result)
+	{
+		Error_SetError(ErrorCode_IO, "File_ReadAllText: Failed to seek to file start.");
+		return NULL;
+	}
+}
+
 
 // Functions.
 FILE* File_Open(char* path, File_OpenMode mode)
 {
-	if ((path == NULL) || (mode == NULL))
-	{
-		return NULL;
-	}
-
 	char OpenMode[MODE_STRING_LENGTH];
 	switch (mode)
 	{
-		case Read:
+		case FileOpenMode_Read:
 			strcpy_s(OpenMode, MODE_STRING_LENGTH, "r");
 			break;
 
-		case Write:
+		case FileOpenMode_Write:
 			strcpy_s(OpenMode, MODE_STRING_LENGTH, "w");
 			break;
 
-		case Append:
+		case FileOpenMode_Append:
 			strcpy_s(OpenMode, MODE_STRING_LENGTH, "a");
 			break;
 
-		case ReadUpdate:
+		case FileOpenMode_ReadBinary:
+			strcpy_s(OpenMode, MODE_STRING_LENGTH, "rb");
+			break;
+
+		case FileOpenMode_WriteBinary:
+			strcpy_s(OpenMode, MODE_STRING_LENGTH, "wb");
+			break;
+
+		case FileOpenMode_AppendBinary:
+			strcpy_s(OpenMode, MODE_STRING_LENGTH, "ab");
+			break;
+
+		case FileOpenMode_ReadUpdate:
 			strcpy_s(OpenMode, MODE_STRING_LENGTH, "r+");
 			break;
 
-		case WriteUpdate:
+		case FileOpenMode_WriteUpdate:
 			strcpy_s(OpenMode, MODE_STRING_LENGTH, "w+");
 			break;
 
-		case AppendUpdate:
+		case FileOpenMode_AppendUpdate:
 			strcpy_s(OpenMode, MODE_STRING_LENGTH, "a+");
 			break;
 
 		default:
+			Error_SetError(ErrorCode_InvalidArgument, "File_Open: Invalid open mode.");
 			return NULL;
 	}
 
-	FILE* File;
-	fopen_s(&File, path, OpenMode);
+	FILE* File = fopen(path, OpenMode);
+	if (File == NULL)
+	{
+		Error_SetError(ErrorCode_IO, "File_Open: Failed to open file.");
+	}
 	return File;
 }
 
@@ -111,67 +158,52 @@ int File_Close(FILE* file)
 
 char* File_ReadAllText(FILE* file)
 {
-	if (file == NULL)
-	{
-		return NULL;
-	}
-
 	int Result = fseek(file, 0, SEEK_END);
-	if (Result != 0)
+	if (Result)
 	{
+		Error_SetError(ErrorCode_IO, "File_ReadAllText: Failed to seek to file end.");
 		return NULL;
 	}
 
 	long long Length = ftell(file);
 	if (Length == -1)
 	{
+		Error_SetError(ErrorCode_IO, "File_ReadAllText: Failed to tell the file's stream position.");
 		return NULL;
 	}
 
 	Result = fseek(file, 0, SEEK_SET);
-	if (Result != 0)
+	if (Result)
 	{
+		Error_SetError(ErrorCode_IO, "File_ReadAllText: Failed to seek to file start.");
 		return NULL;
 	}
 
 	char* Buffer = Memory_SafeMalloc(Length + 1);
-	Result = fread_s(Buffer, Length, sizeof(char), Length, file);
-
-	if (Result != Length)
-	{
-		Memory_Free(Buffer);
-		return NULL;
-	}
+	Result = fread(Buffer, sizeof(char), Length, file);
 
 	Buffer[Length] = '\0';
 	return Buffer;
 }
 
-bool File_Exists(char* path)
+char* File_ReadAllData(FILE* file, size_t* dataLength)
 {
-	if (path == NULL)
-	{
-		return false;
-	}
 
-	struct stat FileStats;
-	int Result = stat(path, &FileStats);
-
-	return Result == 0;
 }
 
-int File_Delete(char* path)
+bool File_Exists(char* path)
 {
-	if (path == NULL)
-	{
-		return NULL_REFERENCE_ERRCODE;
-	}
+	struct stat FileStats;
+	return !stat(path, &FileStats);
+}
 
+ErrorCode File_Delete(char* path)
+{
 	int Result = remove(path);
 
-	if (Result == 0)
+	if (!Result)
 	{
-		return 0;
+		return ErrorCode_Success;
 	}
-	return IO_ERROR_ERRCODE;
+	return Error_SetError(ErrorCode_IO, "File_Delete: Failed to delete file.");
 }

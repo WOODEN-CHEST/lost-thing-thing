@@ -2,15 +2,19 @@
 #include "LttString.h"
 #include <stdio.h>
 
+
 // Structures.
 enum File_OpenModeEnum
 {
-	Read = 1,
-	Write = 2,
-	Append = 3,
-	ReadUpdate = 4,
-	WriteUpdate = 5,
-	AppendUpdate = 6,
+	FileOpenMode_Read,
+	FileOpenMode_Write,
+	FileOpenMode_Append,
+	FileOpenMode_ReadBinary,
+	FileOpenMode_WriteBinary,
+	FileOpenMode_AppendBinary,
+	FileOpenMode_ReadUpdate,
+	FileOpenMode_WriteUpdate,
+	FileOpenMode_AppendUpdate
 };
 
 typedef enum File_OpenModeEnum File_OpenMode;
@@ -19,16 +23,24 @@ typedef enum File_OpenModeEnum File_OpenMode;
 // Functions.
 FILE* File_Open(char* path, File_OpenMode mode);
 
-int File_Write(FILE* file, char* data, size_t dataLength);
+int File_ReadChar(FILE* file);
 
-int File_WriteString(FILE* file, char* string);
-
-int File_Flush(FILE* file);
-
-int File_Close(FILE* file);
-
-int File_Delete(char* path);
+size_t File_Read(FILE* file, char* dataBuffer, size_t count);
 
 char* File_ReadAllText(FILE* file);
 
-bool File_Exists(char* path);
+char* File_ReadAllData(FILE* file, size_t* dataLength);
+
+ErrorCode File_Write(FILE* file, char* data, size_t dataLength);
+
+ErrorCode File_WriteText(FILE* file, char* string);
+
+ErrorCode File_WriteByte(FILE* file, char byte);
+
+ErrorCode File_Flush(FILE* file);
+
+ErrorCode File_Close(FILE* file);
+
+ErrorCode File_Delete(char* path);
+
+_Bool File_Exists(char* path);

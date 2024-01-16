@@ -2,6 +2,8 @@
 #include "ArrayList.h"
 #include "LttErrors.h"
 
+
+// Macros.
 #define DEFAULT_STRING_BUILDER_CAPACITY 128
 
 // Types.
@@ -85,14 +87,14 @@ char* String_Trim(const char* string);
 /// </summary>
 /// /// <param name="string">The string to convert to lowercase.</param>
 /// <returns>Error Code</returns>
-ErrorCode String_ToLowerUTF8(char* string);
+void String_ToLowerUTF8(char* string);
 
 /// <summary>
 /// Converts the string's characters to uppercase. Only supports Latvian and English alphabet.
 /// </summary>
 /// /// <param name="string">The string to convert to uppercase.</param>
 /// <returns>Error Code</returns>
-ErrorCode String_ToUpperUTF8(char* string);
+void String_ToUpperUTF8(char* string);
 
 /// <summary>
 /// Counts the number of occurrences of the specified character sequence in the string.
@@ -144,23 +146,23 @@ _Bool String_Equals(const char* string1, const char* string2);
 char* String_Replace(const char* string, const char* oldSequence, const char* newSequence);
 
 /// <summary>
-/// 
+/// Split the string by the provided chartacter separator. This function modifies the given string.
 /// </summary>
-/// <param name="string"></param>
-/// <param name="sequence"></param>
-/// <param name="listOfNewStrings"></param>
+/// <param name="string">The string to splut</param>
+/// <param name="sequence">The character sequence at which the string is split.</param>
+/// <param name="listOfNewStrings">An ArrayList where to hold the points to the strings.</param>
 /// <returns>Error Code</returns>
-ErrorCode String_Split(char* string, const char* sequence, ArrayList* listOfNewStrings);
+void String_Split(char* string, const char* sequence, ArrayList* listOfNewStrings);
 
 
 // StringBuilder
-ErrorCode StringBuilder_Construct(StringBuilder* builder, size_t capacity);
+void StringBuilder_Construct(StringBuilder* builder, size_t capacity);
 
 StringBuilder* StringBuilder_Construct2(size_t capacity);
 
-ErrorCode StringBuilder_Append(StringBuilder* this, const char* string);
+void StringBuilder_Append(StringBuilder* this, const char* string);
 
-ErrorCode StringBuilder_AppendChar(StringBuilder* this, char character);
+void StringBuilder_AppendChar(StringBuilder* this, char character);
 
 ErrorCode StringBuilder_Insert(StringBuilder* this, const char* string, size_t charIndex);
 
@@ -168,6 +170,6 @@ ErrorCode StringBuilder_InsertChar(StringBuilder* this, char character, size_t c
 
 ErrorCode StringBuilder_Remove(StringBuilder* this, size_t startIndex, size_t endIndex);
 
-ErrorCode StringBuilder_Clear(StringBuilder* this);
+void StringBuilder_Clear(StringBuilder* this);
 
-ErrorCode StringBuilder_Deconstruct(StringBuilder* this);
+void StringBuilder_Deconstruct(StringBuilder* this);
