@@ -146,9 +146,9 @@ _Bool String_Equals(const char* string1, const char* string2);
 char* String_Replace(const char* string, const char* oldSequence, const char* newSequence);
 
 /// <summary>
-/// Split the string by the provided chartacter separator. This function modifies the given string.
+/// Split the string by the provided character separator. This function modifies the given string.
 /// </summary>
-/// <param name="string">The string to splut</param>
+/// <param name="string">The string to split</param>
 /// <param name="sequence">The character sequence at which the string is split.</param>
 /// <param name="listOfNewStrings">An ArrayList where to hold the points to the strings.</param>
 /// <returns>Error Code</returns>

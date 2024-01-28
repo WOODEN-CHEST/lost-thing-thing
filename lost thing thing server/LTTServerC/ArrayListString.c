@@ -1,40 +1,34 @@
-#include "ArrayList.h"
+#include "ArrayListString.h"
 #include "Memory.h"
-#include "ErrorCodes.h"
+#include "Errors.h"
 #include <stdlib.h>
 
 #define ARRAYLIST_CAPACITY_GROWTH 4
 
 // Functions.
 // All objects stored in ArrayList must be on the heap.
-int ArrayList_Construct(ArrayList* arrayList, size_t capacity)
+void ArrayListString_Construct(ArrayListString* self, size_t capacity)
 {
-	if (arrayList == NULL)
-	{
-		return NULL_REFERENCE_ERRCODE;
-	}
 	if (capacity < 1)
 	{
-		capacity = ARRAYLIST_DEFAULT_CAPACITY;
+		capacity = ARRAYLIST_STRING_DEFAULT_CAPACITY;
 	}
 
-	void** Data = Memory_SafeMalloc(sizeof(void*) * capacity);
-
-	arrayList->Data = Data;
-	arrayList->Length = 0;
-	arrayList->_capacity = capacity;
+	self->Data = (char*)Memory_SafeMalloc(sizeof(char*) * capacity);
+	self->Length = 0;
+	self->_capacity = capacity;
 
 	return 0;
 }
 
-ArrayList* ArrayList_Construct2(size_t capacity)
+ArrayListString* ArrayListString_Construct2(size_t capacity)
 {
 	ArrayList* List = Memory_SafeMalloc(sizeof(ArrayList));
 	ArrayList_Construct(List, capacity);
 	return List;
 }
 
-int ArrayList_Deconstruct(ArrayList* this)
+void ArrayLisStringt_Deconstruct(ArrayListString* this)
 {
 	if (this == NULL)
 	{
@@ -46,7 +40,7 @@ int ArrayList_Deconstruct(ArrayList* this)
 	return 0;
 }
 
-static void ArrayList_EnsureCapacity(ArrayList* this, int capacity)
+static void EnsureCapacity(ArrayListString* this, int capacity)
 {
 	if (capacity <= this->_capacity)
 	{
@@ -57,36 +51,23 @@ static void ArrayList_EnsureCapacity(ArrayList* this, int capacity)
 	this->Data = Memory_SafeRealloc(this->Data, sizeof(void*) * this->_capacity);
 }
 
-int ArrayList_Add(ArrayList* this, void* objectPointer)
+void ArrayListString_Add(ArrayListString* this, void* objectPointer)
 {
-	if (this == NULL)
-	{
-		return NULL_REFERENCE_ERRCODE;
-	}
-
-	ArrayList_EnsureCapacity(this, this->Length + 1);
+	EnsureCapacity(this, this->Length + 1);
 	this->Data[this->Length] = objectPointer;
 	this->Length++;
 
 	return 0;
 }
 
-int ArrayList_Insert(ArrayList* this, void* objectPointer, int index)
+ErrorCode ArrayListString_Insert(ArrayListString* this, void* objectPointer, int index)
 {
-	if (this == NULL)
-	{
-		return NULL_REFERENCE_ERRCODE;
-	}
-	if (index < 0)
-	{
-		return INDEX_OUT_OF_RANGE_ERRCODE;
-	}
 	if (index == this->Length)
 	{
 		return ArrayList_Add(this, objectPointer);
 	}
 
-	ArrayList_EnsureCapacity(this, this->Length + 1);
+	EnsureCapacity(this, this->Length + 1);
 
 	for (int i = this->Length; i > index; i--)
 	{
@@ -98,7 +79,7 @@ int ArrayList_Insert(ArrayList* this, void* objectPointer, int index)
 	return 0;
 }
 
-int ArrayList_Remove(ArrayList* this, void* objectPointer)
+int ArrayListString_Remove(ArrayListString* this, void* objectPointer)
 {
 	if (this == NULL)
 	{
@@ -116,7 +97,7 @@ int ArrayList_Remove(ArrayList* this, void* objectPointer)
 	return 0;
 }
 
-int ArrayList_RemoveAt(ArrayList* this, int index)
+int ArrayListString_RemoveAt(ArrayListString* this, int index)
 {
 	if (this == NULL)
 	{
@@ -139,7 +120,7 @@ int ArrayList_RemoveAt(ArrayList* this, int index)
 	return 0;
 }
 
-int ArrayList_RemoveLast(ArrayList* this)
+int ArrayListString_RemoveLast(ArrayListString* this)
 {
 	if (this == NULL)
 	{
@@ -151,12 +132,12 @@ int ArrayList_RemoveLast(ArrayList* this)
 	return 0;
 }
 
-int ArrayList_RemoveFirst(ArrayList* this)
+int ArrayListString_RemoveFirst(ArrayListString* this)
 {
 	return ArrayList_RemoveAt(this, 0);
 }
 
-int ArrayList_Clear(ArrayList* this)
+int ArrayListString_Clear(ArrayListString* this)
 {
 	if (this == NULL)
 	{

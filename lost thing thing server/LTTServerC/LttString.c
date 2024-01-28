@@ -466,6 +466,12 @@ StringBuilder* StringBuilder_Construct2(size_t capacity)
 
 static void StringBuilder_EnsureCapacity(StringBuilder* this, int capacity)
 {
+	if (this->_capacity < capacity)
+	{
+
+	}
+
+
 	while (this->_capacity < capacity)
 	{
 		this->_capacity *= STRING_BUILDER_CAPACITY_GROWTH;
