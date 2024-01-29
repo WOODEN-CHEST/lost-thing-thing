@@ -3,16 +3,20 @@
 #include "File.h"
 #include <stdio.h>
 
+// Static functions.
+
+
+
+// Functions.
 int main()
 {
+	// Start server.
 	Logger_Initialize("C:\\Users\\User\\Desktop\\logs\\log.txt");
 
-	Logger_LogInfo("Info text");
-	Logger_LogWarning("Warning texts");
-	Logger_LogError("Error!");
-	Logger_LogCritical("Critical ops.");
-	Logger_LogInfo("Shutting down.");
 
+
+
+	// Stop server.
 	Logger_Close();
 
 	return 0;

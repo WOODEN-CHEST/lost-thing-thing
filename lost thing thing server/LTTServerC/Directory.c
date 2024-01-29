@@ -1,50 +1,36 @@
 #include "Directory.h"
-#include "ErrorCodes.h"
-#include "ArrayList.h"
 #include "LttString.h"
 #include "Memory.h"
+#include "LTTErrors.h"
 #include <Windows.h>
 #include <sys/stat.h>
+#include <stdbool.h>
 
+
+// Macros.
 #define DIR_NAME_MAX_LENGTH 512
 
-// FUnctions.
-// Functions.
-bool Directory_Exists(char* path)
-{
-	if (path == NULL)
-	{
-		return false;
-	}
 
+// Functions.
+_Bool Directory_Exists(const char* path)
+{
 	struct stat DirectoryStats;
 	int Result = stat(path, &DirectoryStats);
 
 	return Result == 0;
 }
 
-int Directory_Create(char* path)
+ErrorCode Directory_Create(const char* path)
 {
-	if (path == NULL)
-	{
-		return NULL_REFERENCE_ERRCODE;
-	}
-
 	bool Result = CreateDirectoryA(path, NULL);
-
-	return Result ? 0 : IO_ERROR_ERRCODE;
+	return Result ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "Directory_Create: Failed to create directory.");
 }
 
-int Directory_CreateAll(char* path)
+ErrorCode Directory_CreateAll(const char* path)
 {
-	if (path == NULL)
-	{
-		return NULL_REFERENCE_ERRCODE;
-	}
-
 	if (path[0] == '\0')
 	{
-		return 0;
+		return ErrorCode_Success;
 	}
 	char* Path = String_CreateCopy(path);
 
@@ -54,32 +40,27 @@ int Directory_CreateAll(char* path)
 		{
 			char ValueAtIndex = Path[i];
 			Path[i] = '\0';
-			Directory_Create(Path);
+			if (Directory_Create(Path) != ErrorCode_Success)
+			{
+				return Error_GetLastErrorCode();
+			}
 			Path[i] = ValueAtIndex;
 		}
 	}
 
-	return 0;
+	Memory_Free(Path);
+
+	return ErrorCode_Success;
 }
 
-int Directory_Delete(char* path)
+ErrorCode Directory_Delete(const char* path)
 {
-	if (path == NULL)
-	{
-		return NULL_REFERENCE_ERRCODE;
-	}
-
-	bool Result = RemoveDirectory(path);
-	return Result ? 0 : IO_ERROR_ERRCODE;
+	bool Result = RemoveDirectoryA(path);
+	return Result ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "Directory_Delete: Failed to delete directory.");
 }
 
-char* Directory_GetParentDirectory(char* path)
+char* Directory_GetParentDirectory(const char* path)
 {
-	if (path == NULL)
-	{
-		return NULL;
-	}
-
 	char* PathCopy = String_CreateCopy(path);
 
 	int LastSeparatorIndex = 0;
@@ -95,13 +76,8 @@ char* Directory_GetParentDirectory(char* path)
 	return PathCopy;
 }
 
-char* Directory_Combine(char* path1, char* path2)
+char* Directory_Combine(const char* path1, const char* path2)
 {
-	if ((path1 == NULL) || (path2 == NULL))
-	{
-		return NULL;
-	}
-
 	StringBuilder Builder;
 	StringBuilder_Construct(&Builder, DEFAULT_STRING_BUILDER_CAPACITY);
 
@@ -112,27 +88,18 @@ char* Directory_Combine(char* path1, char* path2)
 	return Builder.Data;
 }
 
-char* Directory_GetName(char* path)
+char* Directory_GetName(const char* path)
 {
-	if (path == NULL)
-	{
-		return NULL;
-	}
-
 	int LastSeparatorIndex = 0;
 	int Length = 0;
-	for (int i = 0; path[i] != '\0'; i++)
+	for (; path[Length] != '\0'; Length++)
 	{
-		if (IsPathSeparator(path[i]))
+		if (IsPathSeparator(path[Length]))
 		{
-			LastSeparatorIndex = i;
+			LastSeparatorIndex = Length;
 		}
 		Length++;
 	}
 
-	if (LastSeparatorIndex >= Length)
-	{
-		return "";
-	}
 	return String_SubString(path, LastSeparatorIndex + 1, Length);
 }

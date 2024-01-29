@@ -1,8 +1,6 @@
 #pragma once
 
-#include  <stdio.h>
-#include <stdbool.h>
-#include "ArrayList.h"
+#include "LTTErrors.h"
 
 #define IsPathSeparator(character) (character == '\\') || (character == '/')
 #define PATH_SEPARATOR '/'
@@ -13,35 +11,35 @@
 /// </summary>
 /// <param name="path">A path to a directory.</param>
 /// <returns>true if it exists, otherwise false.</returns>
-bool Directory_Exists(char* path);
+_Bool Directory_Exists(const char* path);
 
 /// <summary>
 /// Creates a directory. All parent directories must already exist for the directory to be created.
 /// </summary>
 /// <param name="path">A path to the directory to be created.</param>
 /// <returns>0 on success, error code on failure.</returns>
-int Directory_Create(char* path);
+ErrorCode Directory_Create(const char* path);
 
 /// <summary>
 /// Creates all directories in a given path.
 /// </summary>
 /// <param name="path">A path to a directory.</param>
 /// <returns>0 on success, error code on failure.</returns>
-int Directory_CreateAll(char* path);
+ErrorCode Directory_CreateAll(const char* path);
 
 /// <summary>
 /// Deletes a directory.
 /// </summary>
 /// <param name="path">The path of the directory to delete.</param>
 /// <returns>0 on success, error code on failure.</returns>
-int Directory_Delete(char* path);
+ErrorCode Directory_Delete(const char* path);
 
 /// <summary>
 /// Returns a path to the parent directory of a directory or file.
 /// </summary>
 /// <param name="path">The path to find the parent directory of.</param>
 /// <returns>The parent directory path (stored on the heap)</returns>
-char* Directory_GetParentDirectory(char* path);
+char* Directory_GetParentDirectory(const char* path);
 
 /// <summary>
 /// Combines the two strings with a '/' (path separator) character in-between. Essentially combines the paths.
@@ -49,11 +47,11 @@ char* Directory_GetParentDirectory(char* path);
 /// <param name="path1">First path</param>
 /// <param name="path2">Second path</param>
 /// <returns>Combined path (stored on the heap)</returns>
-char* Directory_Combine(char* path1, char* path2);
+char* Directory_Combine(const char* path1, const char* path2);
 
 /// <summary>
 /// Gets the name of the final directory or file in a path.
 /// </summary>
 /// <param name="path">The full path of the file or directory.</param>
 /// <returns>Name of the file or directory (stored on the heap)</returns>
-char* Directory_GetName(char* path);
+char* Directory_GetName(const char* path);

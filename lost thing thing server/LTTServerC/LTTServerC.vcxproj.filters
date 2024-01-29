@@ -33,6 +33,9 @@
     <Filter Include="Source Files\IO\Logger">
       <UniqueIdentifier>{ca543281-98ad-4a03-ae1c-9fb08298a8ce}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\HTML">
+      <UniqueIdentifier>{7d421201-f029-421f-af53-754e47c38cd7}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LTTServerC.c">
@@ -85,14 +88,14 @@
     <ClInclude Include="LttString.h">
       <Filter>Source Files\String</Filter>
     </ClInclude>
-    <ClInclude Include="LttIO.h">
-      <Filter>Source Files\IO</Filter>
-    </ClInclude>
     <ClInclude Include="LttCommon.h">
       <Filter>Source Files</Filter>
     </ClInclude>
     <ClInclude Include="Logger.h">
       <Filter>Source Files\IO\Logger</Filter>
+    </ClInclude>
+    <ClInclude Include="LTTHTML.h">
+      <Filter>Source Files\HTML</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
