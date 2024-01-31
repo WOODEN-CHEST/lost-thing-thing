@@ -6,12 +6,11 @@
 // Static functions.
 
 
-
 // Functions.
 int main()
 {
 	// Start server.
-	Logger_Initialize("C:\\Users\\User\\Desktop\\logs\\log.txt");
+	Logger_Initialize("C:/Users/KČerņavskis/Desktop/logs");
 
 
 

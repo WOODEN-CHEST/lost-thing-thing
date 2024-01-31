@@ -4,8 +4,6 @@
 #include <WinSock2.h>
 #include "LttCommon.h"
 
-#pragma comment(lib, "Ws2_32.lib")
-
 
 static char* RequestMessageBuffer;
 #define REQUEST_MESSAGE_BUFFER_LENGTH 16384

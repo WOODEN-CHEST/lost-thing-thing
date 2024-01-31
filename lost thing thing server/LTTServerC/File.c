@@ -100,60 +100,30 @@ FILE* File_Open(char* path, File_OpenMode mode)
 	return File;
 }
 
-int File_Write(FILE* file, char* data, size_t dataLength)
+ErrorCode File_Write(FILE* file, char* data, size_t dataLength)
 {
-	if ((file == NULL) || (data == NULL))
-	{
-		return NULL_REFERENCE_ERRCODE;
-	}
-
 	size_t Result = fwrite(data, 1, dataLength, file);
-
-	return Result != dataLength ? IO_ERROR_ERRCODE : 0;
+	return Result == dataLength ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "File_Write: Failed to write bytes to file.");
 }
 
-int File_WriteString(FILE* file, char* string)
+ErrorCode File_WriteString(FILE* file, char* string)
 {
-	if ((file == NULL) || (string == NULL))
-	{
-		return NULL_REFERENCE_ERRCODE;
-	}
-
 	int Result = fputs(string, file);
-
-	return Result != EOF ? 0 : IO_ERROR_ERRCODE;
+	return Result != EOF ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "File_WriteString: Failed to write string to file.");
 }
 
-int File_Flush(FILE* file)
+ErrorCode File_Flush(FILE* file)
 {
-	if (file == NULL)
-	{
-		return NULL_REFERENCE_ERRCODE;
-	}
-
 	int Success = fflush(file);
 
-	if (Success != 0)
-	{
-		return IO_ERROR_ERRCODE;
-	}
-	return 0;
+	return Success == 0 ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "File_Flush: Failed to flush file.");
 }
 
-int File_Close(FILE* file)
+ErrorCode File_Close(FILE* file)
 {
-	if (file == NULL)
-	{
-		return NULL_REFERENCE_ERRCODE;
-	}
-
 	int Success = fclose(file);
 
-	if (Success != 0)
-	{
-		return IO_ERROR_ERRCODE;
-	}
-	return 0;
+	return Success == 0 ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "File_Close: Failed to close file.");
 }
 
 char* File_ReadAllText(FILE* file)

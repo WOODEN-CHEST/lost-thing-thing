@@ -407,41 +407,41 @@ char* String_Replace(char* string, char* oldSequence, char* newSequence)
 	return Builder.Data;
 }
 
-void String_Split(char* string, const char* sequence, ArrayList* listOfNewStrings)
-{
-	int SequenceStartIndex = 0;
-	int StringStartIndex = 0;
-	for (int Index = 0, SequenceIndex = 0; string[Index] != '\0'; Index++)
-	{
-		if (string[Index] == sequence[SequenceIndex])
-		{
-			if (SequenceIndex == 0)
-			{
-				SequenceStartIndex = Index;
-			}
-
-			SequenceIndex++;
-
-			if (sequence[SequenceIndex] == '\0')
-			{
-				SequenceIndex = 0;
-
-				string[SequenceStartIndex] = '\0';
-				ArrayList_Add(listOfNewStrings, string + StringStartIndex);
-				StringStartIndex = Index + 1;
-			}
-		}
-		else
-		{
-			SequenceIndex = 0;
-		}
-	}
-
-	if (string[StringStartIndex] != '\0')
-	{
-		ArrayList_Add(listOfNewStrings, string + StringStartIndex);
-	}
-}
+//char** String_Split(char* string, const char* sequence, int* listOfNewStrings)
+//{
+//	int SequenceStartIndex = 0;
+//	int StringStartIndex = 0;
+//	for (int Index = 0, SequenceIndex = 0; string[Index] != '\0'; Index++)
+//	{
+//		if (string[Index] == sequence[SequenceIndex])
+//		{
+//			if (SequenceIndex == 0)
+//			{
+//				SequenceStartIndex = Index;
+//			}
+//
+//			SequenceIndex++;
+//
+//			if (sequence[SequenceIndex] == '\0')
+//			{
+//				SequenceIndex = 0;
+//
+//				string[SequenceStartIndex] = '\0';
+//				ArrayList_Add(listOfNewStrings, string + StringStartIndex);
+//				StringStartIndex = Index + 1;
+//			}
+//		}
+//		else
+//		{
+//			SequenceIndex = 0;
+//		}
+//	}
+//
+//	if (string[StringStartIndex] != '\0')
+//	{
+//		ArrayList_Add(listOfNewStrings, string + StringStartIndex);
+//	}
+//}
 
 // StringBuilder
 void StringBuilder_Construct(StringBuilder* builder, size_t capacity)

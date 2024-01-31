@@ -9,8 +9,6 @@ static bool IsRandomInitialized = false;
 
 
 // Functions.
-
-
 static void Math_InitRandom()
 {
 	if (IsRandomInitialized)

@@ -1,5 +1,4 @@
 #pragma once
-#include "ArrayList.h"
 #include "LttErrors.h"
 
 
@@ -152,7 +151,7 @@ char* String_Replace(const char* string, const char* oldSequence, const char* ne
 /// <param name="sequence">The character sequence at which the string is split.</param>
 /// <param name="listOfNewStrings">An ArrayList where to hold the points to the strings.</param>
 /// <returns>Error Code</returns>
-void String_Split(char* string, const char* sequence, ArrayList* listOfNewStrings);
+//char** String_Split(char* string, const char* sequence, int* splitStringCount);
 
 
 // StringBuilder
