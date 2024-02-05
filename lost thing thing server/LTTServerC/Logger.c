@@ -44,24 +44,23 @@ static void AddTwoDigitNumber(StringBuilder* builder, int number, char separator
 static void AddDateTime(StringBuilder* builder)
 {
 	time_t CurrentTime = time(NULL);
-	struct tm DateTime;
-	localtime(&DateTime, &CurrentTime);
+	struct tm* DateTime = localtime(&CurrentTime);
 
 	StringBuilder_AppendChar(builder, '[');
 
 	char Year[LOG_TEMP_BUFFER_SIZE];
-	sprintf_s(Year, LOG_TEMP_BUFFER_SIZE, "%i", DateTime.tm_year + YEAR_MEASURE_START);
+	sprintf_s(Year, LOG_TEMP_BUFFER_SIZE, "%i", DateTime->tm_year + YEAR_MEASURE_START);
 	StringBuilder_Append(builder, Year);
 	StringBuilder_Append(builder, "y;");
 	
-	AddTwoDigitNumber(builder, DateTime.tm_mon, 0);
+	AddTwoDigitNumber(builder, DateTime->tm_mon, 0);
 	StringBuilder_Append(builder, "m;");
-	AddTwoDigitNumber(builder, DateTime.tm_mday, 0);
+	AddTwoDigitNumber(builder, DateTime->tm_mday, 0);
 	StringBuilder_Append(builder, "d][");
 
-	AddTwoDigitNumber(builder, DateTime.tm_hour, ':');
-	AddTwoDigitNumber(builder, DateTime.tm_min, ':');
-	AddTwoDigitNumber(builder, DateTime.tm_sec, 0);
+	AddTwoDigitNumber(builder, DateTime->tm_hour, ':');
+	AddTwoDigitNumber(builder, DateTime->tm_min, ':');
+	AddTwoDigitNumber(builder, DateTime->tm_sec, 0);
 	StringBuilder_AppendChar(builder, ']');
 }
 
@@ -124,16 +123,15 @@ static void BackupLog(const char* oldLogFilePath, const char* logRootDirectoryPa
 
 	struct stat FileInfo;
 	stat(oldLogFilePath, &FileInfo);
-	struct tm Time;
-	localtime(&FileInfo.st_mtime);
+	struct tm* Time = localtime(&FileInfo.st_mtime);
 
 	char NumberBuffer[16];
-	sprintf(NumberBuffer, "%d", Time.tm_year + YEAR_MEASURE_START);
+	sprintf(NumberBuffer, "%d", Time->tm_year + YEAR_MEASURE_START);
 	StringBuilder_Append(&FileNameBuilder, NumberBuffer);
 	StringBuilder_AppendChar(&FileNameBuilder, 'y');
-	AddTwoDigitNumber(&FileNameBuilder, Time.tm_mon + YEAR_MEASURE_START, '\0');
+	AddTwoDigitNumber(&FileNameBuilder, Time->tm_mon + YEAR_MEASURE_START, '\0');
 	StringBuilder_AppendChar(&FileNameBuilder, 'm');
-	AddTwoDigitNumber(&FileNameBuilder, Time.tm_mday + YEAR_MEASURE_START, '\0');
+	AddTwoDigitNumber(&FileNameBuilder, Time->tm_mday + YEAR_MEASURE_START, '\0');
 	StringBuilder_AppendChar(&FileNameBuilder, 'd');
 	StringBuilder_Append(&FileNameBuilder, " 1");
 	size_t LogNumberCharIndex = FileNameBuilder.Length - 1;

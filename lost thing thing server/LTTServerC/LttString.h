@@ -1,5 +1,6 @@
 #pragma once
 #include "LttErrors.h"
+#include <stddef.h>
 
 
 // Macros.

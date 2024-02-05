@@ -161,7 +161,7 @@ char* File_ReadAllData(FILE* file, size_t* dataLength)
 
 }
 
-bool File_Exists(char* path)
+_Bool File_Exists(char* path)
 {
 	struct stat FileStats;
 	return !stat(path, &FileStats);

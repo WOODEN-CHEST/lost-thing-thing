@@ -2,9 +2,11 @@
 #include "LttString.h"
 #include "Memory.h"
 #include "LTTErrors.h"
-#include <Windows.h>
 #include <sys/stat.h>
 #include <stdbool.h>
+
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
 
 
 // Macros.
