@@ -2,6 +2,7 @@
 #include "LttCommon.h"
 #include "File.h"
 #include <stdio.h>
+#include "HttpListener.h"
 
 // Static functions.
 
@@ -9,10 +10,13 @@
 // Functions.
 int main()
 {
-	// Start server.
+	// Initialize components.
+	Error_InitErrorHandling();
 	Logger_Initialize("C:/Users/KČerņavskis/Desktop/logs");
+	Logger_LogInfo("Starting server...");
 
-
+	// Start server.
+	HttpListener_MainLoop();
 
 
 	// Stop server.

@@ -12,6 +12,7 @@ enum ErrorCodeEnum
 	ErrorCode_IllegalState,
 	ErrorCode_IO,
 	ErrorCode_IndexOutOfRange,
+	ErrorCode_SocketError,
 
 	ErrorCode_Unknown
 };

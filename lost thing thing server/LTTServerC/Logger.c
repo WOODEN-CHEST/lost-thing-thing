@@ -6,7 +6,6 @@
 #include <stdbool.h>
 #include <time.h>
 #include <sys/stat.h>
-#include <Windows.h>
 
 
 // Macros.
@@ -129,9 +128,9 @@ static void BackupLog(const char* oldLogFilePath, const char* logRootDirectoryPa
 	sprintf(NumberBuffer, "%d", Time->tm_year + YEAR_MEASURE_START);
 	StringBuilder_Append(&FileNameBuilder, NumberBuffer);
 	StringBuilder_AppendChar(&FileNameBuilder, 'y');
-	AddTwoDigitNumber(&FileNameBuilder, Time->tm_mon + YEAR_MEASURE_START, '\0');
+	AddTwoDigitNumber(&FileNameBuilder, Time->tm_mon, '\0');
 	StringBuilder_AppendChar(&FileNameBuilder, 'm');
-	AddTwoDigitNumber(&FileNameBuilder, Time->tm_mday + YEAR_MEASURE_START, '\0');
+	AddTwoDigitNumber(&FileNameBuilder, Time->tm_mday, '\0');
 	StringBuilder_AppendChar(&FileNameBuilder, 'd');
 	StringBuilder_Append(&FileNameBuilder, " 1");
 	size_t LogNumberCharIndex = FileNameBuilder.Length - 1;
@@ -141,7 +140,7 @@ static void BackupLog(const char* oldLogFilePath, const char* logRootDirectoryPa
 
 	while (File_Exists(FileNameBuilder.Data))
 	{
-		StringBuilder_Remove(&FileNameBuilder, LogNumberCharIndex, CountDigitsInInt(LogNumber));
+		StringBuilder_Remove(&FileNameBuilder, LogNumberCharIndex, LogNumberCharIndex + CountDigitsInInt(LogNumber));
 		LogNumber++;
 		sprintf(NumberBuffer, "%d", LogNumber);
 		StringBuilder_Insert(&FileNameBuilder, NumberBuffer, LogNumberCharIndex);
@@ -173,7 +172,7 @@ ErrorCode Logger_Initialize(const char* rootDirectoryPath)
 
 	// Create current log  file.
 	File_Delete(LogFilePath);
-	_logFile = File_Open(rootDirectoryPath, FileOpenMode_Write);
+	_logFile = File_Open(LogFilePath, FileOpenMode_Write);
 
 	if (_logFile == NULL)
 	{

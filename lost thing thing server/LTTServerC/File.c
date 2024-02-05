@@ -1,6 +1,6 @@
 #include "File.h"
 #include "LttString.h"
-#include "Errors.h"
+#include "LttErrors.h"
 #include "Memory.h"
 #include <stdio.h>
 #include <stdbool.h>

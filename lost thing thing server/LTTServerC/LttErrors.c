@@ -81,6 +81,10 @@ ErrorCode Error_SetError(int code, const char* message)
 		case ErrorCode_IndexOutOfRange:
 			strcpy(ErrorName, "Index Out of Range Error. ");
 			break;
+
+		case ErrorCode_SocketError:
+			strcpy(ErrorName, "Socket Error. ");
+			break;
 		
 		default:
 			strcpy(ErrorName, "Unknown Error. ");

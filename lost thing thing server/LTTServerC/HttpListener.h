@@ -1,3 +1,4 @@
 #pragma once
+#include "LttErrors.h"
 
-void Main();
+ErrorCode HttpListener_MainLoop();

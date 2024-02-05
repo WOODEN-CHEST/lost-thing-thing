@@ -3,22 +3,63 @@
 #include <WS2tcpip.h>
 #include <WinSock2.h>
 #include "LttCommon.h"
+#include "LttErrors.h"
+#include <stdbool.h>
 
 
-static char* RequestMessageBuffer;
+// Macros.
 #define REQUEST_MESSAGE_BUFFER_LENGTH 16384
+#define TARGET_WSA_VERSION_MAJOR 2
+#define TARGET_WSA_VERSION_MINOR 2
 
-void Main()
+
+// Static functions.
+static void ListenForClient()
+{
+	char* RequestMessage = Memory_SafeMalloc(REQUEST_MESSAGE_BUFFER_LENGTH);
+	bool CloseServer = false;
+
+	while (!CloseServer)
+	{
+
+	}
+}
+
+
+// Functions.
+ErrorCode HttpListener_MainLoop()
 {
 	// Startup.
 	WSADATA	WinSocketData;
-		
-	int Result = WSAStartup(MAKEWORD(2, 2), &WinSocketData);
-	if (Result != 0)
+	int Result = WSAStartup(MAKEWORD(TARGET_WSA_VERSION_MAJOR, TARGET_WSA_VERSION_MINOR), &WinSocketData);
+	if (!Result)
 	{
-		return;
+		switch (Result)
+		{
+			case WSASYSNOTREADY:
+				return Error_SetError(ErrorCode_SocketError, "System not ready for network communication");
+				break;
+
+			case WSAVERNOTSUPPORTED:
+				return Error_SetError(ErrorCode_SocketError, "Version not supported.");
+				break;
+
+			case WSAEINPROGRESS:
+				return Error_SetError(ErrorCode_SocketError, "Blocking windows sockets operation in progress.");
+				break;
+
+			case WSAEPROCLIM:
+				return Error_SetError(ErrorCode_SocketError, "Maximum number of sockets reached.");
+				break;
+
+			case WSAEFAULT:
+				return Error_SetError(ErrorCode_SocketError, "Invalid WSDATA pointer.");
+				break;
+
+			default:
+				return Error_SetError(ErrorCode_SocketError, "Unknown WSA error.");
+		}
 	}
-	RequestMessageBuffer = Memory_SafeMalloc(REQUEST_MESSAGE_BUFFER_LENGTH);
 
 	// Create socket.
 	SOCKET Socket = INVALID_SOCKET;
@@ -26,17 +67,17 @@ void Main()
 
 	if (Socket == INVALID_SOCKET)
 	{
-		return;
+		char ErrorMessage[128];
+		sprintf(ErrorMessage, "Failed to create socket. Code: %d", WSAGetLastError());
+		return Error_SetError(ErrorCode_SocketError, ErrorMessage);
 	}
 
-	// Address.
+	// Setup address.
 	struct sockaddr_in Address;
 	ZeroMemory(&Address, sizeof(Address));
 	Address.sin_family = AF_INET;
 	Address.sin_port = htons(80);
 	inet_pton(AF_INET, "127.0.0.1", &Address.sin_addr.S_un.S_addr);
-
-
 
 	// Bind socket.
 	Result = bind(Socket, &Address, sizeof(Address));
@@ -46,6 +87,8 @@ void Main()
 	}
 
 	// Listen.
+	ListenForClient();
+
 	Result = listen(Socket, SOMAXCONN);
 	if (Result == SOCKET_ERROR)
 	{
@@ -68,6 +111,6 @@ void Main()
 	char DataToSend[] = "<!DOCTYPE html> <html lang=\"lv\"><body><h1>Hello World!</h1></body></html>";
 	send(ClientSocket, DataToSend, String_LengthBytes(DataToSend), 0);
 
-	
-	int a = 5;
+	closesocket(ClientSocket);
+	WSACleanup();
 }

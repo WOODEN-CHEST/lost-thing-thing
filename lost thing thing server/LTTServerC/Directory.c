@@ -1,12 +1,12 @@
+#define WIN32_LEAN_AND_MEAN
+#include <Windows.h>
+
 #include "Directory.h"
 #include "LttString.h"
 #include "Memory.h"
 #include "LTTErrors.h"
 #include <sys/stat.h>
 #include <stdbool.h>
-
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
 
 
 // Macros.
@@ -42,13 +42,12 @@ ErrorCode Directory_CreateAll(const char* path)
 		{
 			char ValueAtIndex = Path[i];
 			Path[i] = '\0';
-			if (Directory_Create(Path) != ErrorCode_Success)
-			{
-				return Error_GetLastErrorCode();
-			}
+			Directory_Create(Path);
 			Path[i] = ValueAtIndex;
 		}
 	}
+
+	Directory_Create(path);
 
 	Memory_Free(Path);
 
