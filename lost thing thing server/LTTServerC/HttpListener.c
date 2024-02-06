@@ -7,6 +7,13 @@
 #include <stdbool.h>
 
 
+// Types.
+typedef struct HttpRequestStruct
+{
+	char Method[8];
+} HttpRequest;
+
+
 // Macros.
 #define REQUEST_MESSAGE_BUFFER_LENGTH 16384
 #define TARGET_WSA_VERSION_MAJOR 2
@@ -14,15 +21,56 @@
 
 
 // Static functions.
-static void ListenForClient()
+static bool ReadHttpRequest(const char* message, HttpRequest* finalRequest)
+{
+
+}
+
+static const char* HandleHttpRequest(HttpRequest* resuest)
+{
+	return "<!DOCTYPE html> <html lang=\"lv\"><body><h1>Hello World!</h1></body></html>";
+}
+
+static ErrorCode SetSocketError(const char* message, int wsaCode)
+{
+	char ErrorMessage[128];
+	sprintf(ErrorMessage, "%s (Code: %d)", message, wsaCode);
+	return Error_SetError(ErrorCode_SocketError, ErrorMessage);
+}
+
+static ErrorCode AcceptClients(SOCKET serverSocket)
 {
 	char* RequestMessage = Memory_SafeMalloc(REQUEST_MESSAGE_BUFFER_LENGTH);
-	bool CloseServer = false;
 
-	while (!CloseServer)
+	while (1)
 	{
+		// Accept client.
+		SOCKET ClientSocket;
+		ClientSocket = accept(serverSocket, NULL, NULL);
+		if (ClientSocket == INVALID_SOCKET)
+		{
+			return SetSocketError("Failed to accept client.", WSAGetLastError());
+		}
 
+		int ReceivedLength = recv(ClientSocket, RequestMessage, REQUEST_MESSAGE_BUFFER_LENGTH - 1, 0);
+		RequestMessage[ReceivedLength] = '\0';
+
+		// Process.
+		HttpRequest Request;
+		if (ReadHttpRequest(RequestMessage, &Request))
+		{
+			const char* Response = HandleHttpRequest(&Request);
+			send(ClientSocket, Response, (int)String_LengthBytes(Response), NULL);
+		}
+
+		// Close connection.
+		if (closesocket(ClientSocket) == SOCKET_ERROR)
+		{
+			return SetSocketError("Failed to close the socket.", WSAGetLastError());
+		}
 	}
+
+	return ErrorCode_Success;
 }
 
 
@@ -32,33 +80,9 @@ ErrorCode HttpListener_MainLoop()
 	// Startup.
 	WSADATA	WinSocketData;
 	int Result = WSAStartup(MAKEWORD(TARGET_WSA_VERSION_MAJOR, TARGET_WSA_VERSION_MINOR), &WinSocketData);
-	if (!Result)
+	if (Result)
 	{
-		switch (Result)
-		{
-			case WSASYSNOTREADY:
-				return Error_SetError(ErrorCode_SocketError, "System not ready for network communication");
-				break;
-
-			case WSAVERNOTSUPPORTED:
-				return Error_SetError(ErrorCode_SocketError, "Version not supported.");
-				break;
-
-			case WSAEINPROGRESS:
-				return Error_SetError(ErrorCode_SocketError, "Blocking windows sockets operation in progress.");
-				break;
-
-			case WSAEPROCLIM:
-				return Error_SetError(ErrorCode_SocketError, "Maximum number of sockets reached.");
-				break;
-
-			case WSAEFAULT:
-				return Error_SetError(ErrorCode_SocketError, "Invalid WSDATA pointer.");
-				break;
-
-			default:
-				return Error_SetError(ErrorCode_SocketError, "Unknown WSA error.");
-		}
+		return SetSocketError("WSA startup failed.", Result);
 	}
 
 	// Create socket.
@@ -67,9 +91,7 @@ ErrorCode HttpListener_MainLoop()
 
 	if (Socket == INVALID_SOCKET)
 	{
-		char ErrorMessage[128];
-		sprintf(ErrorMessage, "Failed to create socket. Code: %d", WSAGetLastError());
-		return Error_SetError(ErrorCode_SocketError, ErrorMessage);
+		return SetSocketError("Failed to create socket.", WSAGetLastError());
 	}
 
 	// Setup address.
@@ -80,37 +102,27 @@ ErrorCode HttpListener_MainLoop()
 	inet_pton(AF_INET, "127.0.0.1", &Address.sin_addr.S_un.S_addr);
 
 	// Bind socket.
-	Result = bind(Socket, &Address, sizeof(Address));
-	if (Result == SOCKET_ERROR)
+	if (bind(Socket, &Address, sizeof(Address)) == SOCKET_ERROR)
 	{
-		return;
+		return SetSocketError("Failed to bind socket.", WSAGetLastError());;
 	}
 
 	// Listen.
-	ListenForClient();
-
-	Result = listen(Socket, SOMAXCONN);
-	if (Result == SOCKET_ERROR)
+	if (listen(Socket, SOMAXCONN) == SOCKET_ERROR)
 	{
-		return;
-	}
-
-	// Accept.
-	SOCKET ClientSocket = INVALID_SOCKET;
-	ClientSocket = accept(Socket, NULL, NULL);
-
-	if (ClientSocket == INVALID_SOCKET)
-	{
-		return;
+		return SetSocketError("Failed to listen to client.", WSAGetLastError());
 	}
 
 
-	int Length = recv(ClientSocket, RequestMessageBuffer, 1000, 0);
-	RequestMessageBuffer[Length] = '\0';
+	if (AcceptClients(Socket) != ErrorCode_Success)
+	{
+		return Error_GetLastErrorCode();
+	}
 
-	char DataToSend[] = "<!DOCTYPE html> <html lang=\"lv\"><body><h1>Hello World!</h1></body></html>";
-	send(ClientSocket, DataToSend, String_LengthBytes(DataToSend), 0);
 
-	closesocket(ClientSocket);
-	WSACleanup();
+	// End.
+	if (WSACleanup() == SOCKET_ERROR)
+	{
+		return SetSocketError("Failed to accept client.", WSAGetLastError());
+	}
 }

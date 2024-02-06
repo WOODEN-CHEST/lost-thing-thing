@@ -513,7 +513,7 @@ ErrorCode StringBuilder_Insert(StringBuilder* this, char* string, size_t charInd
 	const int StringLength = String_LengthBytes(string);
 	if (StringLength == 0)
 	{
-		return 0;
+		return ErrorCode_Success;
 	}
 
 	StringBuilder_EnsureCapacity(this, this->Length + 1 + StringLength);
@@ -531,7 +531,7 @@ ErrorCode StringBuilder_Insert(StringBuilder* this, char* string, size_t charInd
 	this->Length += StringLength;
 	this->Data[this->Length] = '\0';
 
-	return 0;
+	return ErrorCode_Success;
 }
 
 ErrorCode StringBuilder_InsertChar(StringBuilder* this, char character, size_t charIndex)
@@ -550,7 +550,7 @@ ErrorCode StringBuilder_InsertChar(StringBuilder* this, char character, size_t c
 	this->Length += 1;
 	this->Data[this->Length] = '\0';
 
-	return 0;
+	return ErrorCode_Success;
 }
 
 ErrorCode StringBuilder_Remove(StringBuilder* this, size_t startIndex, size_t endIndex)
@@ -571,7 +571,7 @@ ErrorCode StringBuilder_Remove(StringBuilder* this, size_t startIndex, size_t en
 	int RemovedLength = endIndex - startIndex;
 	if (RemovedLength == 0)
 	{
-		return;
+		return ErrorCode_Success;
 	}
 	
 	for (int i = endIndex; i < this->Length; i++)
@@ -582,15 +582,13 @@ ErrorCode StringBuilder_Remove(StringBuilder* this, size_t startIndex, size_t en
 	this->Length -= RemovedLength;
 	this->Data[this->Length] = '\0';
 
-	return 0;
+	return ErrorCode_Success;
 }
 
 void StringBuilder_Clear(StringBuilder* this)
 {
 	this->Length = 0;
 	this->Data[0] = '\0';
-
-	return 0;
 }
 
 void StringBuilder_Deconstruct(StringBuilder* this)

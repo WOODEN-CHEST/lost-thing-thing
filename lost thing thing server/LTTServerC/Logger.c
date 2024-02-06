@@ -220,6 +220,7 @@ ErrorCode Logger_Log(Logger_LogLevel level, char* string)
 	StringBuilder_AppendChar(&_textBuilder, '\n');
 
 	File_WriteString(_logFile, _textBuilder.Data);
+	printf(_textBuilder.Data);
 
 	StringBuilder_Clear(&_textBuilder);
 

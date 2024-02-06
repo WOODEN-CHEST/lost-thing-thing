@@ -31,9 +31,9 @@ char* File_ReadAllText(FILE* file);
 
 char* File_ReadAllData(FILE* file, size_t* dataLength);
 
-ErrorCode File_Write(FILE* file, char* data, size_t dataLength);
+ErrorCode File_Write(FILE* file, const char* data, size_t dataLength);
 
-ErrorCode File_WriteText(FILE* file, char* string);
+ErrorCode File_WriteText(FILE* file, const char* string);
 
 ErrorCode File_WriteByte(FILE* file, char byte);
 
