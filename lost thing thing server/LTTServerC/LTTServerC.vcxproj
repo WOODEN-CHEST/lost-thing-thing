@@ -137,6 +137,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="ConfigFile.c" />
     <ClCompile Include="Directory.c" />
     <ClCompile Include="LttErrors.c" />
     <ClCompile Include="File.c" />
@@ -148,6 +149,7 @@
     <ClCompile Include="Memory.c" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="ConfigFile.h" />
     <ClInclude Include="Directory.h" />
     <ClInclude Include="LttErrors.h" />
     <ClInclude Include="File.h" />

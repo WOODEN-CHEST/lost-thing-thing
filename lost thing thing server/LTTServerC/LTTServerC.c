@@ -5,6 +5,8 @@
 #include "HttpListener.h"
 #include <signal.h>
 #include <Stdlib.h>
+#include "ConfigFile.h"
+#include "Directory.h"
 
 // Static functions.
 static void Close(int sig)
@@ -15,7 +17,7 @@ static void Close(int sig)
 }
 
 // Functions.
-int main()
+int main(int argc, const char** argv)
 {
 	// Initialize components.
 	Error_InitErrorHandling();
@@ -25,8 +27,16 @@ int main()
 	signal(SIGINT, &Close);
 	signal(SIGTERM, &Close);
 
+
+	// Load config.
+	char* ServerPath = argv[0];
+	ServerConfig Config;
+	char* ConfigPath = Directory_Combine(ServerPath, SERVER_CONFIG_FILE_NAME);
+	ServerConfig_Read(ConfigPath, &Config);
+
+
 	// Start server.
-	ErrorCode Error = HttpListener_MainLoop();
+	ErrorCode Error = HttpListener_Listen();
 	if (Error != ErrorCode_Success)
 	{
 		Logger_LogInfo(Error_GetLastErrorMessage());

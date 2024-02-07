@@ -11,6 +11,8 @@
 typedef struct HttpRequestStruct
 {
 	char Method[8];
+	char Request[256];
+	bool KeepAlive;
 } HttpRequest;
 
 
@@ -19,14 +21,23 @@ typedef struct HttpRequestStruct
 #define TARGET_WSA_VERSION_MAJOR 2
 #define TARGET_WSA_VERSION_MINOR 2
 
+#define IsWhitespace(character) (1 <= character) && (character <= 32)
+
 
 // Static functions.
-static bool ReadHttpRequest(const char* message, HttpRequest* finalRequest)
+static const char* ReadMethod(const char** message, HttpRequest* finalRequest)
 {
-
+	for (int i = 0; i < sizeof(finalRequest->Method); i++, (*message)++)
+	{
+	}
 }
 
-static const char* HandleHttpRequest(HttpRequest* resuest)
+static bool ReadHttpRequest(const char* message, HttpRequest* finalRequest)
+{
+	ReadMethod(&message, finalRequest);
+}
+
+static char* HandleHttpRequest(HttpRequest* resuest)
 {
 	return "<!DOCTYPE html> <html lang=\"lv\"><body><h1>Hello World!</h1></body></html>";
 }
@@ -75,7 +86,7 @@ static ErrorCode AcceptClients(SOCKET serverSocket)
 
 
 // Functions.
-ErrorCode HttpListener_MainLoop()
+ErrorCode HttpListener_Listen(const char* address)
 {
 	// Startup.
 	WSADATA	WinSocketData;
@@ -99,7 +110,7 @@ ErrorCode HttpListener_MainLoop()
 	ZeroMemory(&Address, sizeof(Address));
 	Address.sin_family = AF_INET;
 	Address.sin_port = htons(80);
-	inet_pton(AF_INET, "127.0.0.1", &Address.sin_addr.S_un.S_addr);
+	inet_pton(AF_INET, address, &Address.sin_addr.S_un.S_addr);
 
 	// Bind socket.
 	if (bind(Socket, &Address, sizeof(Address)) == SOCKET_ERROR)
@@ -112,7 +123,6 @@ ErrorCode HttpListener_MainLoop()
 	{
 		return SetSocketError("Failed to listen to client.", WSAGetLastError());
 	}
-
 
 	if (AcceptClients(Socket) != ErrorCode_Success)
 	{
