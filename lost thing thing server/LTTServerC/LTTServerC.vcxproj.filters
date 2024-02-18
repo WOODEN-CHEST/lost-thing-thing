@@ -68,6 +68,9 @@
     <ClCompile Include="ConfigFile.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="LTTHTML.c">
+      <Filter>Source Files\HTML</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LttErrors.h">

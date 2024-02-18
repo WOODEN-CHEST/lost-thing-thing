@@ -143,6 +143,7 @@
     <ClCompile Include="File.c" />
     <ClCompile Include="HttpListener.c" />
     <ClCompile Include="Logger.c" />
+    <ClCompile Include="LTTHTML.c" />
     <ClCompile Include="LTTServerC.c" />
     <ClCompile Include="LttString.c" />
     <ClCompile Include="Math.c" />
