@@ -7,7 +7,7 @@
 #include <Stdlib.h>
 #include "ConfigFile.h"
 #include "Directory.h"
-#include "LTTHTML.h"
+#include "Memory.h"
 
 // Static functions.
 static void Close(int sig)
@@ -22,7 +22,14 @@ int main(int argc, const char** argv)
 {
 	// Initialize components.
 	Error_InitErrorHandling();
-	Logger_Initialize("C:/Users/KČerņavskis/Desktop/logs");
+
+	char* RootDirectory = Directory_GetParentDirectory(argv[0]);
+
+	if (Logger_Initialize(RootDirectory) != ErrorCode_Success)
+	{
+		printf("Failed to initialize logger.");
+		return EXIT_FAILURE;
+	};
 	Logger_LogInfo("Starting server...");
 
 	signal(SIGINT, &Close);
@@ -30,33 +37,21 @@ int main(int argc, const char** argv)
 
 
 	// Load config.
-	char* ServerPath = argv[0];
 	ServerConfig Config;
-	char* ConfigPath = Directory_Combine(ServerPath, SERVER_CONFIG_FILE_NAME);
+	char* ConfigPath = Directory_Combine(RootDirectory, SERVER_CONFIG_FILE_NAME);
 	ServerConfig_Read(ConfigPath, &Config);
-
-	HTMLDocument Document;
-	HTMLDocument_Construct(&Document);
-
-	HTMLElement* Para = HTMLElement_AddElement(Document.Body, "p");
-	HTMLElement_SetAttribute(Para, "id", "MyID");
-	HTMLElement_SetAttribute(Document.Body, "onClick", "myFunc(this)");
-
-	char* HTML = HTMLDocument_ToString(&Document);
-
-	HTMLElement* Element = HTMLDocument_GetElementByID(&Document, "MyID");
-
 
 
 	// Start server.
-	//ErrorCode Error = HttpListener_Listen();
-	//if (Error != ErrorCode_Success)
-	//{
-	//	Logger_LogInfo(Error_GetLastErrorMessage());
-	//}
+	ErrorCode Error = HttpListener_Listen();
+	if (Error != ErrorCode_Success)
+	{
+		Logger_LogInfo(Error_GetLastErrorMessage());
+	}
 
 	// Stop server.
 	Close(SIGTERM);
+	Memory_Free(RootDirectory);
 
 	return 0;
 }

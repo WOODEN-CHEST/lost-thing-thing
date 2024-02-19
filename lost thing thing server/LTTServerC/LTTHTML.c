@@ -31,6 +31,8 @@
 #define ATTRIBUTE_CLASS "class"
 #define ATTRIBUTE_ID "id"
 
+#define NOT_FOUND_INDEX -1
+
 #define CAPACITY_GROWTH 2
 
 
@@ -178,6 +180,11 @@ char* HTMLDocument_ToString(HTMLDocument* document)
 	return Builder.Data;
 }
 
+void HTMLDocument_Deconstruct(HTMLDocument* document)
+{
+	HTMLElement_Deconstruct(document->Base);
+}
+
 
 /* Element. */
 ErrorCode HTMLElement_Construct(HTMLElement* element, const char* name)
@@ -241,6 +248,56 @@ HTMLAttribute* HTMLElement_GetAttribute(HTMLElement* element, const char* name)
 	return NULL;
 }
 
+void HTMLElement_RemoveAttribute(HTMLElement* element, const char* name)
+{
+	int RemovalIndex = NOT_FOUND_INDEX;
+
+	for (int i = 0; i < element->AttributeCount; i++)
+	{
+		if (String_Equals(name, element->AttributeArray[i].Name))
+		{
+			RemovalIndex = i;
+			break;
+		}
+	}
+
+	if (RemovalIndex == NOT_FOUND_INDEX)
+	{
+		return;
+	}
+
+	for (int i = RemovalIndex + 1; i < element->AttributeCount; i++)
+	{
+		element->AttributeArray[i - 1] = element->AttributeArray[i];
+	}
+
+	element->AttributeCount -= 1;
+}
+
+void HTMLElement_ClearAttributes(HTMLElement* element)
+{
+	element->AttributeCount = 0;
+}
+
+HTMLElement* HTMLElement_AddElement(HTMLElement* baseElement, const char* name)
+{
+	EnsureSubElementArrayCapacity(baseElement, baseElement->SubElementCount + 1);
+
+	HTMLElement* SubElement = (HTMLElement*)Memory_SafeMalloc(sizeof(HTMLElement));
+	HTMLElement_Construct(SubElement, name);
+	baseElement->SubElementArray[baseElement->SubElementCount] = SubElement;
+	baseElement->SubElementCount += 1;
+
+	return SubElement;
+}
+
+HTMLElement* HTMLElement_AddElement2(HTMLElement* baseElement, HTMLElement* elementToAdd)
+{
+	EnsureSubElementArrayCapacity(baseElement, baseElement->SubElementCount + 1);
+	baseElement->SubElementArray[baseElement->SubElementCount] = elementToAdd;
+	baseElement->SubElementCount += 1;
+}
+
 HTMLElement* HTMLElement_GetElementByID(HTMLElement* element, const char* id)
 {
 	return HTMLElement_GetElementByAttribute(element, ATTRIBUTE_ID, id);
@@ -271,16 +328,61 @@ HTMLElement* HTMLElement_GetElementByAttribute(HTMLElement* element, const char*
 	return NULL;
 }
 
-HTMLElement* HTMLElement_AddElement(HTMLElement* baseElement, const char* name)
+HTMLElement* HTMLElement_GetElementByName(HTMLElement* element, const char* name)
 {
-	EnsureSubElementArrayCapacity(baseElement, baseElement->SubElementCount + 1);
+	if (String_Equals(name, element->Name))
+	{
+		return element;
+	}
 
-	HTMLElement* SubElement = (HTMLElement*)Memory_SafeMalloc(sizeof(HTMLElement));
-	HTMLElement_Construct(SubElement, name);
-	baseElement->SubElementArray[baseElement->SubElementCount] = SubElement;
-	baseElement->SubElementCount += 1;
+	for (size_t i = 0; i < element->SubElementCount; i++)
+	{
+		HTMLElement* Element = HTMLElement_GetElementByName(element->SubElementArray[i], name);
+		if (Element)
+		{
+			return Element;
+		}
+	}
 
-	return SubElement;
+	return NULL;
+}
+
+void HTMLElement_RemoveElement(HTMLElement* element, HTMLElement* elementToRemove)
+{
+	int RemovalIndex = NOT_FOUND_INDEX;
+
+	for (int i = 0; i < element->SubElementCount; i++)
+	{
+		if (element->SubElementArray[i] == elementToRemove)
+		{
+			RemovalIndex = i;
+			break;
+		}
+	}
+
+	if (RemovalIndex == NOT_FOUND_INDEX)
+	{
+		return;
+	}
+
+	HTMLElement_Deconstruct(element->SubElementArray[RemovalIndex]);
+
+	for (int i = RemovalIndex + 1; i < element->SubElementCount; i++)
+	{
+		element->SubElementArray[i - 1] = element->SubElementArray[i];
+	}
+
+	element->SubElementArray -= 1;
+}
+
+void HTMLElement_ClearElements(HTMLElement* element)
+{
+	for (size_t i = 0; i < element->SubElementCount; i++)
+	{
+		HTMLElement_Deconstruct(element->SubElementArray[i]);
+	}
+
+	element->SubElementCount = 0;
 }
 
 char* HTMLElement_ToString(HTMLElement* element)
@@ -289,4 +391,18 @@ char* HTMLElement_ToString(HTMLElement* element)
 	StringBuilder_Construct(&Builder, DEFAULT_STRING_BUILDER_CAPACITY);
 	AppendHTMLElementAsString(&Builder, element);
 	return Builder.Data;
+}
+
+void HTMLElement_Deconstruct(HTMLElement* element)
+{
+	Memory_Free(element->AttributeArray);
+	Memory_Free(element->Contents);
+
+	for (size_t i = 0; i < element->SubElementCount; i++)
+	{
+		HTMLElement_Deconstruct(element->SubElementArray[i]);
+	}
+
+	Memory_Free(element->SubElementArray);
+	Memory_Free(element);
 }

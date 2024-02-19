@@ -27,9 +27,6 @@
     <Filter Include="Source Files\String">
       <UniqueIdentifier>{1f1f2198-75a8-48cb-adb6-e61504e4e779}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\ArrayList">
-      <UniqueIdentifier>{24f6a627-e065-47ef-955c-cddb6d867f17}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\IO\Logger">
       <UniqueIdentifier>{ca543281-98ad-4a03-ae1c-9fb08298a8ce}</UniqueIdentifier>
     </Filter>

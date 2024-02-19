@@ -21,6 +21,8 @@
 
 #define IsLatinACharacter(characterNumber) ((256 <= characterNumber) && (characterNumber <= 383))
 
+#define STRING_ARRAY_CAPACITY_GROWTH 2
+
 
 // Static functions.
 static inline unsigned short GetTwoByteUTF8Number(unsigned short value)
@@ -405,6 +407,41 @@ char* String_Replace(char* string, char* oldSequence, char* newSequence)
 
 	return Builder.Data;
 }
+
+//char** String_Split(char* string, const char* sequence, int* splitStringCount)
+//{
+//	char** StringArray;
+//
+//	if (*sequence == '\0')
+//	{
+//		char** StringArray = (char**)Memory_SafeMalloc(sizeof(char*));
+//		*StringArray = string;
+//		*splitStringCount = 1;
+//		return StringArray;
+//	}
+//
+//	char* StringStartg = string;
+//	for (int Index = 0, SequenceIndex = 0, StartIndex = -1; string[Index] != '\0'; Index++)
+//	{
+//		if (string[Index] == sequence[SequenceIndex])
+//		{
+//			if (StartIndex == -1)
+//			{
+//				StartIndex = Index;
+//			}
+//
+//			SequenceIndex++;
+//			if (sequence[SequenceIndex] == '\0')
+//			{
+//				string[StartIndex] = '\0';
+//			}
+//		}
+//		else
+//		{
+//			StartIndex = -1;
+//		}
+//	}
+//}
 
 //char** String_Split(char* string, const char* sequence, int* listOfNewStrings)
 //{

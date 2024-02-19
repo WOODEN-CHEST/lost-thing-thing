@@ -12,6 +12,7 @@
 #define LOG_TEMP_BUFFER_SIZE 20
 #define YEAR_MEASURE_START 1900
 #define OLD_LOG_DIR_NAME "old"
+#define LOGS_DIR_NAME "logs"
 #define LOG_FILE_EXTENSION ".log"
 #define NEW_LOG_FILE_NAME "latest" LOG_FILE_EXTENSION
 
@@ -164,11 +165,12 @@ ErrorCode Logger_Initialize(const char* rootDirectoryPath)
 	}
 
 	// Create directories.
-	Directory_CreateAll(rootDirectoryPath);
+	char* LogDirPath = Directory_Combine(rootDirectoryPath, LOGS_DIR_NAME);
+	Directory_CreateAll(LogDirPath);
 
 	// Backup old logs.
-	const char* LogFilePath = Directory_Combine(rootDirectoryPath, NEW_LOG_FILE_NAME);
-	BackupLog(LogFilePath, rootDirectoryPath);
+	const char* LogFilePath = Directory_Combine(LogDirPath, NEW_LOG_FILE_NAME);
+	BackupLog(LogFilePath, LogDirPath);
 
 	// Create current log  file.
 	File_Delete(LogFilePath);
@@ -184,6 +186,7 @@ ErrorCode Logger_Initialize(const char* rootDirectoryPath)
 
 	// Free memory.
 	Memory_Free(LogFilePath);
+	Memory_Free(LogDirPath);
 
 	return ErrorCode_Success;
 }

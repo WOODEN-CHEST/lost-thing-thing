@@ -33,6 +33,7 @@ typedef struct HTMLDocumentStruct
 	HTMLElement* Body;
 } HTMLDocument;
 
+/* Document. */
 void HTMLDocument_Construct(HTMLDocument* document);
 
 HTMLElement* HTMLDocument_GetElementByID(HTMLDocument* document, const char* id);
@@ -43,7 +44,13 @@ HTMLElement* HTMLDocument_GetElementByAttribute(HTMLDocument* document, const ch
 
 char* HTMLDocument_ToString(HTMLDocument* document);
 
+void HTMLDocument_ClearDocument(HTMLDocument* document);
 
+void HTMLDocument_Deconstruct(HTMLDocument* document);
+
+
+/* Elements. */
+/* All elements MUST be allocated on the heap. */
 ErrorCode HTMLElement_Construct(HTMLElement* element, const char* name);
 
 ErrorCode HTMLElement_SetAttribute(HTMLElement* element, const char* name, const char* value);
@@ -56,9 +63,9 @@ void HTMLElement_ClearAttributes(HTMLElement* element);
 
 HTMLElement* HTMLElement_AddElement(HTMLElement* baseElement, const char* name);
 
-HTMLElement* HTMLElement_AddElement2(HTMLElement* baseElement, HTMLElement* elementToAdd, const char* name);
+HTMLElement* HTMLElement_AddElement2(HTMLElement* baseElement, HTMLElement* elementToAdd);
 
-HTMLElement_GetElementByTag(HTMLElement* element, const char* tag);
+HTMLElement* HTMLElement_GetElementByName(HTMLElement* element, const char* name);
 
 HTMLElement* HTMLElement_GetElementByID(HTMLElement* element, const char* id);
 
@@ -66,4 +73,10 @@ HTMLElement* HTMLElement_GetElementByClass(HTMLElement* element, const char* cla
 
 HTMLElement* HTMLElement_GetElementByAttribute(HTMLElement* element, const char* name, const char* value);
 
+void HTMLElement_RemoveElement(HTMLElement* element, HTMLElement* elementToRemove);
+
+void HTMLElement_ClearElements(HTMLElement* element);
+
 char* HTMLElement_ToString(HTMLElement* element);
+
+void HTMLElement_Deconstruct(HTMLElement* element);
