@@ -7,6 +7,7 @@
 #include <Stdlib.h>
 #include "ConfigFile.h"
 #include "Directory.h"
+#include "LTTHTML.h"
 
 // Static functions.
 static void Close(int sig)
@@ -34,13 +35,25 @@ int main(int argc, const char** argv)
 	char* ConfigPath = Directory_Combine(ServerPath, SERVER_CONFIG_FILE_NAME);
 	ServerConfig_Read(ConfigPath, &Config);
 
+	HTMLDocument Document;
+	HTMLDocument_Construct(&Document);
+
+	HTMLElement* Para = HTMLElement_AddElement(Document.Body, "p");
+	HTMLElement_SetAttribute(Para, "id", "MyID");
+	HTMLElement_SetAttribute(Document.Body, "onClick", "myFunc(this)");
+
+	char* HTML = HTMLDocument_ToString(&Document);
+
+	HTMLElement* Element = HTMLDocument_GetElementByID(&Document, "MyID");
+
+
 
 	// Start server.
-	ErrorCode Error = HttpListener_Listen();
-	if (Error != ErrorCode_Success)
-	{
-		Logger_LogInfo(Error_GetLastErrorMessage());
-	}
+	//ErrorCode Error = HttpListener_Listen();
+	//if (Error != ErrorCode_Success)
+	//{
+	//	Logger_LogInfo(Error_GetLastErrorMessage());
+	//}
 
 	// Stop server.
 	Close(SIGTERM);

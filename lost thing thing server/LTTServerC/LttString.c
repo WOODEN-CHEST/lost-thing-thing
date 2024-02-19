@@ -364,7 +364,7 @@ bool String_EndsWith(char* string, char* sequence)
 
 bool String_Equals(char* string1, char* string2)
 {
-	for (int i = 0; string1[i] != '\0'; i++)
+	for (int i = 0; (string1[i] != '\0') && (string2[i] != '\0'); i++)
 	{
 		if (string1[i] != string2[i])
 		{
