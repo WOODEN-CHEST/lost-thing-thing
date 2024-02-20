@@ -145,6 +145,7 @@
     <ClCompile Include="Logger.c" />
     <ClCompile Include="LTTHTML.c" />
     <ClCompile Include="LTTServerC.c" />
+    <ClCompile Include="LTTServerResourceManager.c" />
     <ClCompile Include="LttString.c" />
     <ClCompile Include="Math.c" />
     <ClCompile Include="Memory.c" />
@@ -161,6 +162,7 @@
     <ClInclude Include="LttString.h" />
     <ClInclude Include="Math.h" />
     <ClInclude Include="Memory.h" />
+    <ClInclude Include="LTTServerResourceManager.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

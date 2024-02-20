@@ -32,65 +32,15 @@
 
 #define MAX_HEADER_LENGTH 32
 #define HEADER_VALUE_DEFINER ':'
+
 #define HEADER_COOKIES "Cookie"
 
-#define MAX_COOKIE_COUNT 64
-#define MAX_COOKIE_NAME_LENGTH 64
-#define MAX_COOKIE_VALUE_LENGTH 512
 #define COOKIE_VALUE_ASSIGNMENT_OPERATOR '='
 #define COOKIE_VALUE_END_OPERATOR ';'
 
 #define HTTP_RESPONSE_TARGET_VERSION "HTTP/1.1"
 #define HTTP_RESPONSE_CONTENT_LENGTH_NAME "Content-Length"
 #define HTTP_STANDART_NEWLINE "\r\n"
-
-
-// Types.
-typedef enum HttpMethodEnum
-{
-	HttpMethod_GET,
-	HttpMethod_POST,
-	HttpMethod_UNKNOWN
-} HttpMethod;
-
-typedef struct HttpCookieStruct
-{
-	char Name[MAX_COOKIE_NAME_LENGTH];
-	char Value[MAX_COOKIE_VALUE_LENGTH];
-} HttpCookie;
-
-typedef struct HttpRequestStruct
-{
-	HttpMethod Method;
-	char RequestTarget[512];
-
-	int HttpVersionMajor;
-	int HttpVersionMinor;
-
-	HttpCookie* CookieArray;
-	size_t CookieCount;
-
-	char* Body;
-	bool KeepAlive;
-} HttpRequest;
-
-typedef enum HttpResponseCodeEnum
-{
-	HttpResponseCode_OK = 200,
-	HttpResponseCode_Created = 201,
-	HttpResponseCode_BadRequest = 400,
-	HttpResponseCode_Unauthorized = 401,
-	HttpResponseCode_Forbidden = 403,
-	HttpResponseCode_NotFound = 404,
-	HttpResponseCode_ImATeapot = 418,
-	HttpResponseCode_InternalServerError = 500
-} HttpResponseCode;
-
-typedef struct HttpResponseStruct
-{
-	HttpResponseCode Code;
-	char* Body;
-} HttpResponse;
 
 
 // Static functions.
@@ -138,12 +88,12 @@ static void AppendResponseCode(StringBuilder* builder, HttpResponseCode code)
 	}
 }
 
-static void CreateHttpResponse(StringBuilder* responseBuilder, HttpResponse* response)
+static void BuildHttpResponse(StringBuilder* responseBuilder, HttpResponse* response)
 {
 	StringBuilder_Clear(responseBuilder);
 	StringBuilder_Append(responseBuilder, HTTP_RESPONSE_TARGET_VERSION);
 	StringBuilder_AppendChar(responseBuilder, ' ');
-	AppendResponseCode(responseBuilder, response);
+	AppendResponseCode(responseBuilder, response->Code);
 	StringBuilder_Append(responseBuilder, HTTP_STANDART_NEWLINE);
 
 
@@ -151,6 +101,13 @@ static void CreateHttpResponse(StringBuilder* responseBuilder, HttpResponse* res
 	sprintf(NumberBuffer, "%d", String_LengthBytes(response->Body));
 	StringBuilder_Append(responseBuilder, HTTP_RESPONSE_CONTENT_LENGTH_NAME);
 	StringBuilder_AppendChar(responseBuilder, HEADER_VALUE_DEFINER);
+	StringBuilder_AppendChar(responseBuilder, ' ');
+	StringBuilder_Append(responseBuilder, NumberBuffer);
+	StringBuilder_Append(responseBuilder, HTTP_STANDART_NEWLINE);
+
+	StringBuilder_Append(responseBuilder, HTTP_STANDART_NEWLINE);
+
+	StringBuilder_Append(responseBuilder, response->Body);
 }
 
 
@@ -399,9 +356,13 @@ static bool ReadHttpRequest(const char* message, HttpRequest* finalRequest)
 	String_CopyTo(message, finalRequest->Body);
 }
 
-static char* HandleHttpRequest(HttpRequest* resuest)
+static void HandleHttpRequest(HttpRequest* request, StringBuilder* responseBuilder)
 {
-	return "{\"text\":\"Hello World!\"}";
+	HttpResponse Response;
+
+
+
+	BuildHttpResponse(responseBuilder, &Response);
 }
 
 static ErrorCode SetSocketError(const char* message, int wsaCode)
@@ -427,12 +388,15 @@ static void ClearHttpRequestStruct(HttpRequest* request)
 
 static ErrorCode AcceptClients(SOCKET serverSocket)
 {
-	// Initialize request struct and memory.
+	// Initialize memory.
 	char* RequestMessage = Memory_SafeMalloc(REQUEST_MESSAGE_BUFFER_LENGTH);
 
 	HttpRequest Request;
 	Request.Body = (char*)Memory_SafeMalloc(REQUEST_MESSAGE_BUFFER_LENGTH);
 	Request.CookieArray = (HttpCookie*)Memory_SafeMalloc(sizeof(HttpCookie) * MAX_COOKIE_COUNT);
+
+	StringBuilder ResponseBuilder;
+	StringBuilder_Construct(&ResponseBuilder, REQUEST_MESSAGE_BUFFER_LENGTH);
 
 
 	// Main listening loop.
@@ -454,8 +418,8 @@ static ErrorCode AcceptClients(SOCKET serverSocket)
 
 		if (ReadHttpRequest(RequestMessage, &Request))
 		{
-			const char* Response = HandleHttpRequest(&Request);
-			send(ClientSocket, Response, (int)String_LengthBytes(Response), NULL);
+			HandleHttpRequest(&Request, &ResponseBuilder);
+			send(ClientSocket, ResponseBuilder.Data, (int)ResponseBuilder.Length, NULL);
 		}
 
 		// Close connection.
@@ -464,6 +428,10 @@ static ErrorCode AcceptClients(SOCKET serverSocket)
 			return SetSocketError("Failed to close the socket.", WSAGetLastError());
 		}
 	}
+
+	// Cleanup.
+	StringBuilder_Deconstruct(&ResponseBuilder);
+	Memory_Free(Request.CookieArray);
 
 	return ErrorCode_Success;
 }

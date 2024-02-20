@@ -68,6 +68,9 @@
     <ClCompile Include="LTTHTML.c">
       <Filter>Source Files\HTML</Filter>
     </ClCompile>
+    <ClCompile Include="LTTServerResourceManager.c">
+      <Filter>Source Files\HttpListener</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LttErrors.h">
@@ -102,6 +105,9 @@
     </ClInclude>
     <ClInclude Include="ConfigFile.h">
       <Filter>Source Files\IO</Filter>
+    </ClInclude>
+    <ClInclude Include="LTTServerResourceManager.h">
+      <Filter>Source Files\HttpListener</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
