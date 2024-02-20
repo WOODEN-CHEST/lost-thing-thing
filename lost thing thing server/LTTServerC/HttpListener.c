@@ -27,18 +27,22 @@
 #define IsWhitespace(character) ((0 <= character) && (character <= 32))
 #define IsEndOfMessageLine(character) ((character == '\0') || (character == '\n')) // Note: They usually end in \r\n
 #define IsNewline(character) ((character == '\n') || (character == '\r'))
-#define IsDigit(character) (('0' <= character) || (character <= '9'))
+#define IsDigit(character) (('0' <= character) && (character <= '9'))
 #define TrySkipOverCharacter(message) if (*message != '\0') message++
 
 #define MAX_HEADER_LENGTH 32
 #define HEADER_VALUE_DEFINER ':'
-#define HEADER_COOKIES "Cookies"
+#define HEADER_COOKIES "Cookie"
 
 #define MAX_COOKIE_COUNT 64
 #define MAX_COOKIE_NAME_LENGTH 64
 #define MAX_COOKIE_VALUE_LENGTH 512
 #define COOKIE_VALUE_ASSIGNMENT_OPERATOR '='
-#define COOKIE_VALUE_END_OPERATOR '='
+#define COOKIE_VALUE_END_OPERATOR ';'
+
+#define HTTP_RESPONSE_TARGET_VERSION "HTTP/1.1"
+#define HTTP_RESPONSE_CONTENT_LENGTH_NAME "Content-Length"
+#define HTTP_STANDART_NEWLINE "\r\n"
 
 
 // Types.
@@ -72,17 +76,84 @@ typedef struct HttpRequestStruct
 
 typedef enum HttpResponseCodeEnum
 {
-	HttpResponseCode_NotFound = 404
+	HttpResponseCode_OK = 200,
+	HttpResponseCode_Created = 201,
+	HttpResponseCode_BadRequest = 400,
+	HttpResponseCode_Unauthorized = 401,
+	HttpResponseCode_Forbidden = 403,
+	HttpResponseCode_NotFound = 404,
+	HttpResponseCode_ImATeapot = 418,
+	HttpResponseCode_InternalServerError = 500
 } HttpResponseCode;
 
-typedef struct HttpResponse
+typedef struct HttpResponseStruct
 {
 	HttpResponseCode Code;
 	char* Body;
-};
+} HttpResponse;
 
 
 // Static functions.
+/* Responses. */
+static void AppendResponseCode(StringBuilder* builder, HttpResponseCode code)
+{
+	char Code[16];
+	sprintf(Code, "%d", code);
+	StringBuilder_Append(builder, Code);
+	StringBuilder_AppendChar(builder, ' ');
+
+	switch (code)
+	{
+		case HttpResponseCode_OK:
+			StringBuilder_Append(builder, "OK");
+			break;
+
+		case HttpResponseCode_Created:
+			StringBuilder_Append(builder, "Created");
+			break;
+
+		case HttpResponseCode_BadRequest:
+			StringBuilder_Append(builder, "Bad Request");
+			break;
+
+		case HttpResponseCode_Unauthorized:
+			StringBuilder_Append(builder, "Unauthorized");
+			break;
+
+		case HttpResponseCode_Forbidden:
+			StringBuilder_Append(builder, "Forbidden");
+			break;
+
+		case HttpResponseCode_NotFound:
+			StringBuilder_Append(builder, "Not Found");
+			break;
+
+		case HttpResponseCode_ImATeapot:
+			StringBuilder_Append(builder, "I'm a Teapot");
+			break;
+
+		case HttpResponseCode_InternalServerError:
+			StringBuilder_Append(builder, "Internal Server Error");
+			break;
+	}
+}
+
+static void CreateHttpResponse(StringBuilder* responseBuilder, HttpResponse* response)
+{
+	StringBuilder_Clear(responseBuilder);
+	StringBuilder_Append(responseBuilder, HTTP_RESPONSE_TARGET_VERSION);
+	StringBuilder_AppendChar(responseBuilder, ' ');
+	AppendResponseCode(responseBuilder, response);
+	StringBuilder_Append(responseBuilder, HTTP_STANDART_NEWLINE);
+
+
+	char NumberBuffer[16];
+	sprintf(NumberBuffer, "%d", String_LengthBytes(response->Body));
+	StringBuilder_Append(responseBuilder, HTTP_RESPONSE_CONTENT_LENGTH_NAME);
+	StringBuilder_AppendChar(responseBuilder, HEADER_VALUE_DEFINER);
+}
+
+
 /* Parsing functions. */
 static char* SkipLineUntilNonWhitespace(char* message)
 {
@@ -114,8 +185,8 @@ static char* SkipUntilNextLine(char* message)
 static int ParseLineUntil(char* buffer, int bufferSize, char* message, char targetCharacter)
 {
 	int Index;
-	for (Index = 0; (Index < bufferSize - 1) && !IsEndOfMessageLine(message[Index] 
-		&& (message[Index] != targetCharacter) && (message[Index != '\r'])); Index++)
+	for (Index = 0; (Index < bufferSize - 1) && !IsEndOfMessageLine(message[Index])
+		&& (message[Index] != targetCharacter) && (message[Index] != '\r'); Index++)
 	{
 		buffer[Index] = message[Index];
 	}
@@ -217,7 +288,7 @@ static const char* ReadHttpVersion(const char* message, HttpRequest* finalReques
 	}
 
 	bool Success;
-	message = message + ReadIntFromLine(message, finalRequest->HttpVersionMajor, &Success);
+	message = message + ReadIntFromLine(message, &finalRequest->HttpVersionMajor, &Success);
 	if (!Success)
 	{
 		SetInvalidHttpVersion(finalRequest);
@@ -227,7 +298,7 @@ static const char* ReadHttpVersion(const char* message, HttpRequest* finalReques
 	if (*message == HTTP_VERSION_SEPARATOR)
 	{
 		message++;
-		message = message + ReadIntFromLine(message, finalRequest->HttpVersionMinor, &Success);
+		message = message + ReadIntFromLine(message, &finalRequest->HttpVersionMinor, &Success);
 
 		if (!Success)
 		{
@@ -235,6 +306,8 @@ static const char* ReadHttpVersion(const char* message, HttpRequest* finalReques
 			return message;
 		}
 	}
+
+	return message;
 }
 
 static char* ReadHttpRequestLine(const char* message, HttpRequest* finalRequest)
@@ -249,6 +322,8 @@ static char* ReadHttpRequestLine(const char* message, HttpRequest* finalRequest)
 /* Http Cookies. */
 static char* ReadSingleHttpCookie(const char* message, HttpRequest* finalRequest)
 {
+	message = SkipLineUntilNonWhitespace(message);
+
 	char Name[MAX_COOKIE_NAME_LENGTH];
 	message = message + ParseLineUntil(Name, sizeof(Name), message, COOKIE_VALUE_ASSIGNMENT_OPERATOR);
 
@@ -266,9 +341,15 @@ static char* ReadSingleHttpCookie(const char* message, HttpRequest* finalRequest
 	{
 		return message;
 	}
+	else if (*message == COOKIE_VALUE_END_OPERATOR)
+	{
+		TrySkipOverCharacter(message);
+	}
+
 
 	String_CopyTo(Name, finalRequest->CookieArray[finalRequest->CookieCount].Name);
 	String_CopyTo(Value, finalRequest->CookieArray[finalRequest->CookieCount].Value);
+	finalRequest->CookieCount++;
 
 	return message;
 }
@@ -279,11 +360,13 @@ static char* ReadHttpCookies(const char* message, HttpRequest* finalRequest)
 	{
 		message = ReadSingleHttpCookie(message, finalRequest);
 	}
+
+	return message;
 }
 
 
 /* Http Headers. */
-static char* ReadHttpHeader(const char* message, HttpRequest* finalRequest, int* readHeaderLength)
+static char* ReadHttpHeader(const char* message, HttpRequest* finalRequest)
 {
 	message = SkipLineUntilNonWhitespace(message);
 
@@ -293,7 +376,7 @@ static char* ReadHttpHeader(const char* message, HttpRequest* finalRequest, int*
 	if (String_Equals(HeaderName, HEADER_COOKIES))
 	{
 		TrySkipOverCharacter(message);
-		return ReadHttpCookies(message, finalRequest);
+		message = ReadHttpCookies(message, finalRequest);
 	}
 
 	return SkipUntilNextLine(message);
@@ -309,9 +392,11 @@ static bool ReadHttpRequest(const char* message, HttpRequest* finalRequest)
 	do
 	{
 		message = ReadHttpHeader(message, finalRequest, &HeaderLength);
-	} while (HeaderLength);
+	} while ((*message != '\r') && !IsEndOfMessageLine(*message));
 
-	finalRequest->Body = message;
+	message = SkipUntilNextLine(message);
+
+	String_CopyTo(message, finalRequest->Body);
 }
 
 static char* HandleHttpRequest(HttpRequest* resuest)
@@ -347,7 +432,6 @@ static ErrorCode AcceptClients(SOCKET serverSocket)
 
 	HttpRequest Request;
 	Request.Body = (char*)Memory_SafeMalloc(REQUEST_MESSAGE_BUFFER_LENGTH);
-	Request.CookieArray = (char**)Memory_SafeMalloc(sizeof(char*) * MAX_COOKIE_COUNT);
 	Request.CookieArray = (HttpCookie*)Memory_SafeMalloc(sizeof(HttpCookie) * MAX_COOKIE_COUNT);
 
 
