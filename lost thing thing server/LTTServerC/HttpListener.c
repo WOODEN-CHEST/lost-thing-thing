@@ -6,6 +6,7 @@
 #include "LttErrors.h"
 #include <stdbool.h>
 #include <string.h>
+#include "LTTServerResourceManager.h"
 
 
 // Macros.
@@ -341,7 +342,7 @@ static char* ReadHttpHeader(const char* message, HttpRequest* finalRequest)
 
 
 /* Requests. */
-static bool ReadHttpRequest(const char* message, HttpRequest* finalRequest)
+static void ReadHttpRequest(const char* message, HttpRequest* finalRequest)
 {
 	message = ReadHttpRequestLine(message, finalRequest);
 
@@ -356,13 +357,20 @@ static bool ReadHttpRequest(const char* message, HttpRequest* finalRequest)
 	String_CopyTo(message, finalRequest->Body);
 }
 
-static void HandleHttpRequest(HttpRequest* request, StringBuilder* responseBuilder)
+static void HandleHttpRequest(SOCKET clientSocket, HttpRequest* request, StringBuilder* responseBuilder)
 {
 	HttpResponse Response;
 
-
+	if ((request->HttpVersionMinor == HTTP_INVALID_VERSION) || (request->HttpVersionMajor == HTTP_INVALID_VERSION)
+		|| (request->Method == HttpMethod_UNKNOWN))
+	{
+		Response.Code = HttpResponseCode_BadRequest;
+	}
+	
+	if ()
 
 	BuildHttpResponse(responseBuilder, &Response);
+	send(clientSocket, responseBuilder->Data, (int)responseBuilder->Length, NULL);
 }
 
 static ErrorCode SetSocketError(const char* message, int wsaCode)
@@ -376,7 +384,6 @@ static void ClearHttpRequestStruct(HttpRequest* request)
 {
 	*request->Body = '\0';
 	request->Method = HttpMethod_UNKNOWN;
-	request->KeepAlive = false;
 	request->RequestTarget[0] = '\0';
 	for (int i = 0; i < MAX_COOKIE_COUNT; i++)
 	{
@@ -386,10 +393,45 @@ static void ClearHttpRequestStruct(HttpRequest* request)
 	request->CookieCount = 0;
 }
 
+
+/* Client listener. */
+static ErrorCode AcceptSingleClient(SOCKET serverSocket,
+	HttpRequest* request, 
+	StringBuilder* responseBuilder,
+	char* requestMessageBuffer,
+	bool* isStopRequested)
+{
+	// Accept client.
+	SOCKET ClientSocket;
+	ClientSocket = accept(serverSocket, NULL, NULL);
+	if (ClientSocket == INVALID_SOCKET)
+	{
+		return SetSocketError("Failed to accept client.", WSAGetLastError());
+	}
+
+	int ReceivedLength = recv(ClientSocket, requestMessageBuffer, REQUEST_MESSAGE_BUFFER_LENGTH - 1, NULL);
+	requestMessageBuffer[ReceivedLength] = '\0';
+
+	// Process.
+	ClearHttpRequestStruct(request);
+	ReadHttpRequest(requestMessageBuffer, request);
+	HandleHttpRequest(ClientSocket, request, responseBuilder);
+
+
+	// Close connection.
+	if (closesocket(ClientSocket) == SOCKET_ERROR)
+	{
+		return SetSocketError("Failed to close the socket.", WSAGetLastError());
+	}
+
+	return ErrorCode_Success;
+}
+
+
 static ErrorCode AcceptClients(SOCKET serverSocket)
 {
 	// Initialize memory.
-	char* RequestMessage = Memory_SafeMalloc(REQUEST_MESSAGE_BUFFER_LENGTH);
+	char* RequestBuffer = Memory_SafeMalloc(REQUEST_MESSAGE_BUFFER_LENGTH);
 
 	HttpRequest Request;
 	Request.Body = (char*)Memory_SafeMalloc(REQUEST_MESSAGE_BUFFER_LENGTH);
@@ -398,34 +440,15 @@ static ErrorCode AcceptClients(SOCKET serverSocket)
 	StringBuilder ResponseBuilder;
 	StringBuilder_Construct(&ResponseBuilder, REQUEST_MESSAGE_BUFFER_LENGTH);
 
+	bool IsStopRequested = false;
+
 
 	// Main listening loop.
-	while (1)
+	while (!IsStopRequested)
 	{
-		// Accept client.
-		SOCKET ClientSocket;
-		ClientSocket = accept(serverSocket, NULL, NULL);
-		if (ClientSocket == INVALID_SOCKET)
+		if (AcceptSingleClient(serverSocket, &Request, &ResponseBuilder, &RequestBuffer, &IsStopRequested) != ErrorCode_Success)
 		{
-			return SetSocketError("Failed to accept client.", WSAGetLastError());
-		}
-
-		int ReceivedLength = recv(ClientSocket, RequestMessage, REQUEST_MESSAGE_BUFFER_LENGTH - 1, 0);
-		RequestMessage[ReceivedLength] = '\0';
-
-		// Process.
-		ClearHttpRequestStruct(&Request);
-
-		if (ReadHttpRequest(RequestMessage, &Request))
-		{
-			HandleHttpRequest(&Request, &ResponseBuilder);
-			send(ClientSocket, ResponseBuilder.Data, (int)ResponseBuilder.Length, NULL);
-		}
-
-		// Close connection.
-		if (closesocket(ClientSocket) == SOCKET_ERROR)
-		{
-			return SetSocketError("Failed to close the socket.", WSAGetLastError());
+			return Error_GetLastErrorCode();
 		}
 	}
 
@@ -437,8 +460,8 @@ static ErrorCode AcceptClients(SOCKET serverSocket)
 }
 
 
-// Functions.
-ErrorCode HttpListener_Listen(const char* address)
+/* Socket. */
+static ErrorCode InitializeSocket(SOCKET* targetSocket, const char* address)
 {
 	// Startup.
 	WSADATA	WinSocketData;
@@ -449,10 +472,9 @@ ErrorCode HttpListener_Listen(const char* address)
 	}
 
 	// Create socket.
-	SOCKET Socket = INVALID_SOCKET;
-	Socket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	*targetSocket = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
-	if (Socket == INVALID_SOCKET)
+	if (*targetSocket == INVALID_SOCKET)
 	{
 		return SetSocketError("Failed to create socket.", WSAGetLastError());
 	}
@@ -465,9 +487,34 @@ ErrorCode HttpListener_Listen(const char* address)
 	inet_pton(AF_INET, address, &Address.sin_addr.S_un.S_addr);
 
 	// Bind socket.
-	if (bind(Socket, &Address, sizeof(Address)) == SOCKET_ERROR)
+	if (bind(*targetSocket, &Address, sizeof(Address)) == SOCKET_ERROR)
 	{
 		return SetSocketError("Failed to bind socket.", WSAGetLastError());;
+	}
+}
+
+static ErrorCode CloseSocket(SOCKET* targetSocket)
+{
+	if (closesocket(*targetSocket) == SOCKET_ERROR)
+	{
+		return SetSocketError("Failed to close socket.", WSAGetLastError());
+	}
+
+	if (WSACleanup() == SOCKET_ERROR)
+	{
+		return SetSocketError("Failed to accept client.", WSAGetLastError());
+	}
+}
+
+
+// Functions.
+ErrorCode HttpListener_Listen(const char* address)
+{
+	// Initialize.
+	SOCKET Socket = INVALID_SOCKET;
+	if (InitializeSocket(&Socket, address) != ErrorCode_Success)
+	{
+		return Error_GetLastErrorCode();
 	}
 
 	// Listen.
@@ -481,10 +528,10 @@ ErrorCode HttpListener_Listen(const char* address)
 		return Error_GetLastErrorCode();
 	}
 
-
 	// End.
-	if (WSACleanup() == SOCKET_ERROR)
+	if (CloseSocket(&Socket) != ErrorCode_Success)
 	{
-		return SetSocketError("Failed to accept client.", WSAGetLastError());
+		return Error_GetLastErrorCode();
 	}
+	return ErrorCode_Success;
 }

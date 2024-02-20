@@ -35,7 +35,6 @@ typedef struct HttpRequestStruct
 	size_t CookieCount;
 
 	char* Body;
-	bool KeepAlive;
 } HttpRequest;
 
 typedef enum HttpResponseCodeEnum
