@@ -159,6 +159,7 @@
     <ClInclude Include="Logger.h" />
     <ClInclude Include="LttCommon.h" />
     <ClInclude Include="LTTHTML.h" />
+    <ClInclude Include="LTTServerC.h" />
     <ClInclude Include="LttString.h" />
     <ClInclude Include="Math.h" />
     <ClInclude Include="Memory.h" />

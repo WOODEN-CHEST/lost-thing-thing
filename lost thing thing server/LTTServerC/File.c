@@ -18,28 +18,28 @@ static char* AllocateMemoryForFileRead(FILE* file, size_t* fileSize)
 	long long CurPosition = ftell(file);
 	if (CurPosition == -1)
 	{
-		Error_SetError(ErrorCode_IO, "(File) AllocateMemoryForFileRead: Failed to tell current position.");
+		ErrorContext_SetError(ErrorCode_IO, "(File) AllocateMemoryForFileRead: Failed to tell current position.");
 		return NULL;
 	}
 
 	int Result = fseek(file, 0, SEEK_END);
 	if (Result)
 	{
-		Error_SetError(ErrorCode_IO, "File_ReadAllText: Failed to seek to file end.");
+		ErrorContext_SetError(ErrorCode_IO, "File_ReadAllText: Failed to seek to file end.");
 		return NULL;
 	}
 
 	long long Length = ftell(file);
 	if (Length == -1)
 	{
-		Error_SetError(ErrorCode_IO, "File_ReadAllText: Failed to tell the file's stream position.");
+		ErrorContext_SetError(ErrorCode_IO, "File_ReadAllText: Failed to tell the file's stream position.");
 		return NULL;
 	}
 
 	Result = fseek(file, 0, SEEK_SET);
 	if (Result)
 	{
-		Error_SetError(ErrorCode_IO, "File_ReadAllText: Failed to seek to file start.");
+		ErrorContext_SetError(ErrorCode_IO, "File_ReadAllText: Failed to seek to file start.");
 		return NULL;
 	}
 }
@@ -88,14 +88,14 @@ FILE* File_Open(char* path, File_OpenMode mode)
 			break;
 
 		default:
-			Error_SetError(ErrorCode_InvalidArgument, "File_Open: Invalid open mode.");
+			ErrorContext_SetError(ErrorCode_InvalidArgument, "File_Open: Invalid open mode.");
 			return NULL;
 	}
 
 	FILE* File = fopen(path, OpenMode);
 	if (File == NULL)
 	{
-		Error_SetError(ErrorCode_IO, "File_Open: Failed to open file.");
+		ErrorContext_SetError(ErrorCode_IO, "File_Open: Failed to open file.");
 	}
 	return File;
 }
@@ -103,27 +103,27 @@ FILE* File_Open(char* path, File_OpenMode mode)
 ErrorCode File_Write(FILE* file, const char* data, size_t dataLength)
 {
 	size_t Result = fwrite(data, 1, dataLength, file);
-	return Result == dataLength ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "File_Write: Failed to write bytes to file.");
+	return Result == dataLength ? ErrorCode_Success : ErrorContext_SetError(ErrorCode_IO, "File_Write: Failed to write bytes to file.");
 }
 
 ErrorCode File_WriteString(FILE* file, const char* string)
 {
 	int Result = fputs(string, file);
-	return Result != EOF ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "File_WriteString: Failed to write string to file.");
+	return Result != EOF ? ErrorCode_Success : ErrorContext_SetError(ErrorCode_IO, "File_WriteString: Failed to write string to file.");
 }
 
 ErrorCode File_Flush(FILE* file)
 {
 	int Success = fflush(file);
 
-	return Success == 0 ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "File_Flush: Failed to flush file.");
+	return Success == 0 ? ErrorCode_Success : ErrorContext_SetError(ErrorCode_IO, "File_Flush: Failed to flush file.");
 }
 
 ErrorCode File_Close(FILE* file)
 {
 	int Success = fclose(file);
 
-	return Success == 0 ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "File_Close: Failed to close file.");
+	return Success == 0 ? ErrorCode_Success : ErrorContext_SetError(ErrorCode_IO, "File_Close: Failed to close file.");
 }
 
 char* File_ReadAllText(FILE* file)
@@ -163,5 +163,5 @@ ErrorCode File_Delete(char* path)
 	{
 		return ErrorCode_Success;
 	}
-	return Error_SetError(ErrorCode_IO, "File_Delete: Failed to delete file.");
+	return ErrorContext_SetError(ErrorCode_IO, "File_Delete: Failed to delete file.");
 }

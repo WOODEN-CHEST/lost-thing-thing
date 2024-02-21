@@ -9,7 +9,7 @@ void* Memory_SafeMalloc(const size_t size)
 
 	if (Pointer == NULL)
 	{
-		Error_AbortProgram("Failed to safely allocate memory.");
+		ErrorContext_AbortProgram("Failed to safely allocate memory.");
 		return NULL;
 	}
 
@@ -22,7 +22,7 @@ void* Memory_SafeRealloc(void* ptr, const size_t size)
 
 	if (Pointer == NULL)
 	{
-		Error_AbortProgram("Failed to safely reallocate memory.");
+		ErrorContext_AbortProgram("Failed to safely reallocate memory.");
 		return NULL;
 	}
 

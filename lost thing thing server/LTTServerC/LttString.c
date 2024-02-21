@@ -178,19 +178,19 @@ char* String_SubString(const char* string, size_t startIndex, size_t endIndex)
 {
 	if (endIndex < startIndex)
 	{
-		Error_SetError(ErrorCode_IndexOutOfRange, "String_SubString: endIndex is lower than startIndex");
+		ErrorContext_SetError(ErrorCode_IndexOutOfRange, "String_SubString: endIndex is lower than startIndex");
 		return NULL;
 	}
 
 	int ByteLength = String_LengthBytes(string);
 	if (startIndex > ByteLength)
 	{
-		Error_SetError(ErrorCode_IndexOutOfRange, "String_SubString: startIndex is greater than the length of the string.");
+		ErrorContext_SetError(ErrorCode_IndexOutOfRange, "String_SubString: startIndex is greater than the length of the string.");
 		return NULL;
 	}
 	if (endIndex > ByteLength)
 	{
-		Error_SetError(ErrorCode_IndexOutOfRange, "String_SubString: endIndex is greater than the length of the string.");
+		ErrorContext_SetError(ErrorCode_IndexOutOfRange, "String_SubString: endIndex is greater than the length of the string.");
 		return NULL;
 	}
 
@@ -544,7 +544,7 @@ ErrorCode StringBuilder_Insert(StringBuilder* this, char* string, size_t charInd
 {
 	if (charIndex > this->Length)
 	{
-		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Insert: Index is larger than the length of the string.");
+		return ErrorContext_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Insert: Index is larger than the length of the string.");
 	}
 
 	const int StringLength = String_LengthBytes(string);
@@ -575,7 +575,7 @@ ErrorCode StringBuilder_InsertChar(StringBuilder* this, char character, size_t c
 {
 	if (charIndex > this->Length)
 	{
-		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_InsertChar: Index is larger than the length of the string.");
+		return ErrorContext_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_InsertChar: Index is larger than the length of the string.");
 	}
 
 	for (int i = this->Length; i > charIndex; i--)
@@ -594,15 +594,15 @@ ErrorCode StringBuilder_Remove(StringBuilder* this, size_t startIndex, size_t en
 {
 	if (startIndex > endIndex)
 	{
-		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: startIndex is greater than endIndex.");
+		return ErrorContext_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: startIndex is greater than endIndex.");
 	}
 	if (startIndex > this->Length)
 	{
-		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: startIndex is greater than the string's length.");
+		return ErrorContext_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: startIndex is greater than the string's length.");
 	}
 	if (endIndex > this->Length)
 	{
-		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: endIndex is greater than the string's length.");
+		return ErrorContext_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: endIndex is greater than the string's length.");
 	}
 
 	int RemovedLength = endIndex - startIndex;

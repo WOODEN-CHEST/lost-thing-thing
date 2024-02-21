@@ -109,5 +109,8 @@
     <ClInclude Include="LTTServerResourceManager.h">
       <Filter>Source Files\HttpListener</Filter>
     </ClInclude>
+    <ClInclude Include="LTTServerC.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

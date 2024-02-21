@@ -366,8 +366,6 @@ static void HandleHttpRequest(SOCKET clientSocket, HttpRequest* request, StringB
 	{
 		Response.Code = HttpResponseCode_BadRequest;
 	}
-	
-	if ()
 
 	BuildHttpResponse(responseBuilder, &Response);
 	send(clientSocket, responseBuilder->Data, (int)responseBuilder->Length, NULL);
@@ -377,7 +375,7 @@ static ErrorCode SetSocketError(const char* message, int wsaCode)
 {
 	char ErrorMessage[128];
 	sprintf(ErrorMessage, "%s (Code: %d)", message, wsaCode);
-	return Error_SetError(ErrorCode_SocketError, ErrorMessage);
+	return ErrorContext_SetError(ErrorCode_SocketError, ErrorMessage);
 }
 
 static void ClearHttpRequestStruct(HttpRequest* request)
@@ -448,7 +446,7 @@ static ErrorCode AcceptClients(SOCKET serverSocket)
 	{
 		if (AcceptSingleClient(serverSocket, &Request, &ResponseBuilder, &RequestBuffer, &IsStopRequested) != ErrorCode_Success)
 		{
-			return Error_GetLastErrorCode();
+			return ErrorContext_GetLastErrorCode();
 		}
 	}
 
@@ -514,7 +512,7 @@ ErrorCode HttpListener_Listen(const char* address)
 	SOCKET Socket = INVALID_SOCKET;
 	if (InitializeSocket(&Socket, address) != ErrorCode_Success)
 	{
-		return Error_GetLastErrorCode();
+		return ErrorContext_GetLastErrorCode();
 	}
 
 	// Listen.
@@ -525,13 +523,13 @@ ErrorCode HttpListener_Listen(const char* address)
 
 	if (AcceptClients(Socket) != ErrorCode_Success)
 	{
-		return Error_GetLastErrorCode();
+		return ErrorContext_GetLastErrorCode();
 	}
 
 	// End.
 	if (CloseSocket(&Socket) != ErrorCode_Success)
 	{
-		return Error_GetLastErrorCode();
+		return ErrorContext_GetLastErrorCode();
 	}
 	return ErrorCode_Success;
 }

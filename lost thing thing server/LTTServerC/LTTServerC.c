@@ -8,38 +8,45 @@
 #include "ConfigFile.h"
 #include "Directory.h"
 #include "Memory.h"
+#include "LTTServerC.h"
+
+
+// Static variables.
+static ServerContext s_currentContext;
+
 
 // Static functions.
-static void Close(int sig)
+static char* CreateContext(ServerContext* context, const char* serverExecutablePath)
 {
-	Logger_LogInfo("Server closed.");
-	Logger_Close();
-	exit(0);
+	ErrorContext_Construct(&context->Errors);
+	char* RootDirectory = Directory_GetParentDirectory(serverExecutablePath);
+	context->RootPath = RootDirectory;
+
+	const char* ReturnMessage = LoggerContext_Construct(&context->Logger, RootDirectory);
+	if (ReturnMessage)
+	{
+		return ReturnMessage;
+	}
 }
 
 // Functions.
 int main(int argc, const char** argv)
 {
-	// Initialize components.
-	Error_InitErrorHandling();
-
-	char* RootDirectory = Directory_GetParentDirectory(argv[0]);
-
-	if (Logger_Initialize(RootDirectory) != ErrorCode_Success)
+	// Create context.
+	const char* ReturnMessage = CreateContext(argv[0], &s_currentContext);
+	if (ReturnMessage)
 	{
-		printf("Failed to initialize logger.");
+		printf("Failed to create server context: %s", ReturnMessage);
 		return EXIT_FAILURE;
-	};
-	Logger_LogInfo("Starting server...");
-
-	signal(SIGINT, &Close);
-	signal(SIGTERM, &Close);
+	}
+	Logger_LogInfo("Created global server context");
 
 
 	// Load config.
 	ServerConfig Config;
-	char* ConfigPath = Directory_Combine(RootDirectory, SERVER_CONFIG_FILE_NAME);
+	char* ConfigPath = Directory_Combine(LTTServerC_GetCurrentContext()->RootPath, SERVER_CONFIG_FILE_NAME);
 	ServerConfig_Read(ConfigPath, &Config);
+	Logger_LogInfo("Read config");
 
 
 	// Start server.
@@ -50,8 +57,14 @@ int main(int argc, const char** argv)
 	}
 
 	// Stop server.
-	Close(SIGTERM);
-	Memory_Free(RootDirectory);
+	Logger_LogInfo("Server closed.");
+	Logger_Close();
+	Memory_Free(LTTServerC_GetCurrentContext()->RootPath);
 
 	return 0;
+}
+
+ServerContext* LTTServerC_GetCurrentContext()
+{
+	return &s_currentContext;
 }

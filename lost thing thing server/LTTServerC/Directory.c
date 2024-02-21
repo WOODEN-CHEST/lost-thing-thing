@@ -25,7 +25,7 @@ _Bool Directory_Exists(const char* path)
 ErrorCode Directory_Create(const char* path)
 {
 	bool Result = CreateDirectoryA(path, NULL);
-	return Result ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "Directory_Create: Failed to create directory.");
+	return Result ? ErrorCode_Success : ErrorContext_SetError(ErrorCode_IO, "Directory_Create: Failed to create directory.");
 }
 
 ErrorCode Directory_CreateAll(const char* path)
@@ -57,7 +57,7 @@ ErrorCode Directory_CreateAll(const char* path)
 ErrorCode Directory_Delete(const char* path)
 {
 	bool Result = RemoveDirectoryA(path);
-	return Result ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "Directory_Delete: Failed to delete directory.");
+	return Result ? ErrorCode_Success : ErrorContext_SetError(ErrorCode_IO, "Directory_Delete: Failed to delete directory.");
 }
 
 char* Directory_GetParentDirectory(const char* path)
