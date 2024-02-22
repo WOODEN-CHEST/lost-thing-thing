@@ -42,7 +42,7 @@ ErrorCode Directory_CreateAll(const char* path)
 		{
 			char ValueAtIndex = Path[i];
 			Path[i] = '\0';
-			Directory_Create(Path);
+			CreateDirectoryA(Path, NULL);
 			Path[i] = ValueAtIndex;
 		}
 	}

@@ -9,6 +9,7 @@
 #include "Directory.h"
 #include "Memory.h"
 #include "LTTServerC.h"
+#include "Logger.h"
 
 
 // Static variables.
@@ -22,21 +23,25 @@ static char* CreateContext(ServerContext* context, const char* serverExecutableP
 	char* RootDirectory = Directory_GetParentDirectory(serverExecutablePath);
 	context->RootPath = RootDirectory;
 
-	const char* ReturnMessage = LoggerContext_Construct(&context->Logger, RootDirectory);
-	if (ReturnMessage)
+	const char* ReturnErrorMessage = Logger_ConstructContext(&context->Logger, RootDirectory);
+	if (ReturnErrorMessage)
 	{
-		return ReturnMessage;
+		return ReturnErrorMessage;
 	}
+
+	ResourceManager_ConstructContext(&context->Resources, RootDirectory);
+
+	return NULL;
 }
 
 // Functions.
 int main(int argc, const char** argv)
 {
 	// Create context.
-	const char* ReturnMessage = CreateContext(argv[0], &s_currentContext);
-	if (ReturnMessage)
+	const char* ReturnErrorMessage = CreateContext(&s_currentContext, argv[0]);
+	if (ReturnErrorMessage)
 	{
-		printf("Failed to create server context: %s", ReturnMessage);
+		printf("Failed to create server context: %s", ReturnErrorMessage);
 		return EXIT_FAILURE;
 	}
 	Logger_LogInfo("Created global server context");
@@ -60,6 +65,7 @@ int main(int argc, const char** argv)
 	Logger_LogInfo("Server closed.");
 	Logger_Close();
 	Memory_Free(LTTServerC_GetCurrentContext()->RootPath);
+	ResourceManager_CloseContext();
 
 	return 0;
 }

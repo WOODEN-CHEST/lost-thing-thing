@@ -97,11 +97,7 @@ void ErrorContext_Construct(ErrorContext* context)
 
 void ErrorContext_AbortProgram(const char* message)
 {
-	if (Logger_IsInitialized())
-	{
-		Logger_LogCritical(message);
-	}
-
+	printf(message);
 	exit(EXIT_FAILURE);
 }
 
@@ -121,7 +117,7 @@ ErrorCode ErrorContext_SetError(int code, const char* message)
 	size_t ErrorTypeMessageLength = strlen(ErrorName);
 	size_t MessageLength = strlen(message);
 	size_t RequiredMemory = ErrorTypeMessageLength + MessageLength + 1;
-	EnsureMessageBufferCapacity(Context, RequiredMemory);
+	EnsureMessageBufferCapacity(RequiredMemory);
 
 	strcpy(Context->_lastErrorMessage, ErrorName);
 	strcpy(Context->_lastErrorMessage + ErrorTypeMessageLength, message);

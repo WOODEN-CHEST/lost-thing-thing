@@ -1,6 +1,7 @@
 #pragma once
 #include "Logger.h"
 #include "LTTErrors.h"
+#include "LTTServerResourceManager.h"
 
 // Types.
 typedef struct ServerContextStruct
@@ -8,6 +9,7 @@ typedef struct ServerContextStruct
 	const char* RootPath;
 	LoggerContext Logger;
 	ErrorContext Errors;
+	ServerResourceContext Resources;
 } ServerContext;
 
 

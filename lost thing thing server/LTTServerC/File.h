@@ -21,7 +21,7 @@ typedef enum File_OpenModeEnum File_OpenMode;
 
 
 // Functions.
-FILE* File_Open(char* path, File_OpenMode mode);
+FILE* File_Open(const char* path, File_OpenMode mode);
 
 int File_ReadChar(FILE* file);
 
@@ -41,6 +41,6 @@ ErrorCode File_Flush(FILE* file);
 
 ErrorCode File_Close(FILE* file);
 
-ErrorCode File_Delete(char* path);
+ErrorCode File_Delete(const char* path);
 
-_Bool File_Exists(char* path);
+_Bool File_Exists(const char* path);

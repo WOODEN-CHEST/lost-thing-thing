@@ -11,7 +11,7 @@ struct StringBuilderStruct
 {
 	char* Data;
 	int Length;
-	int _capacity;
+	size_t _capacity;
 };
 
 typedef struct StringBuilderStruct StringBuilder;

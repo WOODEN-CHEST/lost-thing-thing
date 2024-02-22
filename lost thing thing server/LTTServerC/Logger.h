@@ -23,16 +23,16 @@ typedef struct LoggerContextStruct
 
 
 // Functions.
-char* LoggerContext_Construct(LoggerContext* context, const char* serverRootPath);
+char* Logger_ConstructContext(LoggerContext* context, const char* serverRootPath);
 
-ErrorCode LoggerContext_Close();
+ErrorCode Logger_Close();
 
-ErrorCode LoggerContext_Log(Logger_LogLevel level, const char* string);
+ErrorCode Logger_Log(Logger_LogLevel level, const char* string);
 
-ErrorCode LoggerContext_LogInfo(const char* string);
+ErrorCode Logger_LogInfo(const char* string);
 
-ErrorCode LoggerContext_LogWarning(const char* string);
+ErrorCode Logger_LogWarning(const char* string);
 
-ErrorCode LoggerContext_LogError(const char* string);
+ErrorCode Logger_LogError(const char* string);
 
-ErrorCode LoggerContext_LogCritical(const char* string);
+ErrorCode Logger_LogCritical(const char* string);

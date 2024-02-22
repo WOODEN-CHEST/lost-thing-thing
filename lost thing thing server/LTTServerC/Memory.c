@@ -3,7 +3,7 @@
 #include "LttErrors.h"
 
 // Functions.
-void* Memory_SafeMalloc(const size_t size)
+void* Memory_SafeMalloc(size_t size)
 {
 	void* Pointer = malloc(size);
 
@@ -16,7 +16,7 @@ void* Memory_SafeMalloc(const size_t size)
 	return Pointer;
 }
 
-void* Memory_SafeRealloc(void* ptr, const size_t size)
+void* Memory_SafeRealloc(void* ptr, size_t size)
 {
 	void* Pointer = realloc(ptr, size);
 

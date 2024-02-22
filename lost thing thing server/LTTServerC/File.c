@@ -46,7 +46,7 @@ static char* AllocateMemoryForFileRead(FILE* file, size_t* fileSize)
 
 
 // Functions.
-FILE* File_Open(char* path, File_OpenMode mode)
+FILE* File_Open(const char* path, File_OpenMode mode)
 {
 	char OpenMode[MODE_STRING_LENGTH];
 	switch (mode)
@@ -106,7 +106,7 @@ ErrorCode File_Write(FILE* file, const char* data, size_t dataLength)
 	return Result == dataLength ? ErrorCode_Success : ErrorContext_SetError(ErrorCode_IO, "File_Write: Failed to write bytes to file.");
 }
 
-ErrorCode File_WriteString(FILE* file, const char* string)
+ErrorCode File_WriteText(FILE* file, const char* string)
 {
 	int Result = fputs(string, file);
 	return Result != EOF ? ErrorCode_Success : ErrorContext_SetError(ErrorCode_IO, "File_WriteString: Failed to write string to file.");
@@ -149,13 +149,13 @@ char* File_ReadAllData(FILE* file, size_t* dataLength)
 	return Buffer;
 }
 
-_Bool File_Exists(char* path)
+_Bool File_Exists(const char* path)
 {
 	struct stat FileStats;
 	return !stat(path, &FileStats);
 }
 
-ErrorCode File_Delete(char* path)
+ErrorCode File_Delete(const char* path)
 {
 	int Result = remove(path);
 

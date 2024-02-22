@@ -156,7 +156,7 @@ static void BackupLog(const char* oldLogFilePath, const char* logRootDirectoryPa
 }
 
 // Functions.
-char* LoggerContext_Construct(LoggerContext* context, const char* rootDirectoryPath)
+char* Logger_ConstructContext(LoggerContext* context, const char* rootDirectoryPath)
 {
 	// Verify state and args.
 	if (context->LogFile != NULL)
@@ -192,7 +192,7 @@ char* LoggerContext_Construct(LoggerContext* context, const char* rootDirectoryP
 }
 
 
-ErrorCode LoggerContext_Close()
+ErrorCode Logger_Close()
 {
 	LoggerContext* Context = &LTTServerC_GetCurrentContext()->Logger;
 	if (Context->LogFile == NULL)
@@ -206,7 +206,7 @@ ErrorCode LoggerContext_Close()
 	return ErrorCode_Success;
 }
 
-ErrorCode LoggerContext_Log(Logger_LogLevel level, const char* string)
+ErrorCode Logger_Log(Logger_LogLevel level, const char* string)
 {
 	LoggerContext* Context = &LTTServerC_GetCurrentContext()->Logger;
 
@@ -229,22 +229,22 @@ ErrorCode LoggerContext_Log(Logger_LogLevel level, const char* string)
 	return ErrorCode_Success;
 }
 
-ErrorCode LoggerContext_LogInfo(const char* string)
+ErrorCode Logger_LogInfo(const char* string)
 {
-	return LoggerContext_Log(LogLevel_Info, string);
+	return Logger_Log(LogLevel_Info, string);
 }
 
-ErrorCode LoggerContext_LogWarning(const char* string)
+ErrorCode Logger_LogWarning(const char* string)
 {
-	return LoggerContext_Log(LogLevel_Warning, string);
+	return Logger_Log(LogLevel_Warning, string);
 }
 
-ErrorCode LoggerContext_LogError(const char* string)
+ErrorCode Logger_LogError(const char* string)
 {
-	return LoggerContext_Log(LogLevel_Error, string);
+	return Logger_Log(LogLevel_Error, string);
 }
 
-ErrorCode LoggerContext_LogCritical(const char* string)
+ErrorCode Logger_LogCritical(const char* string)
 {
-	return LoggerContext_Log(LogLevel_Critical, string);
+	return Logger_Log(LogLevel_Critical, string);
 }

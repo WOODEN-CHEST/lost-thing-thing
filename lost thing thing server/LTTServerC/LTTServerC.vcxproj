@@ -153,6 +153,7 @@
   <ItemGroup>
     <ClInclude Include="ConfigFile.h" />
     <ClInclude Include="Directory.h" />
+    <ClInclude Include="GHDF.h" />
     <ClInclude Include="LttErrors.h" />
     <ClInclude Include="File.h" />
     <ClInclude Include="HttpListener.h" />

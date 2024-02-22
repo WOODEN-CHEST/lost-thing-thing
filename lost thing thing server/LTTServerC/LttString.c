@@ -40,6 +40,11 @@ static inline unsigned short AddUTF8TwoByte(unsigned short value, short amountTo
 	return FullValue;
 }
 
+static bool IsCharWhitespace(char character)
+{
+	return (character == ' ') || (character == '\n') || (character == '\r') || (character == '\t');
+}
+
 
 // Functions.
 // String.
@@ -207,11 +212,6 @@ char* String_SubString(const char* string, size_t startIndex, size_t endIndex)
 	return NewValue;
 }
 
-bool IsCharWhitespace(char character)
-{
-	return (character == ' ') || (character == '\n') || (character == '\r') || (character == '\t');
-}
-
 char* String_Trim(const char* string)
 {
 	int StartIndex = 0;
@@ -338,7 +338,7 @@ bool String_StartsWith(const char* string, const char* sequence)
 	return true;
 }
 
-bool String_EndsWith(char* string, char* sequence)
+bool String_EndsWith(const char* string, const char* sequence)
 {
 	if (sequence[0] == '\0')
 	{
@@ -364,7 +364,7 @@ bool String_EndsWith(char* string, char* sequence)
 	return true;
 }
 
-bool String_Equals(char* string1, char* string2)
+bool String_Equals(const char* string1, const char* string2)
 {
 	for (int i = 0; (string1[i] != '\0') && (string2[i] != '\0'); i++)
 	{
@@ -377,7 +377,7 @@ bool String_Equals(char* string1, char* string2)
 	return true;
 }
 
-char* String_Replace(char* string, char* oldSequence, char* newSequence)
+char* String_Replace(const char* string, const char* oldSequence, const char* newSequence)
 {
 	if (oldSequence[0] == '\0')
 	{
@@ -500,19 +500,19 @@ StringBuilder* StringBuilder_Construct2(size_t capacity)
 	return Builder;
 }
 
-static void StringBuilder_EnsureCapacity(StringBuilder* this, int capacity)
+static void StringBuilder_EnsureCapacity(StringBuilder* this, size_t capacity)
 {
-	if (this->_capacity < capacity)
+	if (this->_capacity >= capacity)
 	{
-
+		return;
 	}
 
-
-	while (this->_capacity < capacity)
+	do
 	{
 		this->_capacity *= STRING_BUILDER_CAPACITY_GROWTH;
-		this->Data = Memory_SafeRealloc(this->Data, this->_capacity * sizeof(char));
-	}
+	} while (this->_capacity < capacity);
+
+	this->Data = Memory_SafeRealloc(this->Data, this->_capacity * sizeof(char));
 }
 
 void StringBuilder_Append(StringBuilder* this, const char* string)
@@ -540,7 +540,7 @@ void StringBuilder_AppendChar(StringBuilder* this, char character)
 	this->Length++;
 }
 
-ErrorCode StringBuilder_Insert(StringBuilder* this, char* string, size_t charIndex)
+ErrorCode StringBuilder_Insert(StringBuilder* this, const char* string, size_t charIndex)
 {
 	if (charIndex > this->Length)
 	{

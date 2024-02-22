@@ -7,16 +7,23 @@
 typedef enum ResourceResultEnum
 {
 	ResourceResult_Successful,
-	ResourceResult_NotFouund,
+	ResourceResult_NotFound,
 	ResourceResult_Invalid,
-	ResourceResult_Unauthorized
+	ResourceResult_Unauthorized,
+	ResourceResult_ShutDownServer,
 } ResourceResult;
+
+typedef struct ServerResourceContextStruct
+{
+	const char* SourceRootPath;
+	const char* DatabaseRootPath;
+} ServerResourceContext;
 
 
 // Functions.
-void ResourceManager_Initialize(const char* serverRootPath);
+void ResourceManager_ConstructContext(ServerResourceContext* context, const char* dataRootPath);
 
-void ResourceManager_Shutdown(const char* serverRootPath);
+void ResourceManager_CloseContext();
 
 ResourceResult  ResourceManager_Get(const char* target, const char* data, HttpCookie* cookieArray, size_t cookieCount, const char** result);
 

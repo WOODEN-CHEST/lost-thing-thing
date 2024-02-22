@@ -89,31 +89,38 @@ static void AppendResponseCode(StringBuilder* builder, HttpResponseCode code)
 	}
 }
 
+static void AppendResponseBody(StringBuilder* builder, const char* body)
+{
+	char NumberBuffer[16];
+	sprintf(NumberBuffer, "%llu", String_LengthBytes(body));
+	StringBuilder_Append(builder, HTTP_RESPONSE_CONTENT_LENGTH_NAME);
+	StringBuilder_AppendChar(builder, HEADER_VALUE_DEFINER);
+	StringBuilder_AppendChar(builder, ' ');
+	StringBuilder_Append(builder, NumberBuffer);
+	StringBuilder_Append(builder, HTTP_STANDART_NEWLINE);
+
+	StringBuilder_Append(builder, HTTP_STANDART_NEWLINE);
+
+	StringBuilder_Append(builder, body);
+}
+
 static void BuildHttpResponse(StringBuilder* responseBuilder, HttpResponse* response)
 {
 	StringBuilder_Clear(responseBuilder);
 	StringBuilder_Append(responseBuilder, HTTP_RESPONSE_TARGET_VERSION);
 	StringBuilder_AppendChar(responseBuilder, ' ');
 	AppendResponseCode(responseBuilder, response->Code);
-	StringBuilder_Append(responseBuilder, HTTP_STANDART_NEWLINE);
 
-
-	char NumberBuffer[16];
-	sprintf(NumberBuffer, "%d", String_LengthBytes(response->Body));
-	StringBuilder_Append(responseBuilder, HTTP_RESPONSE_CONTENT_LENGTH_NAME);
-	StringBuilder_AppendChar(responseBuilder, HEADER_VALUE_DEFINER);
-	StringBuilder_AppendChar(responseBuilder, ' ');
-	StringBuilder_Append(responseBuilder, NumberBuffer);
-	StringBuilder_Append(responseBuilder, HTTP_STANDART_NEWLINE);
-
-	StringBuilder_Append(responseBuilder, HTTP_STANDART_NEWLINE);
-
-	StringBuilder_Append(responseBuilder, response->Body);
+	if (response->Body)
+	{
+		StringBuilder_Append(responseBuilder, HTTP_STANDART_NEWLINE);
+		AppendResponseBody(responseBuilder, response->Body);
+	}
 }
 
 
 /* Parsing functions. */
-static char* SkipLineUntilNonWhitespace(char* message)
+static const char* SkipLineUntilNonWhitespace(const char* message)
 {
 	while (!IsEndOfMessageLine(*message) && IsWhitespace(*message))
 	{
@@ -128,7 +135,7 @@ static char* SkipLineUntilNonWhitespace(char* message)
 	return message;
 }
 
-static char* SkipUntilNextLine(char* message)
+static const char* SkipUntilNextLine(const char* message)
 {
 	while (!IsEndOfMessageLine(*message))
 	{
@@ -140,7 +147,7 @@ static char* SkipUntilNextLine(char* message)
 	return message;
 }
 
-static int ParseLineUntil(char* buffer, int bufferSize, char* message, char targetCharacter)
+static int ParseLineUntil(char* buffer, int bufferSize, const char* message, char targetCharacter)
 {
 	int Index;
 	for (Index = 0; (Index < bufferSize - 1) && !IsEndOfMessageLine(message[Index])
@@ -160,7 +167,7 @@ static int ParseLineUntil(char* buffer, int bufferSize, char* message, char targ
 	return Index;
 }
 
-static int ReadFromLine(char* buffer, int count, char* message)
+static int ReadFromLine(char* buffer, int count, const char* message)
 {
 	int Index;
 	for (Index = 0; (Index < count) && (!IsEndOfMessageLine(message[Index])); Index++)
@@ -172,7 +179,7 @@ static int ReadFromLine(char* buffer, int count, char* message)
 	return Index;
 }
 
-static int ReadIntFromLine(char* message, int* readInt, bool* success)
+static int ReadIntFromLine(const char* message, int* readInt, bool* success)
 {
 	char ReadBuffer[16];
 
@@ -195,7 +202,7 @@ static int ReadIntFromLine(char* message, int* readInt, bool* success)
 	return Index;
 }
 
-/* Http Request Line. */
+/* HTTP Request Line. */
 static const char* ReadMethod(const char* message, HttpRequest* finalRequest)
 {
 	message = SkipLineUntilNonWhitespace(message);
@@ -268,7 +275,7 @@ static const char* ReadHttpVersion(const char* message, HttpRequest* finalReques
 	return message;
 }
 
-static char* ReadHttpRequestLine(const char* message, HttpRequest* finalRequest)
+static const char* ReadHttpRequestLine(const char* message, HttpRequest* finalRequest)
 {
 	message = ReadMethod(message, finalRequest);
 	message = ReadHttpRequestTarget(message, finalRequest);
@@ -277,8 +284,8 @@ static char* ReadHttpRequestLine(const char* message, HttpRequest* finalRequest)
 }
 
 
-/* Http Cookies. */
-static char* ReadSingleHttpCookie(const char* message, HttpRequest* finalRequest)
+/* HTTP Cookies. */
+static const char* ReadSingleHttpCookie(const char* message, HttpRequest* finalRequest)
 {
 	message = SkipLineUntilNonWhitespace(message);
 
@@ -312,7 +319,7 @@ static char* ReadSingleHttpCookie(const char* message, HttpRequest* finalRequest
 	return message;
 }
 
-static char* ReadHttpCookies(const char* message, HttpRequest* finalRequest)
+static const char* ReadHttpCookies(const char* message, HttpRequest* finalRequest)
 {
 	for (int i = 0; (i < MAX_COOKIE_COUNT) && !IsEndOfMessageLine(*message); i++)
 	{
@@ -323,8 +330,8 @@ static char* ReadHttpCookies(const char* message, HttpRequest* finalRequest)
 }
 
 
-/* Http Headers. */
-static char* ReadHttpHeader(const char* message, HttpRequest* finalRequest)
+/* HTTP Headers. */
+static const char* ReadHttpHeader(const char* message, HttpRequest* finalRequest)
 {
 	message = SkipLineUntilNonWhitespace(message);
 
@@ -357,25 +364,65 @@ static void ReadHttpRequest(const char* message, HttpRequest* finalRequest)
 	String_CopyTo(message, finalRequest->Body);
 }
 
+static HttpResponseCode ResourceResponseToHttpResponseCode(ResourceResult result)
+{
+	switch (result)
+	{
+		case ResourceResult_Successful:
+			return HttpResponseCode_OK;
+
+		case ResourceResult_NotFound:
+			return HttpResponseCode_NotFound;
+
+		case ResourceResult_Invalid:
+			return HttpResponseCode_BadRequest;
+
+		case ResourceResult_Unauthorized:
+			return HttpResponseCode_Unauthorized;
+
+		case ResourceResult_ShutDownServer:
+			return HttpResponseCode_OK;
+	
+		default:
+			return HttpResponseCode_ImATeapot;
+	}
+}
+
+static void ExecuteValidHttpRequest(HttpRequest* request, HttpResponse* response, StringBuilder* responseBuilder)
+{
+	ResourceResult Result = ResourceResult_Invalid;
+
+	if (request->Method == HttpMethod_GET)
+	{
+		Result = ResourceManager_Get(request->RequestTarget, request->Body, request->CookieArray, request->CookieCount, &response->Body);
+	}
+	else if (request->Method == HttpMethod_POST)
+	{
+		Result = ResourceManager_Post(request->RequestTarget, request->Body, request->CookieArray, request->CookieCount);
+	}
+
+	response->Code = ResourceResponseToHttpResponseCode(Result);
+}
+
 static void HandleHttpRequest(SOCKET clientSocket, HttpRequest* request, StringBuilder* responseBuilder)
 {
 	HttpResponse Response;
+	Response.Body = NULL;
+	Response.Code = HttpResponseCode_InternalServerError;
+	
 
 	if ((request->HttpVersionMinor == HTTP_INVALID_VERSION) || (request->HttpVersionMajor == HTTP_INVALID_VERSION)
 		|| (request->Method == HttpMethod_UNKNOWN))
 	{
 		Response.Code = HttpResponseCode_BadRequest;
 	}
-
+	else
+	{
+		ExecuteValidHttpRequest(request, &Response, responseBuilder);
+	}
+	
 	BuildHttpResponse(responseBuilder, &Response);
 	send(clientSocket, responseBuilder->Data, (int)responseBuilder->Length, NULL);
-}
-
-static ErrorCode SetSocketError(const char* message, int wsaCode)
-{
-	char ErrorMessage[128];
-	sprintf(ErrorMessage, "%s (Code: %d)", message, wsaCode);
-	return ErrorContext_SetError(ErrorCode_SocketError, ErrorMessage);
 }
 
 static void ClearHttpRequestStruct(HttpRequest* request)
@@ -393,6 +440,13 @@ static void ClearHttpRequestStruct(HttpRequest* request)
 
 
 /* Client listener. */
+static ErrorCode SetSocketError(const char* message, int wsaCode)
+{
+	char ErrorMessage[128];
+	sprintf(ErrorMessage, "%s (Code: %d)", message, wsaCode);
+	return ErrorContext_SetError(ErrorCode_SocketError, ErrorMessage);
+}
+
 static ErrorCode AcceptSingleClient(SOCKET serverSocket,
 	HttpRequest* request, 
 	StringBuilder* responseBuilder,
@@ -429,7 +483,7 @@ static ErrorCode AcceptSingleClient(SOCKET serverSocket,
 static ErrorCode AcceptClients(SOCKET serverSocket)
 {
 	// Initialize memory.
-	char* RequestBuffer = Memory_SafeMalloc(REQUEST_MESSAGE_BUFFER_LENGTH);
+	char* RequestBuffer = (char*)Memory_SafeMalloc(REQUEST_MESSAGE_BUFFER_LENGTH);
 
 	HttpRequest Request;
 	Request.Body = (char*)Memory_SafeMalloc(REQUEST_MESSAGE_BUFFER_LENGTH);
@@ -444,7 +498,7 @@ static ErrorCode AcceptClients(SOCKET serverSocket)
 	// Main listening loop.
 	while (!IsStopRequested)
 	{
-		if (AcceptSingleClient(serverSocket, &Request, &ResponseBuilder, &RequestBuffer, &IsStopRequested) != ErrorCode_Success)
+		if (AcceptSingleClient(serverSocket, &Request, &ResponseBuilder, RequestBuffer, &IsStopRequested) != ErrorCode_Success)
 		{
 			return ErrorContext_GetLastErrorCode();
 		}
@@ -502,6 +556,8 @@ static ErrorCode CloseSocket(SOCKET* targetSocket)
 	{
 		return SetSocketError("Failed to accept client.", WSAGetLastError());
 	}
+
+	return ErrorCode_Success;
 }
 
 

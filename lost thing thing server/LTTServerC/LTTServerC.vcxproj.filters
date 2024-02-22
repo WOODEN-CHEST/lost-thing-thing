@@ -112,5 +112,8 @@
     <ClInclude Include="LTTServerC.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="GHDF.h">
+      <Filter>Source Files\IO</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>
