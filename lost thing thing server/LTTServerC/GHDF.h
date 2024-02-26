@@ -1,6 +1,7 @@
 #pragma once
 #include <stdbool.h>
 #include <stddef.h>
+#include "LTTErrors.h"
 
 
 // Macros.
@@ -27,7 +28,7 @@ typedef enum GHDFTypeEnum
 	GHDFType_Compound = 12
 } GHDFType;
 
-union GHDFPrimitive
+typedef union GHDFPrimitiveUnion
 {
 	signed char SChar;
 	unsigned char UCchar;
@@ -45,8 +46,8 @@ union GHDFPrimitive
 
 	char* String;
 
-	GHDFEntryStruct*
-};
+	struct GHDFEntryStruct* Compound;
+} GHDFPrimitive;
 
 typedef struct GHDFArrayStruct
 {
@@ -54,11 +55,11 @@ typedef struct GHDFArrayStruct
 	size_t Size;
 } GHDFArray;
 
-typedef union GHDFEntryValue
+typedef union GHDFEntryValueUnion
 {
 	GHDFPrimitive SingleValue;
 	GHDFArray ValueArray;
-};
+} GHDFEntryValue;
 
 typedef struct GHDFEntryStruct
 {
@@ -67,17 +68,31 @@ typedef struct GHDFEntryStruct
 	GHDFEntryValue Value;
 } GHDFEntry;
 
-typedef struct GHDFEntryBucket
+typedef struct GHDFCompoundStruct
 {
 	GHDFEntry* Entries;
 	size_t Count;
 	size_t _capacity;
-};
-
-typedef struct GHDFCompound
-{
-	GHDFEntry* Entries;
-};
+} GHDFCompound;
 
 
 // Functions.
+void GHDFCompound_Construct(GHDFCompound* self, size_t capacity);
+
+ErrorCode GHDFCompound_AddSingleValueEntry(GHDFCompound* self, GHDFType type, int id, GHDFPrimitive value);
+
+ErrorCode GHDFCompound_AddArrayEntry(GHDFCompound* self, GHDFType type, int id, GHDFPrimitive* valueArray, size_t count);
+
+void GHDFCompound_RemoveEntry(GHDFCompound* self, int id);
+
+void GHDFCompound_Clear(GHDFCompound* self);
+
+GHDFEntry* GHDFCompound_GetEntry(GHDFCompound* self, int id);
+
+GHDFEntry* GHDFCompound_GetEntryOrDefault(GHDFCompound* self, int id, GHDFEntry* defaultEntry);
+
+GHDFCompound GHDFCompound_ReadFromFile(const char* path);
+
+ErrorCode GHDFCompound_SaveToFile(GHDFCompound* compound, const char* path);
+
+void GHDFCompound_Deconstruct(GHDFCompound* self);

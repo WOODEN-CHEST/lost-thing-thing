@@ -71,6 +71,9 @@
     <ClCompile Include="LTTServerResourceManager.c">
       <Filter>Source Files\HttpListener</Filter>
     </ClCompile>
+    <ClCompile Include="GHDF.c">
+      <Filter>Source Files\IO</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LttErrors.h">

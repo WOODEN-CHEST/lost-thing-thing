@@ -139,6 +139,7 @@
   <ItemGroup>
     <ClCompile Include="ConfigFile.c" />
     <ClCompile Include="Directory.c" />
+    <ClCompile Include="GHDF.c" />
     <ClCompile Include="LttErrors.c" />
     <ClCompile Include="File.c" />
     <ClCompile Include="HttpListener.c" />

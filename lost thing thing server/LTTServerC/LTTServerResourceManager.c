@@ -3,11 +3,34 @@
 #include "File.h"
 #include "LTTServerC.h"
 #include "Memory.h"
+#include "LTTHTML.h"
 
 
 // Macros.
 #define DIR_NAME_DATABASE "data"
 #define DIR_NAME_SOURCE "source"
+
+
+// Types.
+typedef struct HTMLSource
+{
+	HTMLDocument BaseDocument;
+	HTMLDocument LoggedInDocument;
+	HTMLDocument LoggedOutDocument;
+	const char* LoggedInData;
+	const char* LoggedInData;
+} CSSSourceFile;
+
+typedef struct CSSSourceFileStruct
+{
+	const char* Data;
+	const char* EasterEggData
+} CSSSourceFile;
+
+typedef struct JavascriptSourceFileStruct
+{
+	const char* Data;
+} JavascriptSourceFile;
 
 
 // Static functions.
