@@ -5,7 +5,7 @@
 
 
 // Macros.
-#define GHDT_TYPE_ARRAY_BIT 0b100000000000000000000000000000000
+#define GHDT_TYPE_ARRAY_BIT 0b10000000
 
 #define COMPOUND_DEFAULT_CAPACITY 32
 
@@ -13,31 +13,39 @@
 // Types.
 typedef enum GHDFTypeEnum
 {
-	GHDFType_SChar = 0,
-	GHDFType_UChar = 1,
-	GHDFType_Short =  2,
-	GHDFType_UShort = 3,
-	GHDFType_Int = 4,
-	GHDFType_UInt = 5,
-	GHDFType_Long = 6,
-	GHDFType_ULong = 7,
-	GHDFType_Float = 8,
-	GHDFType_Double = 9,
-	GHDFType_Bool = 10,
-	GHDFType_String = 11,
-	GHDFType_Compound = 12
+	GHDFType_None = 0,
+	GHDFType_SByte = 1,
+	GHDFType_UByte = 2,
+	GHDFType_Short =  3,
+	GHDFType_UShort = 4,
+	GHDFType_Int = 5,
+	GHDFType_UInt = 6,
+	GHDFType_Long = 7,
+	GHDFType_ULong = 8,
+
+	GHDFType_Float = 9,
+	GHDFType_Double = 10,
+
+	GHDFType_Bool = 11,
+
+	GHDFType_Char = 12,
+
+	GHDFType_String = 13,
+	GHDFType_Compound = 14
 } GHDFType;
 
 typedef union GHDFPrimitiveUnion
 {
-	signed char SChar;
-	unsigned char UCchar;
+	signed char SByte;
+	unsigned char UByte;
 	signed short Short;
 	unsigned short UShort;
 	signed int Int;
 	unsigned int UInt;
 	signed long long Long;
 	unsigned long long ULong;
+
+	int Char;
 
 	float Float;
 	double Double;
@@ -46,7 +54,7 @@ typedef union GHDFPrimitiveUnion
 
 	char* String;
 
-	struct GHDFEntryStruct* Compound;
+	struct GHDFCompoundStruct* Compound;
 } GHDFPrimitive;
 
 typedef struct GHDFArrayStruct
@@ -91,7 +99,7 @@ GHDFEntry* GHDFCompound_GetEntry(GHDFCompound* self, int id);
 
 GHDFEntry* GHDFCompound_GetEntryOrDefault(GHDFCompound* self, int id, GHDFEntry* defaultEntry);
 
-GHDFCompound GHDFCompound_ReadFromFile(const char* path);
+ErrorCode GHDFCompound_ReadFromFile(const char* path, GHDFCompound* emptyBaseCompound);
 
 ErrorCode GHDFCompound_SaveToFile(GHDFCompound* compound, const char* path);
 

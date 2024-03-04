@@ -18,13 +18,13 @@ typedef struct HTMLSource
 	HTMLDocument LoggedInDocument;
 	HTMLDocument LoggedOutDocument;
 	const char* LoggedInData;
-	const char* LoggedInData;
-} CSSSourceFile;
+	const char* LoggedOutData;
+} HTMLSource;
 
 typedef struct CSSSourceFileStruct
 {
 	const char* Data;
-	const char* EasterEggData
+	const char* EasterEggData;
 } CSSSourceFile;
 
 typedef struct JavascriptSourceFileStruct
