@@ -42,6 +42,10 @@ static char* AllocateMemoryForFileRead(FILE* file, size_t* fileSize)
 		ErrorContext_SetError(ErrorCode_IO, "File_ReadAllText: Failed to seek to file start.");
 		return NULL;
 	}
+
+	*fileSize = (size_t)Length;
+	char* Data = Memory_SafeMalloc((size_t)Length);
+	return Data;
 }
 
 

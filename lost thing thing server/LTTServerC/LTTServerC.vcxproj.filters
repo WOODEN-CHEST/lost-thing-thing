@@ -71,8 +71,8 @@
     <ClCompile Include="LTTServerResourceManager.c">
       <Filter>Source Files\HttpListener</Filter>
     </ClCompile>
-    <ClCompile Include="GHDF.c">
-      <Filter>Source Files\IO</Filter>
+    <ClCompile Include="LTTChar.c">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -115,8 +115,8 @@
     <ClInclude Include="LTTServerC.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="GHDF.h">
-      <Filter>Source Files\IO</Filter>
+    <ClInclude Include="LTTChar.h">
+      <Filter>Source Files\String</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

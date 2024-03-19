@@ -139,7 +139,7 @@
   <ItemGroup>
     <ClCompile Include="ConfigFile.c" />
     <ClCompile Include="Directory.c" />
-    <ClCompile Include="GHDF.c" />
+    <ClCompile Include="LTTChar.c" />
     <ClCompile Include="LttErrors.c" />
     <ClCompile Include="File.c" />
     <ClCompile Include="HttpListener.c" />
@@ -154,7 +154,7 @@
   <ItemGroup>
     <ClInclude Include="ConfigFile.h" />
     <ClInclude Include="Directory.h" />
-    <ClInclude Include="GHDF.h" />
+    <ClInclude Include="LTTChar.h" />
     <ClInclude Include="LttErrors.h" />
     <ClInclude Include="File.h" />
     <ClInclude Include="HttpListener.h" />
