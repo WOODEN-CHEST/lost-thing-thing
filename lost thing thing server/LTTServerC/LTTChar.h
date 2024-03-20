@@ -15,6 +15,11 @@
 #define UTF8_TRAILING_BYTE 0b10000000
 #define UTF8_TRAILING_BYTE_COMBINED 0b11000000
 
+#define UTF8_MAX_CODEPOINT_ONE_BYTE 127
+#define UTF8_MAX_CODEPOINT_TWO_BYTES 2047
+#define UTF8_MAX_CODEPOINT_THREE_BYTES 65535
+
+
 #define IsLatinACharacter(characterNumber) ((256 <= characterNumber) && (characterNumber <= 383))
 
 
@@ -29,8 +34,8 @@ void Char_ToUpper(char* character);
 
 void Char_ToLower(char* character);
 
-bool IsLetter(char* character);
+bool IsLetter(const char* character);
 
-bool IsDigit(char* character);
+bool IsDigit(const char* character);
 
-bool IsWhitespace(char* character);
+bool IsWhitespace(const char* character);
