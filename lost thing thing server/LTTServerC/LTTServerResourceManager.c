@@ -40,8 +40,8 @@ typedef struct JavascriptSourceFileStruct
 // Functions.
 void ResourceManager_ConstructContext(ServerResourceContext* context, const char* dataRootPath)
 {
-	context->DatabaseRootPath = Directory_Combine(dataRootPath, DIR_NAME_DATABASE);
-	context->SourceRootPath = Directory_Combine(dataRootPath, DIR_NAME_SOURCE);
+	context->DatabaseRootPath = Directory_CombinePaths(dataRootPath, DIR_NAME_DATABASE);
+	context->SourceRootPath = Directory_CombinePaths(dataRootPath, DIR_NAME_SOURCE);
 }
 
 void ResourceManager_CloseContext()
@@ -53,11 +53,16 @@ void ResourceManager_CloseContext()
 
 ResourceResult ResourceManager_Get(const char* target, const char* data, HttpCookie* cookieArray, size_t cookieCount, const char** result)
 {
-	*result = "{\"text\":\"Hello World!\"}";
 	return ResourceResult_Successful;
 }
 
 ResourceResult ResourceManager_Post(const char* target, const char* data, HttpCookie* cookieArray, size_t cookieCount)
 {
+	// --------------------------- REMOVE IN FINAL CODE OUTSIDE TESTS PLEASE!!! ---------------------------------- //
+	if (String_Equals(data, "stop"))      // <-------------
+	{											// <-------------
+		return ResourceResult_ShutDownServer;   // <-------------
+	}											// <-------------
+	// --------------------------- REMOVE IN FINAL CODE OUTSIDE TESTS PLEASE!!! ---------------------------------- //
 	return ResourceResult_Successful;
 }

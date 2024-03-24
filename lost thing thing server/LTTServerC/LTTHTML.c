@@ -191,7 +191,7 @@ ErrorCode HTMLElement_Construct(HTMLElement* element, const char* name)
 {
 	if (String_LengthBytes(name) > sizeof(element->Name))
 	{
-		return ErrorContext_SetError(ErrorCode_InvalidArgument, "HTMLElement_Construct: name is longer than allowed.");
+		return Error_SetError(ErrorCode_InvalidArgument, "HTMLElement_Construct: name is longer than allowed.");
 	}
 
 	String_CopyTo(name, element->Name);
@@ -227,7 +227,7 @@ ErrorCode HTMLElement_SetAttribute(HTMLElement* element, const char* name, const
 
 	if (String_LengthBytes(name) > sizeof(element->AttributeArray[0].Name))
 	{
-		return ErrorContext_SetError(ErrorCode_InvalidArgument, "HTMLElement_SetAttribute: Attribute name is too long.");
+		return Error_SetError(ErrorCode_InvalidArgument, "HTMLElement_SetAttribute: Attribute name is too long.");
 	}
 
 	String_CopyTo(name, element->AttributeArray[element->AttributeCount].Name);

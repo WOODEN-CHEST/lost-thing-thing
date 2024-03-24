@@ -36,6 +36,6 @@ ErrorCode ServerConfig_Read(const char* configPath, ServerConfig* config)
 	if (!FileData)
 	{
 		LoadDefaultConfig(config);
-		return ErrorCode_Success;
 	}
+	return ErrorCode_Success;
 }

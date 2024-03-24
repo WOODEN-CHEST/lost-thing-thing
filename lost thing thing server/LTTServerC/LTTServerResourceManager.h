@@ -25,6 +25,6 @@ void ResourceManager_ConstructContext(ServerResourceContext* context, const char
 
 void ResourceManager_CloseContext();
 
-ResourceResult  ResourceManager_Get(const char* target, const char* data, HttpCookie* cookieArray, size_t cookieCount, const char** result);
+ResourceResult ResourceManager_Get(const char* target, const char* data, HttpCookie* cookieArray, size_t cookieCount, const char** result);
 
-ResourceResult  ResourceManager_Post(const char* target, const char* data, HttpCookie* cookieArray, size_t cookieCount);
+ResourceResult ResourceManager_Post(const char* target, const char* data, HttpCookie* cookieArray, size_t cookieCount);

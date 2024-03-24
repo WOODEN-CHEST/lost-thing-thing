@@ -11,6 +11,7 @@
 
 // Macros.
 #define DIR_NAME_MAX_LENGTH 512
+#define EXTENSION_SPEARATOR '.'
 
 
 // Functions.
@@ -25,7 +26,7 @@ _Bool Directory_Exists(const char* path)
 ErrorCode Directory_Create(const char* path)
 {
 	bool Result = CreateDirectoryA(path, NULL);
-	return Result ? ErrorCode_Success : ErrorContext_SetError(ErrorCode_IO, "Directory_Create: Failed to create directory.");
+	return Result ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "Directory_Create: Failed to create directory.");
 }
 
 ErrorCode Directory_CreateAll(const char* path)
@@ -38,7 +39,7 @@ ErrorCode Directory_CreateAll(const char* path)
 
 	for (int i = 0; Path[i] != '\0'; i++)
 	{
-		if (IsPathSeparator(Path[i]))
+		if (Directory_IsPathSeparator(Path[i]))
 		{
 			char ValueAtIndex = Path[i];
 			Path[i] = '\0';
@@ -57,7 +58,7 @@ ErrorCode Directory_CreateAll(const char* path)
 ErrorCode Directory_Delete(const char* path)
 {
 	bool Result = RemoveDirectoryA(path);
-	return Result ? ErrorCode_Success : ErrorContext_SetError(ErrorCode_IO, "Directory_Delete: Failed to delete directory.");
+	return Result ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "Directory_Delete: Failed to delete directory.");
 }
 
 char* Directory_GetParentDirectory(const char* path)
@@ -67,7 +68,7 @@ char* Directory_GetParentDirectory(const char* path)
 	int LastSeparatorIndex = 0;
 	for (int i = 0; PathCopy[i] != '\0'; i++)
 	{
-		if (IsPathSeparator(PathCopy[i]))
+		if (Directory_IsPathSeparator(PathCopy[i]))
 		{
 			LastSeparatorIndex = i;
 		}
@@ -77,7 +78,7 @@ char* Directory_GetParentDirectory(const char* path)
 	return PathCopy;
 }
 
-char* Directory_Combine(const char* path1, const char* path2)
+char* Directory_CombinePaths(const char* path1, const char* path2)
 {
 	StringBuilder Builder;
 	StringBuilder_Construct(&Builder, DEFAULT_STRING_BUILDER_CAPACITY);
@@ -95,7 +96,7 @@ char* Directory_GetName(const char* path)
 	int Length = 0;
 	for (; path[Length] != '\0'; Length++)
 	{
-		if (IsPathSeparator(path[Length]))
+		if (Directory_IsPathSeparator(path[Length]))
 		{
 			LastSeparatorIndex = Length;
 		}
@@ -103,4 +104,33 @@ char* Directory_GetName(const char* path)
 	}
 
 	return String_SubString(path, LastSeparatorIndex + 1, Length);
+}
+
+char* Directory_ChangePathExtension(const char* path, const char* newExtension)
+{
+	StringBuilder Builder;
+	StringBuilder_Construct(&Builder, DEFAULT_STRING_BUILDER_CAPACITY);
+	StringBuilder_Append(&Builder, path);
+
+	if (String_EndsWith(Builder.Data, newExtension))
+	{
+		return newExtension;
+	}
+
+	int InsertionIndex = -1;
+	for (int i = Builder.Length - 1; (i >= 0) && !Directory_IsPathSeparator(Builder.Data[i]); i--)
+	{
+		if (Builder.Data[i] == EXTENSION_SPEARATOR)
+		{
+			InsertionIndex = i;
+			break;
+		}
+	}
+
+	if (InsertionIndex != -1)
+	{
+		StringBuilder_Remove(&Builder, InsertionIndex, Builder.Length);
+	}
+	StringBuilder_Append(&Builder, newExtension);
+	return Builder.Data;
 }

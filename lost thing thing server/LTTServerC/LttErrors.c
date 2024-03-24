@@ -46,9 +46,13 @@ static void CopyErrorNameIntoBuffer(int code, char* buffer)
 		case ErrorCode_IndexOutOfRange:
 			strcpy(buffer, "Index Out of Range Error. ");
 			break;
-
+			
 		case ErrorCode_SocketError:
 			strcpy(buffer, "Socket Error. ");
+			break;
+
+		case ErrorCode_InvalidGHDFFile:
+			strcpy(buffer, "Invalid GHDF File. ");
 			break;
 
 		default:
@@ -71,7 +75,7 @@ static void EnsureMessageBufferCapacity(size_t capacity)
 		if (!NewPointer)
 		{
 			free(Context->_lastErrorMessage);
-			ErrorContext_AbortProgram("Error handler failed to reallocate memory.");
+			Error_AbortProgram("Error handler failed to reallocate memory.");
 			return;
 		}
 		Context->_lastErrorMessage = (char*)NewPointer;
@@ -80,7 +84,7 @@ static void EnsureMessageBufferCapacity(size_t capacity)
 
 
 // Functions.
-void ErrorContext_Construct(ErrorContext* context)
+void Error_Construct(ErrorContext* context)
 {
 	context->_lastErrorCode = ErrorCode_Success;
 	context->_lastErrorMessageCapacity = ERROR_MESSAGE_DEFAULT_CAPACITY;
@@ -88,20 +92,20 @@ void ErrorContext_Construct(ErrorContext* context)
 	context->_lastErrorMessage = (char*)malloc(context->_lastErrorMessageCapacity);
 	if (!context->_lastErrorMessage)
 	{
-		ErrorContext_AbortProgram("Failed to initialize error handling.");
+		Error_AbortProgram("Failed to initialize error handling.");
 		return;
 	}
 
 	context->_lastErrorMessage[0] = '\0';
 }
 
-void ErrorContext_AbortProgram(const char* message)
+void Error_AbortProgram(const char* message)
 {
 	printf(message);
 	exit(EXIT_FAILURE);
 }
 
-ErrorCode ErrorContext_SetError(int code, const char* message)
+ErrorCode Error_SetError(int code, const char* message)
 {
 	if ((code < ErrorCode_Success) || (code > ErrorCode_Unknown))
 	{
@@ -123,7 +127,7 @@ ErrorCode ErrorContext_SetError(int code, const char* message)
 	strcpy(Context->_lastErrorMessage + ErrorTypeMessageLength, message);
 }
 
-ErrorCode ErrorContext_GetLastErrorCode()
+ErrorCode Error_GetLastErrorCode()
 {
 	return LTTServerC_GetCurrentContext()->Errors._lastErrorCode;
 }
@@ -131,4 +135,10 @@ ErrorCode ErrorContext_GetLastErrorCode()
 const char* Error_GetLastErrorMessage()
 {
 	return LTTServerC_GetCurrentContext()->Errors._lastErrorMessage;
+}
+
+void Error_ClearError()
+{
+	LTTServerC_GetCurrentContext()->Errors._lastErrorCode = ErrorCode_Success;
+	LTTServerC_GetCurrentContext()->Errors._lastErrorMessage[0] = '\0';
 }

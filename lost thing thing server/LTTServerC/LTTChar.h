@@ -19,6 +19,10 @@
 #define UTF8_MAX_CODEPOINT_TWO_BYTES 2047
 #define UTF8_MAX_CODEPOINT_THREE_BYTES 65535
 
+#define UTF8_ASCII_CODEPOINT_OFFSET 32
+#define UTF8_LATIN1_CODEPOINT_OFFSET 32
+#define UTF8_EXTENDED_CODEPOINT_OFFSET 1
+
 
 #define IsLatinACharacter(characterNumber) ((256 <= characterNumber) && (characterNumber <= 383))
 
@@ -26,16 +30,18 @@
 // Functions.
 int Char_GetByteCount(const char* character);
 
+int Char_GetByteCountCodepoint(int codepoint);
+
 int Char_GetCodepoint(const char* character);
 
-int Char_SetCodePoint(char* character, int codePoint);
+void Char_SetCodePoint(char* character, int codepoint);
 
 void Char_ToUpper(char* character);
 
 void Char_ToLower(char* character);
 
-bool IsLetter(const char* character);
+bool Char_IsLetter(const char* character);
 
-bool IsDigit(const char* character);
+bool Char_IsDigit(const char* character);
 
-bool IsWhitespace(const char* character);
+bool Char_IsWhitespace(const char* character);

@@ -44,6 +44,20 @@
 #define HTTP_STANDART_NEWLINE "\r\n"
 
 
+// Types.
+typedef enum SpecialActionEnum
+{
+	SpecialAction_None,
+	SpecialAction_ShutdownServer
+} SpecialAction;
+
+typedef struct ServerRuntimeDataStruct
+{
+	bool IsStopRequested;
+	size_t RequestCount;
+} ServerRuntimeData;
+
+
 // Static functions.
 /* Responses. */
 static void AppendResponseCode(StringBuilder* builder, HttpResponseCode code)
@@ -388,7 +402,7 @@ static HttpResponseCode ResourceResponseToHttpResponseCode(ResourceResult result
 	}
 }
 
-static void ExecuteValidHttpRequest(HttpRequest* request, HttpResponse* response, StringBuilder* responseBuilder)
+static SpecialAction ExecuteValidHttpRequest(HttpRequest* request, HttpResponse* response, StringBuilder* responseBuilder)
 {
 	ResourceResult Result = ResourceResult_Invalid;
 
@@ -402,14 +416,15 @@ static void ExecuteValidHttpRequest(HttpRequest* request, HttpResponse* response
 	}
 
 	response->Code = ResourceResponseToHttpResponseCode(Result);
+	return Result == ResourceResult_ShutDownServer ? SpecialAction_ShutdownServer : SpecialAction_None;
 }
 
-static void HandleHttpRequest(SOCKET clientSocket, HttpRequest* request, StringBuilder* responseBuilder)
+static SpecialAction HandleHttpRequest(SOCKET clientSocket, HttpRequest* request, StringBuilder* responseBuilder)
 {
 	HttpResponse Response;
 	Response.Body = NULL;
 	Response.Code = HttpResponseCode_InternalServerError;
-	
+	SpecialAction RequestedAction = SpecialAction_None;
 
 	if ((request->HttpVersionMinor == HTTP_INVALID_VERSION) || (request->HttpVersionMajor == HTTP_INVALID_VERSION)
 		|| (request->Method == HttpMethod_UNKNOWN))
@@ -418,11 +433,12 @@ static void HandleHttpRequest(SOCKET clientSocket, HttpRequest* request, StringB
 	}
 	else
 	{
-		ExecuteValidHttpRequest(request, &Response, responseBuilder);
+		RequestedAction = ExecuteValidHttpRequest(request, &Response, responseBuilder);
 	}
 	
 	BuildHttpResponse(responseBuilder, &Response);
 	send(clientSocket, responseBuilder->Data, (int)responseBuilder->Length, NULL);
+	return RequestedAction;
 }
 
 static void ClearHttpRequestStruct(HttpRequest* request)
@@ -444,22 +460,31 @@ static ErrorCode SetSocketError(const char* message, int wsaCode)
 {
 	char ErrorMessage[128];
 	sprintf(ErrorMessage, "%s (Code: %d)", message, wsaCode);
-	return ErrorContext_SetError(ErrorCode_SocketError, ErrorMessage);
+	return Error_SetError(ErrorCode_SocketError, ErrorMessage);
+}
+
+static void HandleSpecialAction(SOCKET clientSocket, SpecialAction action, ServerRuntimeData* runtimeData)
+{
+	if (action == SpecialAction_ShutdownServer)
+	{
+		runtimeData->IsStopRequested = true;
+	}
 }
 
 static ErrorCode AcceptSingleClient(SOCKET serverSocket,
 	HttpRequest* request, 
 	StringBuilder* responseBuilder,
 	char* requestMessageBuffer,
-	bool* isStopRequested)
+	ServerRuntimeData* runtimeData)
 {
 	// Accept client.
 	SOCKET ClientSocket;
 	ClientSocket = accept(serverSocket, NULL, NULL);
 	if (ClientSocket == INVALID_SOCKET)
 	{
-		return SetSocketError("Failed to accept client.", WSAGetLastError());
+		return SetSocketError("AcceptSingleClient: Failed to accept client.", WSAGetLastError());
 	}
+	runtimeData->RequestCount += 1;
 
 	int ReceivedLength = recv(ClientSocket, requestMessageBuffer, REQUEST_MESSAGE_BUFFER_LENGTH - 1, NULL);
 	requestMessageBuffer[ReceivedLength] = '\0';
@@ -467,20 +492,26 @@ static ErrorCode AcceptSingleClient(SOCKET serverSocket,
 	// Process.
 	ClearHttpRequestStruct(request);
 	ReadHttpRequest(requestMessageBuffer, request);
-	HandleHttpRequest(ClientSocket, request, responseBuilder);
+	SpecialAction RequestedAction = HandleHttpRequest(ClientSocket, request, responseBuilder);
+
+	// Handle any special actions.
+	if (RequestedAction != SpecialAction_None)
+	{
+		HandleSpecialAction(ClientSocket, RequestedAction, runtimeData);
+	}
 
 
 	// Close connection.
 	if (closesocket(ClientSocket) == SOCKET_ERROR)
 	{
-		return SetSocketError("Failed to close the socket.", WSAGetLastError());
+		return SetSocketError("AcceptSingleClient: Failed to close the socket.", WSAGetLastError());
 	}
 
 	return ErrorCode_Success;
 }
 
 
-static ErrorCode AcceptClients(SOCKET serverSocket)
+static void AcceptClients(SOCKET serverSocket)
 {
 	// Initialize memory.
 	char* RequestBuffer = (char*)Memory_SafeMalloc(REQUEST_MESSAGE_BUFFER_LENGTH);
@@ -492,23 +523,24 @@ static ErrorCode AcceptClients(SOCKET serverSocket)
 	StringBuilder ResponseBuilder;
 	StringBuilder_Construct(&ResponseBuilder, REQUEST_MESSAGE_BUFFER_LENGTH);
 
-	bool IsStopRequested = false;
-
+	ServerRuntimeData RuntimeData =
+	{
+		false,
+		0
+	};
 
 	// Main listening loop.
-	while (!IsStopRequested)
+	while (!RuntimeData.IsStopRequested)
 	{
-		if (AcceptSingleClient(serverSocket, &Request, &ResponseBuilder, RequestBuffer, &IsStopRequested) != ErrorCode_Success)
+		if (AcceptSingleClient(serverSocket, &Request, &ResponseBuilder, RequestBuffer, &RuntimeData) != ErrorCode_Success)
 		{
-			return ErrorContext_GetLastErrorCode();
+			Logger_LogError(Error_GetLastErrorMessage());
 		}
 	}
 
 	// Cleanup.
 	StringBuilder_Deconstruct(&ResponseBuilder);
 	Memory_Free(Request.CookieArray);
-
-	return ErrorCode_Success;
 }
 
 
@@ -568,7 +600,7 @@ ErrorCode HttpListener_Listen(const char* address)
 	SOCKET Socket = INVALID_SOCKET;
 	if (InitializeSocket(&Socket, address) != ErrorCode_Success)
 	{
-		return ErrorContext_GetLastErrorCode();
+		return Error_GetLastErrorCode();
 	}
 
 	// Listen.
@@ -577,15 +609,12 @@ ErrorCode HttpListener_Listen(const char* address)
 		return SetSocketError("Failed to listen to client.", WSAGetLastError());
 	}
 
-	if (AcceptClients(Socket) != ErrorCode_Success)
-	{
-		return ErrorContext_GetLastErrorCode();
-	}
+	AcceptClients(Socket);
 
 	// End.
 	if (CloseSocket(&Socket) != ErrorCode_Success)
 	{
-		return ErrorContext_GetLastErrorCode();
+		return Error_GetLastErrorCode();
 	}
 	return ErrorCode_Success;
 }

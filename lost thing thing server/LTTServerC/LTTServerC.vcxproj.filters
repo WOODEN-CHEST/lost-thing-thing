@@ -33,6 +33,9 @@
     <Filter Include="Source Files\HTML">
       <UniqueIdentifier>{7d421201-f029-421f-af53-754e47c38cd7}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Source Files\JSON">
+      <UniqueIdentifier>{62973ba3-fd05-4ece-8ca7-c4c7460d4171}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="LTTServerC.c">
@@ -72,7 +75,10 @@
       <Filter>Source Files\HttpListener</Filter>
     </ClCompile>
     <ClCompile Include="LTTChar.c">
-      <Filter>Source Files</Filter>
+      <Filter>Source Files\String</Filter>
+    </ClCompile>
+    <ClCompile Include="GHDF.c">
+      <Filter>Source Files\IO</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -117,6 +123,12 @@
     </ClInclude>
     <ClInclude Include="LTTChar.h">
       <Filter>Source Files\String</Filter>
+    </ClInclude>
+    <ClInclude Include="GHDF.h">
+      <Filter>Source Files\IO</Filter>
+    </ClInclude>
+    <ClInclude Include="LTTJSON.h">
+      <Filter>Source Files\JSON</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

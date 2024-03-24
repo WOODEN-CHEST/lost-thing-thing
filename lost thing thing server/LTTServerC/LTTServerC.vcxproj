@@ -70,6 +70,14 @@
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>D:\Workstations\Programming\Projects\lost-thing-thing\lost thing thing server\LTTServerC\headers;$(IncludePath)</IncludePath>
+    <ExternalIncludePath>D:\Workstations\Programming\Projects\lost-thing-thing\lost thing thing server\LTTServerC\headers;$(ExternalIncludePath)</ExternalIncludePath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>D:\Workstations\Programming\Projects\lost-thing-thing\lost thing thing server\LTTServerC\headers;$(IncludePath)</IncludePath>
+    <ExternalIncludePath>D:\Workstations\Programming\Projects\lost-thing-thing\lost thing thing server\LTTServerC\headers;$(ExternalIncludePath)</ExternalIncludePath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -134,11 +142,13 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalDependencies>Ws2_32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="ConfigFile.c" />
     <ClCompile Include="Directory.c" />
+    <ClCompile Include="GHDF.c" />
     <ClCompile Include="LTTChar.c" />
     <ClCompile Include="LttErrors.c" />
     <ClCompile Include="File.c" />
@@ -154,6 +164,7 @@
   <ItemGroup>
     <ClInclude Include="ConfigFile.h" />
     <ClInclude Include="Directory.h" />
+    <ClInclude Include="GHDF.h" />
     <ClInclude Include="LTTChar.h" />
     <ClInclude Include="LttErrors.h" />
     <ClInclude Include="File.h" />
@@ -161,6 +172,7 @@
     <ClInclude Include="Logger.h" />
     <ClInclude Include="LttCommon.h" />
     <ClInclude Include="LTTHTML.h" />
+    <ClInclude Include="LTTJSON.h" />
     <ClInclude Include="LTTServerC.h" />
     <ClInclude Include="LttString.h" />
     <ClInclude Include="Math.h" />

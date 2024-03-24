@@ -13,6 +13,7 @@ enum ErrorCodeEnum
 	ErrorCode_IO,
 	ErrorCode_IndexOutOfRange,
 	ErrorCode_SocketError,
+	ErrorCode_InvalidGHDFFile,
 
 	ErrorCode_Unknown
 };
@@ -32,14 +33,14 @@ typedef struct ErrorContextStruct
 /// <summary>
 /// Initializes error handling for the program, aborts the program if it fails to do so.
 /// </summary>
-void ErrorContext_Construct(ErrorContext* context);
+void Error_Construct(ErrorContext* context);
 
 /// <summary>
 /// Immediately closes the program, sends the message to stdout and attempts to log it.
 /// Should only be used in absolutely critical cases because this function does close gracefully.
 /// </summary>
 /// <param name="message">The message to write. May be null to indicate no message.</param>
-void ErrorContext_AbortProgram(const char* message);
+void Error_AbortProgram(const char* message);
 
 /// <summary>
 /// Sets the last error code and message.
@@ -47,13 +48,13 @@ void ErrorContext_AbortProgram(const char* message);
 /// <param name="code">The error code. Must be a valid code from ErrorCode enum. Set to ErrorCode_Unknown if outside the range.</param>
 /// <param name="message">Error message. May be null to indicate no message.</param>
 /// <returns>The same error code passed as an argument to this function for easier use in returns.</returns>
-ErrorCode ErrorContext_SetError(int code, const char* message);
+ErrorCode Error_SetError(int code, const char* message);
 
 /// <summary>
 /// Retrieves the last error code.
 /// </summary>
 /// <returns>Returns the last error code</returns>
-ErrorCode ErrorContext_GetLastErrorCode();
+ErrorCode Error_GetLastErrorCode();
 
 
 /// <summary>
@@ -61,3 +62,8 @@ ErrorCode ErrorContext_GetLastErrorCode();
 /// </summary>
 /// <returns>A pointer to the error message character array. Modifying the data pointed to may cause undefined behavior.</returns>
 const char* Error_GetLastErrorMessage();
+
+/// <summary>
+/// Clears any existing errors.
+/// </summary>
+void Error_ClearError();

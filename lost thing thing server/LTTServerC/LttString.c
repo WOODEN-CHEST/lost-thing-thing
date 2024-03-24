@@ -5,47 +5,16 @@
 #include <string.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include "LTTChar.h"
 
 
 // Macros.
 #define STRING_BUILDER_CAPACITY_GROWTH 4
 
-#define UTF8_TWO_BYTES  0b11000000
-#define UTF8_THREE_BYTES 0b11100000
-#define UTF8_FOUR_BYTES 0b11110000
-#define UTF8_TWO_BYTES_COMBINED 0b11100000
-#define UTF8_THREE_BYTES_COMBINED 0b11110000
-#define UTF8_FOUR_BYTES_COMBINED 0b11111000
-
-#define ASCII_OFFSET 32
-
-#define IsLatinACharacter(characterNumber) ((256 <= characterNumber) && (characterNumber <= 383))
-
 #define STRING_ARRAY_CAPACITY_GROWTH 2
 
 
 // Static functions.
-static inline unsigned short GetTwoByteUTF8Number(unsigned short value)
-{
-	return ((value & 0b00011111) << 6) | ((value & 0b0011111100000000) >> 8);
-}
-
-static inline unsigned short AddUTF8TwoByte(unsigned short value, short amountToAdd)
-{
-	unsigned short RawValue = GetTwoByteUTF8Number(value);
-	RawValue += amountToAdd;
-
-	unsigned short FullValue = ((RawValue & 0b111111) << 8) | ((RawValue & 0b11111000000) >> 6) | 0b1000000011000000;
-
-	return FullValue;
-}
-
-static bool IsCharWhitespace(char character)
-{
-	return (character == ' ') || (character == '\n') || (character == '\r') || (character == '\t');
-}
-
-
 // Functions.
 // String.
 size_t String_LengthCodepointsUTF8(const char* string)
@@ -183,19 +152,19 @@ char* String_SubString(const char* string, size_t startIndex, size_t endIndex)
 {
 	if (endIndex < startIndex)
 	{
-		ErrorContext_SetError(ErrorCode_IndexOutOfRange, "String_SubString: endIndex is lower than startIndex");
+		Error_SetError(ErrorCode_IndexOutOfRange, "String_SubString: endIndex is lower than startIndex");
 		return NULL;
 	}
 
 	int ByteLength = String_LengthBytes(string);
 	if (startIndex > ByteLength)
 	{
-		ErrorContext_SetError(ErrorCode_IndexOutOfRange, "String_SubString: startIndex is greater than the length of the string.");
+		Error_SetError(ErrorCode_IndexOutOfRange, "String_SubString: startIndex is greater than the length of the string.");
 		return NULL;
 	}
 	if (endIndex > ByteLength)
 	{
-		ErrorContext_SetError(ErrorCode_IndexOutOfRange, "String_SubString: endIndex is greater than the length of the string.");
+		Error_SetError(ErrorCode_IndexOutOfRange, "String_SubString: endIndex is greater than the length of the string.");
 		return NULL;
 	}
 
@@ -215,7 +184,7 @@ char* String_SubString(const char* string, size_t startIndex, size_t endIndex)
 char* String_Trim(const char* string)
 {
 	int StartIndex = 0;
-	while (IsCharWhitespace(string[StartIndex]))
+	while (Char_IsWhitespace(string[StartIndex]))
 	{
 		StartIndex++;
 		
@@ -225,9 +194,9 @@ char* String_Trim(const char* string)
 			break;
 		}
 	}
-
+	
 	int EndIndex = String_LengthBytes(string) - 1;
-	while ((EndIndex >= StartIndex) && IsCharWhitespace(string[EndIndex]))
+	while ((EndIndex >= StartIndex) && Char_IsWhitespace(string[EndIndex]))
 	{
 		EndIndex--;
 	}
@@ -240,49 +209,17 @@ void String_ToLowerUTF8(char* string)
 {
 	for (int i = 0; string[i] != '\0'; i++)
 	{
-		if ((string[i] >= 'A') && (string[i] <= 'Z'))
-		{
-			string[i] += ASCII_OFFSET;
-			continue;
-		}
-
-		if ((string[i] & UTF8_TWO_BYTES_COMBINED) != UTF8_TWO_BYTES)
-		{
-			continue;
-		}
-
-		unsigned short* ValuePointer = ((unsigned short*)(string + i));
-		unsigned short CharacterNumber = GetTwoByteUTF8Number(*ValuePointer);
-
-		if (IsLatinACharacter(CharacterNumber) && (CharacterNumber % 2 == 0))
-		{
-			*ValuePointer = AddUTF8TwoByte(*ValuePointer, 1);
-		}
+		Char_ToLower(string + i);
+		i += Char_GetByteCount(string + i);
 	}
 }
 
 void String_ToUpperUTF8(char* string)
 {
-	for (int i = 0; string[i] != '\0'; i++)
+	for (int i = 0; string[i] != '\0';)
 	{
-		if ((string[i] >= 'a') && (string[i] <= 'z'))
-		{
-			string[i] -= ASCII_OFFSET;
-			continue;
-		}
-
-		if ((string[i] & UTF8_TWO_BYTES_COMBINED) != UTF8_TWO_BYTES)
-		{
-			continue;
-		}
-
-		unsigned short* ValuePointer = ((unsigned short*)(string + i));
-		unsigned short CharacterNumber = GetTwoByteUTF8Number(*ValuePointer);
-
-		if (IsLatinACharacter(CharacterNumber) && (CharacterNumber % 2 == 1))
-		{
-			*ValuePointer = AddUTF8TwoByte(*ValuePointer, -1);
-		}
+		Char_ToUpper(string + i);
+		i += Char_GetByteCount(string + i);
 	}
 }
 
@@ -544,7 +481,7 @@ ErrorCode StringBuilder_Insert(StringBuilder* this, const char* string, size_t c
 {
 	if (charIndex > this->Length)
 	{
-		return ErrorContext_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Insert: Index is larger than the length of the string.");
+		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Insert: Index is larger than the length of the string.");
 	}
 
 	const int StringLength = String_LengthBytes(string);
@@ -575,7 +512,7 @@ ErrorCode StringBuilder_InsertChar(StringBuilder* this, char character, size_t c
 {
 	if (charIndex > this->Length)
 	{
-		return ErrorContext_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_InsertChar: Index is larger than the length of the string.");
+		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_InsertChar: Index is larger than the length of the string.");
 	}
 
 	for (int i = this->Length; i > charIndex; i--)
@@ -594,15 +531,15 @@ ErrorCode StringBuilder_Remove(StringBuilder* this, size_t startIndex, size_t en
 {
 	if (startIndex > endIndex)
 	{
-		return ErrorContext_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: startIndex is greater than endIndex.");
+		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: startIndex is greater than endIndex.");
 	}
 	if (startIndex > this->Length)
 	{
-		return ErrorContext_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: startIndex is greater than the string's length.");
+		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: startIndex is greater than the string's length.");
 	}
 	if (endIndex > this->Length)
 	{
-		return ErrorContext_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: endIndex is greater than the string's length.");
+		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: endIndex is greater than the string's length.");
 	}
 
 	int RemovedLength = endIndex - startIndex;

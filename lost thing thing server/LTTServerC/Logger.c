@@ -145,7 +145,7 @@ static void BackupLog(const char* oldLogFilePath, const char* logRootDirectoryPa
 	}
 
 	// Backup log.
-	const char* OldLogDirectory = Directory_Combine(logRootDirectoryPath, OLD_LOG_DIR_NAME);
+	const char* OldLogDirectory = Directory_CombinePaths(logRootDirectoryPath, OLD_LOG_DIR_NAME);
 	Directory_Create(OldLogDirectory);
 	char* OldLogNewPath = CreateBackupLogFileName(OldLogDirectory, oldLogFilePath);
 	MoveFileA(oldLogFilePath, OldLogNewPath);
@@ -165,11 +165,11 @@ char* Logger_ConstructContext(LoggerContext* context, const char* rootDirectoryP
 	}
 
 	// Create directories.
-	char* LogDirPath = Directory_Combine(rootDirectoryPath, LOGS_DIR_NAME);
+	char* LogDirPath = Directory_CombinePaths(rootDirectoryPath, LOGS_DIR_NAME);
 	Directory_CreateAll(LogDirPath);
 
 	// Backup old logs.
-	const char* LogFilePath = Directory_Combine(LogDirPath, NEW_LOG_FILE_NAME);
+	const char* LogFilePath = Directory_CombinePaths(LogDirPath, NEW_LOG_FILE_NAME);
 	BackupLog(LogFilePath, LogDirPath);
 
 	// Create current log  file.
@@ -197,7 +197,7 @@ ErrorCode Logger_Close()
 	LoggerContext* Context = &LTTServerC_GetCurrentContext()->Logger;
 	if (Context->LogFile == NULL)
 	{
-		return ErrorContext_SetError(ErrorCode_IllegalOperation, "Cannot close logger since it isnt initialized yet.");
+		return Error_SetError(ErrorCode_IllegalOperation, "Cannot close logger since it isnt initialized yet.");
 	}
 
 	File_Close(Context->LogFile);
@@ -212,7 +212,7 @@ ErrorCode Logger_Log(Logger_LogLevel level, const char* string)
 
 	if (Context->LogFile == NULL)
 	{
-		return ErrorContext_SetError(ErrorCode_IllegalOperation, "Cannot log, logger not initialized.");
+		return Error_SetError(ErrorCode_IllegalOperation, "Cannot log, logger not initialized.");
 	}
 
 	AddDateTime(&Context->_logTextBuilder);

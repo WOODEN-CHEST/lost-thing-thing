@@ -23,7 +23,7 @@ typedef enum File_OpenModeEnum File_OpenMode;
 // Functions.
 FILE* File_Open(const char* path, File_OpenMode mode);
 
-int File_ReadChar(FILE* file);
+int File_ReadByte(FILE* file);
 
 size_t File_Read(FILE* file, char* dataBuffer, size_t count);
 
@@ -35,7 +35,7 @@ ErrorCode File_Write(FILE* file, const char* data, size_t dataLength);
 
 ErrorCode File_WriteText(FILE* file, const char* string);
 
-ErrorCode File_WriteByte(FILE* file, char byte);
+ErrorCode File_WriteByte(FILE* file, int byte);
 
 ErrorCode File_Flush(FILE* file);
 

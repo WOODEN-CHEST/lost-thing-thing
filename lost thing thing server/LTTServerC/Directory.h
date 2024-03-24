@@ -2,7 +2,7 @@
 
 #include "LTTErrors.h"
 
-#define IsPathSeparator(character) (character == '\\') || (character == '/')
+#define Directory_IsPathSeparator(character) (character == '\\') || (character == '/')
 #define PATH_SEPARATOR '/'
 
 // Functions.
@@ -47,7 +47,7 @@ char* Directory_GetParentDirectory(const char* path);
 /// <param name="path1">First path</param>
 /// <param name="path2">Second path</param>
 /// <returns>Combined path (stored on the heap)</returns>
-char* Directory_Combine(const char* path1, const char* path2);
+char* Directory_CombinePaths(const char* path1, const char* path2);
 
 /// <summary>
 /// Gets the name of the final directory or file in a path.
@@ -55,3 +55,11 @@ char* Directory_Combine(const char* path1, const char* path2);
 /// <param name="path">The full path of the file or directory.</param>
 /// <returns>Name of the file or directory (stored on the heap)</returns>
 char* Directory_GetName(const char* path);
+
+/// <summary>
+/// Changes the file extension in the given path.
+/// </summary>
+///  <param name="path">The path for which to change the extension</param>
+///  <param name="newExtension">The new extension.</param>
+/// <returns>Path with the extension changes (stored on the heap)</returns>
+char* Directory_ChangePathExtension(const char* path, const char* newExtension);

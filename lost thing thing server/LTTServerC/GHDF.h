@@ -5,9 +5,25 @@
 
 
 // Macros.
-#define GHDT_TYPE_ARRAY_BIT 0b10000000
+#define GHDF_TYPE_ARRAY_BIT 0b10000000
+
+#define GHDF_FILE_EXTENSION ".ghdf"
 
 #define COMPOUND_DEFAULT_CAPACITY 32
+
+#define GHDF_FORMAT_VERSION 1
+
+#define GHDF_SIZE_SBYTE 1
+#define GHDF_SIZE_UBYTE 1
+#define GHDF_SIZE_SHORT 2
+#define GHDF_SIZE_USHORT 2
+#define GHDF_SIZE_INT 4
+#define GHDF_SIZE_UINT 4
+#define GHDF_SIZE_LONG 8
+#define GHDF_SIZE_ULONG 8
+#define GHDF_SIZE_FLOAT 4
+#define GHDF_SIZE_DOUBLE 8
+#define GHDF_SIZE_BOOL 1
 
 
 // Types.
@@ -28,10 +44,8 @@ typedef enum GHDFTypeEnum
 
 	GHDFType_Bool = 11,
 
-	GHDFType_Char = 12,
-
-	GHDFType_String = 13,
-	GHDFType_Compound = 14
+	GHDFType_String = 12,
+	GHDFType_Compound = 13
 } GHDFType;
 
 typedef union GHDFPrimitiveUnion
@@ -87,6 +101,8 @@ typedef struct GHDFCompoundStruct
 // Functions.
 void GHDFCompound_Construct(GHDFCompound* self, size_t capacity);
 
+GHDFCompound* GHDFCompound_Construct2(size_t capacity);
+
 ErrorCode GHDFCompound_AddSingleValueEntry(GHDFCompound* self, GHDFType type, int id, GHDFPrimitive value);
 
 ErrorCode GHDFCompound_AddArrayEntry(GHDFCompound* self, GHDFType type, int id, GHDFPrimitive* valueArray, size_t count);
@@ -101,6 +117,6 @@ GHDFEntry* GHDFCompound_GetEntryOrDefault(GHDFCompound* self, int id, GHDFEntry*
 
 ErrorCode GHDFCompound_ReadFromFile(const char* path, GHDFCompound* emptyBaseCompound);
 
-ErrorCode GHDFCompound_SaveToFile(GHDFCompound* compound, const char* path);
+ErrorCode GHDFCompound_WriteToFile(const char* path, GHDFCompound* compound);
 
 void GHDFCompound_Deconstruct(GHDFCompound* self);
