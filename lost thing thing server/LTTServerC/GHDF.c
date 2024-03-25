@@ -154,13 +154,13 @@ static ErrorCode Write7BitEncodedInt(FILE* file, int integer)
 static ErrorCode WriteMetadata(FILE* file)
 {
 	unsigned char Signature[] = { GHDF_SIGNATURE_BYTES };
-	if (File_Write(file, Signature, sizeof(Signature)) != sizeof(Signature))
+	if (File_Write(file, Signature, sizeof(Signature)) != ErrorCode_Success)
 	{
 		return Error_SetError(ErrorCode_IO, "WriteMetadata: Failed to write GHDF signature.");
 	}
 	
 	int Version = GHDF_FORMAT_VERSION;
-	if (File_Write(file, (char*)(&Version), GHDF_SIZE_INT) != GHDF_SIZE_INT)
+	if (File_Write(file, (char*)(&Version), GHDF_SIZE_INT) != ErrorCode_Success)
 	{
 		return Error_SetError(ErrorCode_IO, "WriteMetadata: Failed to write format version.");
 	}

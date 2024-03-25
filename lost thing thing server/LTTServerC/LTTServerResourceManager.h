@@ -17,6 +17,8 @@ typedef struct ServerResourceContextStruct
 {
 	const char* SourceRootPath;
 	const char* DatabaseRootPath;
+	unsigned long long AvailablePostID;
+	unsigned long long AvailableAccountID;
 } ServerResourceContext;
 
 typedef struct ServerResourceRequestStruct
@@ -37,3 +39,9 @@ void ResourceManager_CloseContext();
 ResourceResult ResourceManager_Get(ServerResourceRequest* request);
 
 ResourceResult ResourceManager_Post(ServerResourceRequest* request);
+
+ErrorCode ResourceManager_CreateAccountInDatabase(const char* name, const char* surname, const char* email, const char* password);
+
+ErrorCode ResourceManager_GenerateMetaInfoAccounts();
+
+ErrorCode ResourceManager_GenerateMetaInfoPosts();

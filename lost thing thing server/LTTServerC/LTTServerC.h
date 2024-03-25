@@ -7,6 +7,7 @@
 typedef struct ServerContextStruct
 {
 	const char* RootPath;
+	const char* GlobalDataFilePath;
 	LoggerContext Logger;
 	ErrorContext Errors;
 	ServerResourceContext Resources;

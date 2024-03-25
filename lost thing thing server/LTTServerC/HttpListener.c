@@ -538,6 +538,7 @@ static void AcceptClients(SOCKET serverSocket)
 	};
 
 	// Main listening loop.
+	Logger_LogInfo("Started accepting clients.");
 	while (!RuntimeData.IsStopRequested)
 	{
 		if (AcceptSingleClient(serverSocket, &Request, &ResponseBuilder, RequestBuffer, &RuntimeData) != ErrorCode_Success)
@@ -545,6 +546,7 @@ static void AcceptClients(SOCKET serverSocket)
 			Logger_LogError(Error_GetLastErrorMessage());
 		}
 	}
+	Logger_LogInfo("Stopped accepting clients.");
 
 	// Cleanup.
 	StringBuilder_Deconstruct(&ResponseBuilder);

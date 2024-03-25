@@ -155,6 +155,7 @@
     <ClCompile Include="HttpListener.c" />
     <ClCompile Include="Logger.c" />
     <ClCompile Include="LTTHTML.c" />
+    <ClCompile Include="LTTJSON.c" />
     <ClCompile Include="LTTServerC.c" />
     <ClCompile Include="LTTServerResourceManager.c" />
     <ClCompile Include="LttString.c" />

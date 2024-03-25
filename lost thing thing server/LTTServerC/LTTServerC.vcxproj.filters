@@ -80,6 +80,9 @@
     <ClCompile Include="GHDF.c">
       <Filter>Source Files\IO</Filter>
     </ClCompile>
+    <ClCompile Include="LTTJSON.c">
+      <Filter>Source Files\JSON</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LttErrors.h">

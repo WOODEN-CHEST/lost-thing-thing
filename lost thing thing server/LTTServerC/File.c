@@ -149,7 +149,7 @@ char* File_ReadAllData(FILE* file, size_t* dataLength)
 ErrorCode File_Write(FILE* file, const char* data, size_t dataLength)
 {
 	size_t Result = fwrite(data, 1, dataLength, file);;
-	return Result == dataLength ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "File_Write: Failed to write bytes to file.");
+	return Result != EOF ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "File_Write: Failed to write bytes to file.");
 }
 
 ErrorCode File_WriteText(FILE* file, const char* string)

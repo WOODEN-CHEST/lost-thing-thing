@@ -114,7 +114,7 @@ char* Directory_ChangePathExtension(const char* path, const char* newExtension)
 
 	if (String_EndsWith(Builder.Data, newExtension))
 	{
-		return newExtension;
+		return Builder.Data;
 	}
 
 	int InsertionIndex = -1;
