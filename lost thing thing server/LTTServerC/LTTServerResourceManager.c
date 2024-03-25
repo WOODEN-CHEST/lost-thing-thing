@@ -4,6 +4,7 @@
 #include "LTTServerC.h"
 #include "Memory.h"
 #include "LTTHTML.h"
+#include <stdlib.h>
 
 
 // Macros.
@@ -42,7 +43,28 @@ typedef struct JavascriptSourceFileStruct
 
 
 // Static functions.
+static void AppendFolderNumberName(StringBuilder* builder, unsigned long long number)
+{
+	char NumberString[32];
+	sprintf(NumberString, "%llu", number);
+	StringBuilder_AppendChar(builder, PATH_SEPARATOR);
+	StringBuilder_AppendChar(builder, NumberString);
+}
 
+/* Users. */
+static unsigned long long GetAndUseUserID()
+{
+	unsigned long long ID = LTTServerC_GetCurrentContext()->Resources.AvailableAccountID;
+	LTTServerC_GetCurrentContext()->Resources.AvailableAccountID += 1;
+	return ID;
+}
+
+static void GetPathToUser(unsigned long long id)
+{
+	StringBuilder Builder;
+	StringBuilder_Construct(&Builder);
+	StringBuilder_Append(&Builder, LTTServerC_GetCurrentContext()->Resources.DatabaseRootPath)
+}
 
 
 // Functions.
@@ -77,5 +99,7 @@ ResourceResult ResourceManager_Post(ServerResourceRequest* request)
 
 ErrorCode ResourceManager_CreateAccountInDatabase(const char* name, const char* surname, const char* email, const char* password)
 {
+	unsigned long long ID = GetAndUseUserID();
 
+	char* DataPath = 
 }
