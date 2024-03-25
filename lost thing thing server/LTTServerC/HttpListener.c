@@ -405,14 +405,22 @@ static HttpResponseCode ResourceResponseToHttpResponseCode(ResourceResult result
 static SpecialAction ExecuteValidHttpRequest(HttpRequest* request, HttpResponse* response, StringBuilder* responseBuilder)
 {
 	ResourceResult Result = ResourceResult_Invalid;
+	ServerResourceRequest RequestData =
+	{
+		request->RequestTarget,
+		request->Body,
+		request->CookieArray,
+		request->CookieCount,
+		&responseBuilder->Data
+	};
 
 	if (request->Method == HttpMethod_GET)
 	{
-		Result = ResourceManager_Get(request->RequestTarget, request->Body, request->CookieArray, request->CookieCount, &response->Body);
+		Result = ResourceManager_Get(&RequestData);
 	}
 	else if (request->Method == HttpMethod_POST)
 	{
-		Result = ResourceManager_Post(request->RequestTarget, request->Body, request->CookieArray, request->CookieCount);
+		Result = ResourceManager_Post(&RequestData);
 	}
 
 	response->Code = ResourceResponseToHttpResponseCode(Result);

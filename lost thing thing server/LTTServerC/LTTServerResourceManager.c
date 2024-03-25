@@ -51,15 +51,15 @@ void ResourceManager_CloseContext()
 	Memory_Free(Context->SourceRootPath);
 }
 
-ResourceResult ResourceManager_Get(const char* target, const char* data, HttpCookie* cookieArray, size_t cookieCount, const char** result)
+ResourceResult ResourceManager_Get(ServerResourceRequest* request)
 {
 	return ResourceResult_Successful;
 }
 
-ResourceResult ResourceManager_Post(const char* target, const char* data, HttpCookie* cookieArray, size_t cookieCount)
+ResourceResult ResourceManager_Post(ServerResourceRequest* request)
 {
 	// --------------------------- REMOVE IN FINAL CODE OUTSIDE TESTS PLEASE!!! ---------------------------------- //
-	if (String_Equals(data, "stop"))      // <-------------
+	if (String_Equals(request->Data, "stop"))      // <-------------
 	{											// <-------------
 		return ResourceResult_ShutDownServer;   // <-------------
 	}											// <-------------

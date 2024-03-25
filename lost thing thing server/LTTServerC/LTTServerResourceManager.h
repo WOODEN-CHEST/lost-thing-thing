@@ -19,12 +19,21 @@ typedef struct ServerResourceContextStruct
 	const char* DatabaseRootPath;
 } ServerResourceContext;
 
+typedef struct ServerResourceRequestStruct
+{
+	const char* Target;
+	const char* Data;
+	HttpCookie* CookieArray;
+	size_t* CookieCount;
+	char** ResultBody;
+} ServerResourceRequest;
+
 
 // Functions.
 void ResourceManager_ConstructContext(ServerResourceContext* context, const char* dataRootPath);
 
 void ResourceManager_CloseContext();
 
-ResourceResult ResourceManager_Get(const char* target, const char* data, HttpCookie* cookieArray, size_t cookieCount, const char** result);
+ResourceResult ResourceManager_Get(ServerResourceRequest* request);
 
-ResourceResult ResourceManager_Post(const char* target, const char* data, HttpCookie* cookieArray, size_t cookieCount);
+ResourceResult ResourceManager_Post(ServerResourceRequest* request);
