@@ -47,7 +47,7 @@
     <ClCompile Include="Memory.c">
       <Filter>Source Files\Memory</Filter>
     </ClCompile>
-    <ClCompile Include="Math.c">
+    <ClCompile Include="LTTMath.c">
       <Filter>Source Files\Math</Filter>
     </ClCompile>
     <ClCompile Include="File.c">
@@ -83,6 +83,12 @@
     <ClCompile Include="LTTJSON.c">
       <Filter>Source Files\JSON</Filter>
     </ClCompile>
+    <ClCompile Include="IDCodepointHashMap.h">
+      <Filter>Source Files\HttpListener</Filter>
+    </ClCompile>
+    <ClCompile Include="IDCodepointHashMap.c">
+      <Filter>Source Files\HttpListener</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="LttErrors.h">
@@ -91,7 +97,7 @@
     <ClInclude Include="Memory.h">
       <Filter>Source Files\Memory</Filter>
     </ClInclude>
-    <ClInclude Include="Math.h">
+    <ClInclude Include="LTTMath.h">
       <Filter>Source Files\Math</Filter>
     </ClInclude>
     <ClInclude Include="File.h">

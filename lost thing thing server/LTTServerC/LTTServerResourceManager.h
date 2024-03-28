@@ -41,7 +41,3 @@ ResourceResult ResourceManager_Get(ServerResourceRequest* request);
 ResourceResult ResourceManager_Post(ServerResourceRequest* request);
 
 ErrorCode ResourceManager_CreateAccountInDatabase(const char* name, const char* surname, const char* email, const char* password);
-
-ErrorCode ResourceManager_GenerateMetaInfoAccounts();
-
-ErrorCode ResourceManager_GenerateMetaInfoPosts();

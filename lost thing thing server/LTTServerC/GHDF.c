@@ -27,11 +27,6 @@ static void EnsureCompoundCapacity(GHDFCompound* self, size_t capacity)
 		return;
 	}
 
-	if (self->_capacity == 0)
-	{
-		self->_capacity = 1;
-	}
-
 	while (self->_capacity < capacity)
 	{
 		self->_capacity *= COMPOUND_CAPCITY_GROWHT;

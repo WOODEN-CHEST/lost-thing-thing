@@ -12,6 +12,7 @@
 #include "Logger.h"
 #include "GHDF.h"
 #include "LTTChar.h"
+#include "IDCodepointHashMap.h"
 
 
 // Macros.
@@ -38,7 +39,7 @@ static const char* ReadGlobalServerData(ServerContext* context)
 	{
 		Logger_LogWarning("Global server data doesn't exist, using default one.");
 		GenerateDefaultGlobalServerData(context);
-		return;
+		return NULL;
 	}
 
 	GHDFCompound DataCompound;
@@ -73,6 +74,7 @@ static const char* ReadGlobalServerData(ServerContext* context)
 	context->Resources.AvailableAccountID = Entry->Value.SingleValue.ULong;
 
 	GHDFCompound_Deconstruct(&DataCompound);
+	return NULL;
 }
 
 static void SaveGlobalServerData()
@@ -152,8 +154,15 @@ int main(int argc, const char** argv)
 	ServerConfig_Read(ConfigPath, &Config);
 	Logger_LogInfo("Read config");
 
+	IDCodepointHashMap Map;
+	IDCodepointHashMap_Construct(&Map);
+
+	IDCodepointHashMap_AddID(&Map, "aaah", 57);
+	IDCodepointHashMap_RemoveID(&Map, "aaah", 57);
+
+
 	// Start server.
-	ErrorCode Error = HttpListener_Listen();
+	ErrorCode Error = HttpListener_Listen("127.0.0.1");
 	if (Error != ErrorCode_Success)
 	{
 		Logger_LogInfo(Error_GetLastErrorMessage());

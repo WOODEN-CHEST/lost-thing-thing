@@ -578,6 +578,7 @@ static ErrorCode InitializeSocket(SOCKET* targetSocket, const char* address)
 	ZeroMemory(&Address, sizeof(Address));
 	Address.sin_family = AF_INET;
 	Address.sin_port = htons(80);
+	//inet_pton(AF_INET, address, &Address.sin_addr.S_un.S_addr);
 	inet_pton(AF_INET, address, &Address.sin_addr.S_un.S_addr);
 
 	// Bind socket.
@@ -585,6 +586,8 @@ static ErrorCode InitializeSocket(SOCKET* targetSocket, const char* address)
 	{
 		return SetSocketError("Failed to bind socket.", WSAGetLastError());;
 	}
+
+	return ErrorCode_Success;
 }
 
 static ErrorCode CloseSocket(SOCKET* targetSocket)

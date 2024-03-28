@@ -57,4 +57,4 @@ typedef struct HttpResponseStruct
 
 
 // Functions.
-ErrorCode HttpListener_Listen();
+ErrorCode HttpListener_Listen(const char* address);
