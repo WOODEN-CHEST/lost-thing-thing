@@ -1,4 +1,6 @@
 #pragma once
+#include <stddef.h>
+#include <stdbool.h>
 
 
 // Structures.
@@ -17,6 +19,6 @@ void IDCodepointHashMap_RemoveID(IDCodepointHashMap* self, const char* string, u
 
 void IDCodepointHashMap_Clear(IDCodepointHashMap* self);
 
-unsigned long long* IDCodepointHashMap_FindByString(IDCodepointHashMap* self, const char* string, bool ignoreWhitespace);
+unsigned long long* IDCodepointHashMap_FindByString(IDCodepointHashMap* self, const char* string, bool ignoreWhitespace, size_t* arraySize);
 
 void IDCodepointHashMap_Deconstruct(IDCodepointHashMap* self);

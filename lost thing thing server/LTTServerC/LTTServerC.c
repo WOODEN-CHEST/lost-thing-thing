@@ -130,6 +130,28 @@ static void CloseContext()
 	ResourceManager_CloseContext();
 }
 
+static void Test(IDCodepointHashMap* map)
+{
+	FILE* File = File_Open("C:\\Users\\User\\Desktop\\test.txt", FileOpenMode_Read);
+	char* Text = File_ReadAllText(File);
+	File_Close(File);
+
+	int ID = 0;
+	int StringStartIndex = 0;
+	for (int i = 0; Text[i] != '\0'; i++)
+	{
+		if (Text[i] == '\n')
+		{
+			Text[i] = '\0';
+			i++;
+
+			IDCodepointHashMap_AddID(map, Text + StringStartIndex, ID);
+			StringStartIndex = i;
+			ID++;
+		}
+	}
+}
+
 // Functions.
 int main(int argc, const char** argv)
 {
@@ -157,8 +179,10 @@ int main(int argc, const char** argv)
 	IDCodepointHashMap Map;
 	IDCodepointHashMap_Construct(&Map);
 
-	IDCodepointHashMap_AddID(&Map, "aaah", 57);
-	IDCodepointHashMap_RemoveID(&Map, "aaah", 57);
+	Test(&Map);
+	size_t ArrSize;
+	unsigned long long* FoundIDs = IDCodepointHashMap_FindByString(&Map, "abc", true, &ArrSize);
+	
 
 
 	// Start server.
