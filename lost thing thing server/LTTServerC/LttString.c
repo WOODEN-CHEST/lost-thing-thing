@@ -303,15 +303,16 @@ bool String_EndsWith(const char* string, const char* sequence)
 
 bool String_Equals(const char* string1, const char* string2)
 {
-	for (int i = 0; (string1[i] != '\0') && (string2[i] != '\0'); i++)
+	size_t Index;
+	for (Index = 0; (string1[Index] != '\0') && (string2[Index] != '\0'); Index++)
 	{
-		if (string1[i] != string2[i])
+		if (string1[Index] != string2[Index])
 		{
 			return false;
 		}
 	}
 
-	return true;
+	return string1[Index] == string2[Index];
 }
 
 char* String_Replace(const char* string, const char* oldSequence, const char* newSequence)

@@ -23,7 +23,7 @@ typedef struct HttpCookieStruct
 	char Value[MAX_COOKIE_VALUE_LENGTH];
 } HttpCookie;
 
-typedef struct HttpRequestStruct
+typedef struct HttpClientRequestStruct
 {
 	HttpMethod Method;
 	char RequestTarget[512];
@@ -35,25 +35,7 @@ typedef struct HttpRequestStruct
 	size_t CookieCount;
 
 	char* Body;
-} HttpRequest;
-
-typedef enum HttpResponseCodeEnum
-{
-	HttpResponseCode_OK = 200,
-	HttpResponseCode_Created = 201,
-	HttpResponseCode_BadRequest = 400,
-	HttpResponseCode_Unauthorized = 401,
-	HttpResponseCode_Forbidden = 403,
-	HttpResponseCode_NotFound = 404,
-	HttpResponseCode_ImATeapot = 418,
-	HttpResponseCode_InternalServerError = 500
-} HttpResponseCode;
-
-typedef struct HttpResponseStruct
-{
-	HttpResponseCode Code;
-	char* Body;
-} HttpResponse;
+} HttpClientRequest;
 
 
 // Functions.

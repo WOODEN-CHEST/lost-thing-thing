@@ -1,6 +1,9 @@
 #pragma once
 #include "HttpListener.h"
 #include <stddef.h>
+#include "IDCodepointHashMap.h"
+#include "LTTErrors.h"
+#include "LttString.h"
 
 
 // Types.
@@ -17,6 +20,9 @@ typedef struct ServerResourceContextStruct
 {
 	const char* SourceRootPath;
 	const char* DatabaseRootPath;
+	IDCodepointHashMap AccountNameMap;
+	IDCodepointHashMap AccountEmailMap;
+	IDCodepointHashMap PostTitleMap;
 	unsigned long long AvailablePostID;
 	unsigned long long AvailableAccountID;
 } ServerResourceContext;
@@ -27,7 +33,7 @@ typedef struct ServerResourceRequestStruct
 	const char* Data;
 	HttpCookie* CookieArray;
 	size_t* CookieCount;
-	char** ResultBody;
+	StringBuilder** Result;
 } ServerResourceRequest;
 
 
@@ -39,5 +45,7 @@ void ResourceManager_CloseContext();
 ResourceResult ResourceManager_Get(ServerResourceRequest* request);
 
 ResourceResult ResourceManager_Post(ServerResourceRequest* request);
+
+ErrorCode ResourceManager_GenerateIDHashMaps();
 
 ErrorCode ResourceManager_CreateAccountInDatabase(const char* name, const char* surname, const char* email, const char* password);

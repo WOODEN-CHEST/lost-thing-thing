@@ -65,9 +65,6 @@
     <ClCompile Include="Logger.c">
       <Filter>Source Files\IO\Logger</Filter>
     </ClCompile>
-    <ClCompile Include="ConfigFile.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="LTTHTML.c">
       <Filter>Source Files\HTML</Filter>
     </ClCompile>
@@ -88,6 +85,12 @@
     </ClCompile>
     <ClCompile Include="IDCodepointHashMap.c">
       <Filter>Source Files\HttpListener</Filter>
+    </ClCompile>
+    <ClCompile Include="LTTSMTP.c">
+      <Filter>Source Files\HttpListener</Filter>
+    </ClCompile>
+    <ClCompile Include="ConfigFile.c">
+      <Filter>Source Files\IO</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -112,9 +115,6 @@
     <ClInclude Include="LttString.h">
       <Filter>Source Files\String</Filter>
     </ClInclude>
-    <ClInclude Include="LttCommon.h">
-      <Filter>Source Files</Filter>
-    </ClInclude>
     <ClInclude Include="Logger.h">
       <Filter>Source Files\IO\Logger</Filter>
     </ClInclude>
@@ -138,6 +138,9 @@
     </ClInclude>
     <ClInclude Include="LTTJSON.h">
       <Filter>Source Files\JSON</Filter>
+    </ClInclude>
+    <ClInclude Include="LTTSMTP.h">
+      <Filter>Source Files\HttpListener</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

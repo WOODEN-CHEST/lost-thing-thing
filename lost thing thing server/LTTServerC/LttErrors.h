@@ -14,6 +14,9 @@ enum ErrorCodeEnum
 	ErrorCode_IndexOutOfRange,
 	ErrorCode_SocketError,
 	ErrorCode_InvalidGHDFFile,
+	ErrorCode_DatabaseError,
+	ErrorCode_InvalidRequest,
+	ErrorCode_InvalidConfigFile,
 
 	ErrorCode_Unknown
 };

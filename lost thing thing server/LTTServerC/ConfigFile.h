@@ -10,11 +10,15 @@
 // Types.
 typedef struct ServerConfigStruct
 {
-	const char Address[32];
-	const char** AcceptedEmailDomains;
-	size_t AcceptedEmailDomainCount;
+	char Address[64];
+
+	const char** AcceptedDomains;
+	size_t AcceptedDomainCount;
+	size_t _acceptedDomainCapacity;
 } ServerConfig;
 
 
 // Functions.
 ErrorCode ServerConfig_Read(const char* configPath, ServerConfig* config);
+
+void ServerConfig_Deconstruct(ServerConfig* config);

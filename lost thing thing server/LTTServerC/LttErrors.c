@@ -55,6 +55,18 @@ static void CopyErrorNameIntoBuffer(int code, char* buffer)
 			strcpy(buffer, "Invalid GHDF File. ");
 			break;
 
+		case ErrorCode_DatabaseError:
+			strcpy(buffer, "Database Error. ");
+			break;
+
+		case ErrorCode_InvalidRequest:
+			strcpy(buffer, "Invalid Request. ");
+			break;
+
+		case ErrorCode_InvalidConfigFile:
+			strcpy(buffer, "Invalid Config File. ");
+			break;
+
 		default:
 			strcpy(buffer, "Unknown Error. ");
 			break;

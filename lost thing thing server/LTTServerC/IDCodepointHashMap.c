@@ -451,7 +451,7 @@ void IDCodepointHashMap_Clear(IDCodepointHashMap* self)
 	for (int i = 0; i < HASHMAP_CAPACITY; i++)
 	{
 		ClearBucket(&(self->CodepointBuckets[i]));
-	} 
+	}
 }
 
 unsigned long long* IDCodepointHashMap_FindByString(IDCodepointHashMap* self, const char* string, bool ignoreWhitespace, size_t* arraySize)
@@ -481,8 +481,7 @@ unsigned long long* IDCodepointHashMap_FindByString(IDCodepointHashMap* self, co
 	{
 		for (int CountIndex = CodepointCountList.Elements[CodepointIndex].Count; CountIndex < MAX_TRACKED_CODEPOINT_COUNT; CountIndex++)
 		{
-			CodepointIDList* IDList = GetCodepointIDListFromHashMap(self,
-				CodepointCountList.Elements[CodepointIndex].Codepoint, CountIndex);
+			CodepointIDList* IDList = GetCodepointIDListFromHashMap(self, CodepointCountList.Elements[CodepointIndex].Codepoint, CountIndex);
 			IDHashSetAddRange(&CodepointIDHashSet, IDList->IDs, IDList->IDCount);
 		}
 

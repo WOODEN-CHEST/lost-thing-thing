@@ -144,5 +144,5 @@ bool Char_IsDigit(const char* character)
 
 bool Char_IsWhitespace(const char* character)
 {
-	return (character <= 0 && character <= 32);
+	return (0 <= *character) && (*character <= 32);
 }

@@ -1,5 +1,4 @@
 ﻿#include <stdbool.h>
-#include "LttCommon.h"
 #include "File.h"
 #include <stdio.h>
 #include "HttpListener.h"
@@ -171,22 +170,13 @@ int main(int argc, const char** argv)
 
 
 	// Load config.
-	ServerConfig Config;
 	char* ConfigPath = Directory_CombinePaths(LTTServerC_GetCurrentContext()->RootPath, SERVER_CONFIG_FILE_NAME);
-	ServerConfig_Read(ConfigPath, &Config);
-	Logger_LogInfo("Read config");
-
-	IDCodepointHashMap Map;
-	IDCodepointHashMap_Construct(&Map);
-
-	Test(&Map);
-	size_t ArrSize;
-	unsigned long long* FoundIDs = IDCodepointHashMap_FindByString(&Map, "abc", true, &ArrSize);
+	ServerConfig_Read(ConfigPath, &LTTServerC_GetCurrentContext()->Configuration);
+	Memory_Free(ConfigPath);
+	Logger_LogInfo("Read configuration.");
 	
-
-
 	// Start server.
-	ErrorCode Error = HttpListener_Listen("127.0.0.1");
+	ErrorCode Error = HttpListener_Listen(LTTServerC_GetCurrentContext()->Configuration.Address);
 	if (Error != ErrorCode_Success)
 	{
 		Logger_LogInfo(Error_GetLastErrorMessage());
