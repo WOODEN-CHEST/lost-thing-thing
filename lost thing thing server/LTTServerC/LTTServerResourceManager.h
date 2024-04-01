@@ -4,6 +4,7 @@
 #include "IDCodepointHashMap.h"
 #include "LTTErrors.h"
 #include "LttString.h"
+#include "LTTAccountManager.h"
 
 
 // Types.
@@ -20,11 +21,13 @@ typedef struct ServerResourceContextStruct
 {
 	const char* SourceRootPath;
 	const char* DatabaseRootPath;
-	IDCodepointHashMap AccountNameMap;
-	IDCodepointHashMap AccountEmailMap;
-	IDCodepointHashMap PostTitleMap;
+	const char* GlobalDataFilePath;
+
+	DBAccountContext AccountContext;
+
 	unsigned long long AvailablePostID;
-	unsigned long long AvailableAccountID;
+	IDCodepointHashMap PostTitleMap;
+	
 } ServerResourceContext;
 
 typedef struct ServerResourceRequestStruct
@@ -38,14 +41,12 @@ typedef struct ServerResourceRequestStruct
 
 
 // Functions.
-void ResourceManager_ConstructContext(ServerResourceContext* context, const char* dataRootPath);
+ErrorCode ResourceManager_ConstructContext(ServerResourceContext* context, const char* dataRootPath);
 
-void ResourceManager_CloseContext();
+void ResourceManager_CloseContext(ServerResourceContext* context);
 
 ResourceResult ResourceManager_Get(ServerResourceRequest* request);
 
 ResourceResult ResourceManager_Post(ServerResourceRequest* request);
 
-ErrorCode ResourceManager_GenerateIDHashMaps();
-
-ErrorCode ResourceManager_CreateAccountInDatabase(const char* name, const char* surname, const char* email, const char* password);
+static const char* ResourceManager_GetPathToIDFile(unsigned long long id, const char* dirName);

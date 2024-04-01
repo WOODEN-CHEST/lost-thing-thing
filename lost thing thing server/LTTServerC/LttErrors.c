@@ -96,7 +96,7 @@ static void EnsureMessageBufferCapacity(size_t capacity)
 
 
 // Functions.
-void Error_Construct(ErrorContext* context)
+void Error_ConstructContext(ErrorContext* context)
 {
 	context->_lastErrorCode = ErrorCode_Success;
 	context->_lastErrorMessageCapacity = ERROR_MESSAGE_DEFAULT_CAPACITY;
@@ -109,6 +109,11 @@ void Error_Construct(ErrorContext* context)
 	}
 
 	context->_lastErrorMessage[0] = '\0';
+}
+
+void Error_CloseContext(ErrorContext* context)
+{
+	free(context->_lastErrorMessage);
 }
 
 void Error_AbortProgram(const char* message)

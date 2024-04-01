@@ -152,7 +152,9 @@ char* String_Replace(const char* string, const char* oldSequence, const char* ne
 /// <param name="sequence">The character sequence at which the string is split.</param>
 /// <param name="listOfNewStrings">An ArrayList where to hold the points to the strings.</param>
 /// <returns>Error Code</returns>
-//char** String_Split(char* string, const char* sequence, int* splitStringCount);
+//char** String_Split(char* string, const char* sequence, int* splitStringCount)
+
+_Bool String_IsFuzzyMatched(const char* stringToSearchIn, const char* stringToMatch);
 
 
 // StringBuilder

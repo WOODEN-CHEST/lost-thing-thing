@@ -8,10 +8,9 @@
 typedef struct ServerContextStruct
 {
 	const char* RootPath;
-	const char* GlobalDataFilePath;
-	ServerConfig Configuration;
-	LoggerContext Logger;
 	ErrorContext Errors;
+	LoggerContext Logger;
+	ServerConfig Configuration;
 	ServerResourceContext Resources;
 } ServerContext;
 

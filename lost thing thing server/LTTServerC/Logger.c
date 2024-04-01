@@ -158,11 +158,7 @@ static void BackupLog(const char* oldLogFilePath, const char* logRootDirectoryPa
 // Functions.
 char* Logger_ConstructContext(LoggerContext* context, const char* rootDirectoryPath)
 {
-	// Verify state and args.
-	if (context->LogFile != NULL)
-	{
-		return "Logger already initialized.";
-	}
+	context->LogFile = NULL;
 
 	// Create directories.
 	char* LogDirPath = Directory_CombinePaths(rootDirectoryPath, LOGS_DIR_NAME);
@@ -192,16 +188,15 @@ char* Logger_ConstructContext(LoggerContext* context, const char* rootDirectoryP
 }
 
 
-ErrorCode Logger_Close()
+ErrorCode Logger_CloseContext(LoggerContext* context)
 {
-	LoggerContext* Context = &LTTServerC_GetCurrentContext()->Logger;
-	if (Context->LogFile == NULL)
+	if (context->LogFile == NULL)
 	{
-		return Error_SetError(ErrorCode_IllegalOperation, "Cannot close logger since it isnt initialized yet.");
+		return Error_SetError(ErrorCode_IllegalOperation, "Cannot close logger since it isn't initialized yet.");
 	}
 
-	File_Close(Context->LogFile);
-	StringBuilder_Deconstruct(&Context->_logTextBuilder);
+	File_Close(context->LogFile);
+	StringBuilder_Deconstruct(&context->_logTextBuilder);
 
 	return ErrorCode_Success;
 }

@@ -36,7 +36,9 @@ typedef struct ErrorContextStruct
 /// <summary>
 /// Initializes error handling for the program, aborts the program if it fails to do so.
 /// </summary>
-void Error_Construct(ErrorContext* context);
+void Error_ConstructContext(ErrorContext* context);
+
+void Error_CloseContext(ErrorContext* context);
 
 /// <summary>
 /// Immediately closes the program, sends the message to stdout and attempts to log it.

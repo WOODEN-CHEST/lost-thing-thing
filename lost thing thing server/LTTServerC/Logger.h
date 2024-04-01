@@ -25,7 +25,7 @@ typedef struct LoggerContextStruct
 // Functions.
 char* Logger_ConstructContext(LoggerContext* context, const char* serverRootPath);
 
-ErrorCode Logger_Close();
+ErrorCode Logger_CloseContext(LoggerContext* context);
 
 ErrorCode Logger_Log(Logger_LogLevel level, const char* string);
 

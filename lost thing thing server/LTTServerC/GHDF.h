@@ -113,6 +113,8 @@ void GHDFCompound_Clear(GHDFCompound* self);
 
 GHDFEntry* GHDFCompound_GetEntry(GHDFCompound* self, int id);
 
+ErrorCode GHDFCompound_GetVerifiedEntry(GHDFEntry* self, int id, GHDFEntry** entry, GHDFType expectedType, const char* optionalMessage);
+
 GHDFEntry* GHDFCompound_GetEntryOrDefault(GHDFCompound* self, int id, GHDFEntry* defaultEntry);
 
 ErrorCode GHDFCompound_ReadFromFile(const char* path, GHDFCompound* emptyBaseCompound);

@@ -151,6 +151,7 @@
     <ClCompile Include="GHDF.c" />
     <ClCompile Include="IDCodepointHashMap.c" />
     <ClCompile Include="IDCodepointHashMap.h" />
+    <ClCompile Include="LTTAccountManager.c" />
     <ClCompile Include="LTTChar.c" />
     <ClCompile Include="LttErrors.c" />
     <ClCompile Include="File.c" />
@@ -180,6 +181,7 @@
     <ClInclude Include="LTTSMTP.h" />
     <ClInclude Include="LttString.h" />
     <ClInclude Include="LTTMath.h" />
+    <ClInclude Include="LTTAccountManager.h" />
     <ClInclude Include="Memory.h" />
     <ClInclude Include="LTTServerResourceManager.h" />
   </ItemGroup>
