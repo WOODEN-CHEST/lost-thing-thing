@@ -33,3 +33,19 @@ void Memory_Free(void* ptr)
 {
 	free(ptr);
 }
+
+void Memory_Copy(const char* source, char* destination, size_t size)
+{
+	for (size_t i = 0; i < size; i++)
+	{
+		destination[i] = source[i];
+	}
+}
+
+void Memory_Set(unsigned char* memoryToSet, size_t memorySize, unsigned char value)
+{
+	for (int i = 0; i < memorySize; i++)
+	{
+		memoryToSet[i] = value;
+	}
+}

@@ -4,14 +4,18 @@
 #include "Memory.h"
 #include "LTTServerResourceManager.h"
 #include "math.h"
+#include "File.h"
+#include "LTTChar.h"
 
 
 // Macros.
 #define DIR_NAME_ACCOUNTS "accounts"
 
-#define NO_ACCOUNT_IMAGE_ID 0
+#define GENERIC_LIST_CAPACITY 8
+#define GENERIC_LIST_GROWTH 2
 
 
+/* Account data. */
 #define MIN_NAME_LENGTH_CODEPOINTS 1
 #define MAX_NAME_LENGTH_CODEPOINTS 128
 
@@ -25,8 +29,7 @@
 #define EMAIL_SPECIAL_CHAR_DASH '-'
 #define EMAIL_SPECIAL_CHAR_AT '@'
 
-#define ACCOUNT_LIST_CAPACITY 8
-#define ACCOUNT_LIST_GROWTH 2
+#define NO_ACCOUNT_IMAGE_ID 0
 
 
 /* Account struct. */
@@ -38,6 +41,7 @@
 #define ENTRY_ID_ACCOUNT_POSTS 6 // ulong array with length >= 1, MAY NOT BE PRESENT IF ACCOUNT HAS NO POSTS
 #define ENTRY_ID_ACCOUNT_CREATION_TIME 7 // long
 #define ENTRY_ID_ACCOUNT_ID 8 // ulong
+#define ENTRY_ID_ACCOUNT_IS_ADMIN 9 // bool
 
 
 // Types.
@@ -59,28 +63,66 @@ static unsigned long long GetAndUseAccountID()
 
 
 /* Account. */
-void AccountDeconstruct(UserAccount* account)
+static void AccountSetDefaultValues(UserAccount* account)
 {
-	Memory_Free(account->Name);
-	Memory_Free(account->Surname);
-	Memory_Free(account->Email);
+	Memory_Set(account, sizeof(UserAccount), 0);
+}
+
+static void AccountDeconstruct(UserAccount* account)
+{
+	if (account->Name)
+	{
+		Memory_Free(account->Name);
+	}
+	if (account->Surname)
+	{
+		Memory_Free(account->Surname);
+	}
+	if (account->Email)
+	{
+		Memory_Free(account->Email);
+	}
 	if (account->Posts)
 	{
 		Memory_Free(account->Posts);
 	}
 }
 
+static ErrorCode AccountCreateNew(UserAccount* account,
+	const char* name,
+	const char* surname,
+	const char* email,
+	const char* password)
+{
+	time_t CurrentTime = time(NULL);
+	if (CurrentTime == -1)
+	{
+		return Error_SetError(ErrorCode_DatabaseError, "AccountManager_TryCreateUser: Failed to generate account creation time.");
+	}
+	account->ID = GetAndUseAccountID();
+	account->Name = String_CreateCopy(name);
+	account->Surname = String_CreateCopy(surname);
+	account->Email = String_CreateCopy(email);
+	GeneratePasswordHash(&account->PasswordHash, password);
+	account->CreationTime = CurrentTime;
+	account->PostCount = 0;
+	account->Posts = NULL;
+	account->ProfileImageID = NO_ACCOUNT_IMAGE_ID;
+	account->IsAdmin = false;
+
+	return ErrorCode_Success;
+}
 
 
 /* Account list. */
-void AccountListConstruct(AccountList* self)
+static void AccountListConstruct(AccountList* self)
 {
 	self->Count = 0;
-	self->Accounts = (UserAccount*)Memory_SafeMalloc(sizeof(UserAccount) * ACCOUNT_LIST_CAPACITY);
-	self->_capacity = ACCOUNT_LIST_CAPACITY;
+	self->Accounts = (UserAccount*)Memory_SafeMalloc(sizeof(UserAccount) * GENERIC_LIST_CAPACITY);
+	self->_capacity = GENERIC_LIST_CAPACITY;
 }
 
-void AccountListDeconstruct(AccountList* self)
+static void AccountListDeconstruct(AccountList* self)
 {
 	for (size_t i = 0; i < self->Count; i++)
 	{
@@ -90,7 +132,7 @@ void AccountListDeconstruct(AccountList* self)
 	Memory_Free(self->Accounts);
 }
 
-void AccountListEnsureCapacity(AccountList* self, size_t capacity)
+static void AccountListEnsureCapacity(AccountList* self, size_t capacity)
 {
 	if (self->_capacity > capacity)
 	{
@@ -99,7 +141,7 @@ void AccountListEnsureCapacity(AccountList* self, size_t capacity)
 
 	while (self->_capacity < capacity)
 	{
-		self->_capacity *= ACCOUNT_LIST_GROWTH;
+		self->_capacity *= GENERIC_LIST_GROWTH;
 	}
 	self->Accounts = (UserAccount*)Memory_SafeRealloc(self->Accounts, sizeof(UserAccount) * self->_capacity);
 }
@@ -107,6 +149,11 @@ void AccountListEnsureCapacity(AccountList* self, size_t capacity)
 /* Data verification and generation. */
 static ErrorCode VerifyName(const char* name)
 {
+	if (!String_IsValidUTF8String(name))
+	{
+		return Error_SetError(ErrorCode_InvalidRequest, "Not a valid UTF-8 name");
+	}
+
 	size_t Length = String_LengthCodepointsUTF8(name);
 	if (Length > MAX_NAME_LENGTH_CODEPOINTS)
 	{
@@ -130,6 +177,11 @@ static ErrorCode VerifyName(const char* name)
 
 static ErrorCode VerifyPassword(const char* password)
 {
+	if (!String_IsValidUTF8String(password))
+	{
+		return Error_SetError(ErrorCode_InvalidRequest, "Not a valid UTF-8 password");
+	}
+
 	size_t Length = String_LengthCodepointsUTF8(password);
 	if (Length > MAX_PASSWORD_LENGTH_CODEPOINTS)
 	{
@@ -217,11 +269,24 @@ static const char* VerifyEmailDomain(const char* email)
 		return NULL;
 	}
 
-	return ShiftedString;
+	for (size_t i = 0; i < LTTServerC_GetCurrentContext()->Configuration.AcceptedDomainCount; i++)
+	{
+		if (String_Equals(LTTServerC_GetCurrentContext()->Configuration.AcceptedDomains[i], email))
+		{
+			return ShiftedString;
+		}
+	}
+
+	return NULL;
 }
 
 static ErrorCode VerifyEmail(const char* email)
 {
+	if (!String_IsValidUTF8String(email))
+	{
+		return Error_SetError(ErrorCode_InvalidRequest, "Not a valid UTF-8 email");
+	}
+
 	if (String_LengthCodepointsUTF8(email) > MAX_EMAIL_LENGTH_CODEPOINTS)
 	{
 		return Error_SetError(ErrorCode_InvalidRequest, "Email's length exceeds limits.");
@@ -239,7 +304,7 @@ static ErrorCode VerifyEmail(const char* email)
 	}
 	ParsedEmailPosition++;
 
-	ParsedEmailPosition = VerifyEmailDomain(email);
+	ParsedEmailPosition = VerifyEmailDomain(ParsedEmailPosition);
 	if (!ParsedEmailPosition)
 	{
 		return Error_SetError(ErrorCode_InvalidRequest, "Email domain is invalid.");
@@ -248,22 +313,24 @@ static ErrorCode VerifyEmail(const char* email)
 	return ErrorCode_Success;
 }
 
-static void GeneratePasswordHash(long long* longArray, const char* password) // World's most secure hash, literally impossible to crack.
+static void GeneratePasswordHash(unsigned long long* longArray, const char* password) // World's most secure hash, literally impossible to crack.
 {
 	int PasswordLength = (int)String_LengthBytes(password);
 
 	for (int i = 0; i < PASSWORD_HASH_LENGTH; i++)
 	{
+		unsigned long long HashNumber = 9;
 		for (int j = 0; j < PasswordLength; j++)
 		{
-			long long HashNumber = password[j] * (i + 57 + i + password[j]);
-		    float FloatNumber = sinf(HashNumber);
-			HashNumber &= *(long long*)(&FloatNumber);
-			FloatNumber = cbrtf(i + password[j] + 7);
-			HashNumber += *(long long*)(&FloatNumber);
+			HashNumber += password[j] * (i + 57 + i + password[j]);
+			double DoubleNumber = (double)HashNumber;
+			HashNumber &= *(long long*)(&DoubleNumber);
+			DoubleNumber = (i + password[j] + 7) * 0.3984;
+			HashNumber += *(long long*)(&DoubleNumber);
 			HashNumber |= PasswordLength * PasswordLength * PasswordLength * PasswordLength / (i + 1);
 			HashNumber ^= password[j] * i;
 		}
+		longArray[i] = HashNumber;
 	}
 
 	for (int i = 0; i < PASSWORD_HASH_LENGTH; i++)
@@ -275,30 +342,127 @@ static void GeneratePasswordHash(long long* longArray, const char* password) // 
 	for (int i = 0; i < PASSWORD_HASH_LENGTH; i++)
 	{
 		int Index1 = (i + longArray[i]) % PASSWORD_HASH_LENGTH;
-		long long Temp = longArray[Index1];
+		unsigned long long Temp = longArray[Index1];
 		int Index2 = (Index1 + Temp) % PASSWORD_HASH_LENGTH;
 		longArray[Index1] = longArray[Index2];
 		longArray[Index2] = Temp;
 	}
 }
 
-/* Searching database. */
-static bool IsEmailInDatabase(const char* email)
-{
-	size_t IDArraySize;
-	IDCodepointHashMap_FindByString(&LTTServerC_GetCurrentContext()->Resources.AccountContext.EmailMap, email, true, &IDArraySize);
-}
-
-static UserAccount* GetAccountsByName(const char* name, size_t* accountArraySize)
-{
-
-}
-
 
 /* Account loading and saving. */
 static bool ReadAccountFromDatabase(UserAccount* account, unsigned long long id)
 {
+	Error_ClearError();
+	const char* FilePath = ResourceManager_GetPathToIDFile(id, DIR_NAME_ACCOUNTS);
+	if (!File_Exists(FilePath))
+	{
+		Memory_Free(FilePath);
+		return false;
+	}
 
+	GHDFCompound Compound;
+	GHDFEntry* Entry;
+	if (GHDFCompound_ReadFromFile(FilePath, &Compound) != ErrorCode_Success)
+	{
+		Memory_Free(FilePath);
+		return false;
+	}
+	Memory_Free(FilePath);
+
+	AccountSetDefaultValues(account);
+	if (GHDFCompound_GetVerifiedEntry(&Compound, ENTRY_ID_ACCOUNT_ID, &Entry, GHDFType_ULong, "Account ID") != ErrorCode_Success)
+	{
+		goto ReadFailCase;
+	}
+	if (Entry->Value.SingleValue.ULong != id)
+	{
+		char Message[128];
+		snprintf(Message, sizeof(Message), "Stored and provided ID mismatch (Stored: %llu, provided: %llu)",
+			Entry->Value.SingleValue.ULong, id);
+		Error_SetError(ErrorCode_DatabaseError, Message);
+		goto ReadFailCase;
+	}
+	account->ID = id;
+
+	if (GHDFCompound_GetVerifiedEntry(&Compound, ENTRY_ID_ACCOUNT_NAME, &Entry, GHDFType_String, "Account Name") != ErrorCode_Success)
+	{
+		goto ReadFailCase;
+	}
+	account->Name = String_CreateCopy(Entry->Value.SingleValue.String);
+	if (GHDFCompound_GetVerifiedEntry(&Compound, ENTRY_ID_ACCOUNT_SURNAME, &Entry, GHDFType_String, "Account Surname") != ErrorCode_Success)
+	{
+		goto ReadFailCase;
+	}
+	account->Surname = String_CreateCopy(Entry->Value.SingleValue.String);
+	if (GHDFCompound_GetVerifiedEntry(&Compound, ENTRY_ID_ACCOUNT_EMAIL, &Entry, GHDFType_String, "Account Email") != ErrorCode_Success)
+	{
+		goto ReadFailCase;
+	}
+	account->Email = String_CreateCopy(Entry->Value.SingleValue.String);
+
+	if (GHDFCompound_GetVerifiedEntry(&Compound, ENTRY_ID_ACCOUNT_PASSWORD, &Entry, GHDFType_ULong | GHDF_TYPE_ARRAY_BIT,
+		"Account Password Hash") != ErrorCode_Success)
+	{
+		goto ReadFailCase;
+	}
+	if (Entry->Value.ValueArray.Size != PASSWORD_HASH_LENGTH)
+	{
+		goto ReadFailCase;
+	}
+	for (int i = 0; i < PASSWORD_HASH_LENGTH; i++)
+	{
+		account->PasswordHash[i] = Entry->Value.ValueArray.Array[i].Long;
+	}
+
+	if (GHDFCompound_GetVerifiedEntry(&Compound, ENTRY_ID_ACCOUNT_PROFILE_IMAGE_ID, &Entry, GHDFType_ULong, "Account Image ID")
+		!= ErrorCode_Success)
+	{
+		goto ReadFailCase;
+	}
+	account->ProfileImageID = Entry->Value.SingleValue.ULong;
+
+	Entry = GHDFCompound_GetEntry(&Compound, ENTRY_ID_ACCOUNT_POSTS);
+	if (Entry)
+	{
+		if (Entry->ValueType != (GHDFType_ULong | GHDF_TYPE_ARRAY_BIT))
+		{
+			return Error_SetError(ErrorCode_DatabaseError, "Account Posts array not of type unsigned long array.");
+		}
+		unsigned long long* PostIDs = (unsigned long long*)Memory_SafeMalloc(sizeof(unsigned long long) * Entry->Value.ValueArray.Size);
+		for (unsigned int i = 0; i < Entry->Value.ValueArray.Size; i++)
+		{
+			PostIDs[i] = Entry->Value.ValueArray.Array[i].ULong;
+		}
+		account->Posts = PostIDs;
+		account->PostCount = Entry->Value.ValueArray.Size;
+	}
+	else
+	{
+		account->Posts = NULL;
+		account->PostCount = 0;
+	}
+
+	if (GHDFCompound_GetVerifiedEntry(&Compound, ENTRY_ID_ACCOUNT_CREATION_TIME, &Entry, GHDFType_Long, "Account Creation Time")
+		!= ErrorCode_Success)
+	{
+		goto ReadFailCase;
+	}
+	account->CreationTime = Entry->Value.SingleValue.Long;
+	if (GHDFCompound_GetVerifiedEntry(&Compound, ENTRY_ID_ACCOUNT_IS_ADMIN, &Entry, GHDFType_Bool, "Account IsAdmin") != ErrorCode_Success)
+	{
+		goto ReadFailCase;
+	}
+	account->IsAdmin = Entry->Value.SingleValue.Bool;
+
+
+	GHDFCompound_Deconstruct(&Compound);
+	return true;
+
+	ReadFailCase:
+	GHDFCompound_Deconstruct(&Compound);
+	AccountDeconstruct(account);
+	return false;
 }
 
 static ErrorCode WriteAccountToDatabase(UserAccount* account)
@@ -317,9 +481,9 @@ static ErrorCode WriteAccountToDatabase(UserAccount* account)
 	GHDFPrimitive* PrimitiveArray = (GHDFPrimitive*)Memory_SafeMalloc(sizeof(GHDFPrimitive) * PASSWORD_HASH_LENGTH);
 	for (int i = 0; i < PASSWORD_HASH_LENGTH; i++)
 	{
-		PrimitiveArray[i].Long = account->PasswordHash[i];
+		PrimitiveArray[i].ULong = account->PasswordHash[i];
 	}
-	GHDFCompound_AddArrayEntry(&Compound, GHDFType_Long, ENTRY_ID_ACCOUNT_PASSWORD, PrimitiveArray, PASSWORD_HASH_LENGTH);
+	GHDFCompound_AddArrayEntry(&Compound, GHDFType_ULong, ENTRY_ID_ACCOUNT_PASSWORD, PrimitiveArray, PASSWORD_HASH_LENGTH);
 
 	SingleValue.ULong = account->ProfileImageID;
 	GHDFCompound_AddSingleValueEntry(&Compound, GHDFType_ULong, ENTRY_ID_ACCOUNT_PROFILE_IMAGE_ID, SingleValue);
@@ -338,6 +502,8 @@ static ErrorCode WriteAccountToDatabase(UserAccount* account)
 	GHDFCompound_AddSingleValueEntry(&Compound, GHDFType_Long, ENTRY_ID_ACCOUNT_CREATION_TIME, SingleValue);
 	SingleValue.ULong = account->ID;
 	GHDFCompound_AddSingleValueEntry(&Compound, GHDFType_ULong, ENTRY_ID_ACCOUNT_ID, SingleValue);
+	SingleValue.Bool = account->IsAdmin;
+	GHDFCompound_AddSingleValueEntry(&Compound, GHDFType_Bool, ENTRY_ID_ACCOUNT_IS_ADMIN, SingleValue);
 
 	const char* AccountPath = ResourceManager_GetPathToIDFile(account->ID, DIR_NAME_ACCOUNTS);
 	ErrorCode ResultCode = GHDFCompound_WriteToFile(AccountPath, &Compound);
@@ -347,44 +513,85 @@ static ErrorCode WriteAccountToDatabase(UserAccount* account)
 }
 
 
-/* Hashmap. */
-static ErrorCode GenerateMetaInfoForSingleAccount(unsigned long long id)
+/* Searching database. */
+static bool IsEmailInDatabase(const char* email)
 {
-	GHDFCompound ProfileData;
-	const char* FilePath = ResourceManager_GetPathToIDFile(id, DIR_NAME_ACCOUNTS);
-	if (GHDFCompound_ReadFromFile(FilePath, &ProfileData) != ErrorCode_Success)
+	size_t IDArraySize;
+	unsigned long long* IDs = IDCodepointHashMap_FindByString(
+		&LTTServerC_GetCurrentContext()->Resources.AccountContext.EmailMap, email, true, &IDArraySize);
+	if (IDArraySize == 0)
 	{
-		Memory_Free(FilePath);
-		return Error_GetLastErrorCode();
+		return false;
 	}
-	Memory_Free(FilePath);
 
-	GHDFEntry* Entry;
-	char AccountID[32];
-	sprintf(AccountID, "Account ID is %llu", id);
-
-	if (GHDFCompound_GetVerifiedEntry(&ProfileData, ENTRY_ID_ACCOUNT_NAME, &Entry, GHDFType_String, AccountID) != ErrorCode_Success)
+	bool FoundEmail = false;
+	for (size_t i = 0; i < IDArraySize; i++)
 	{
-		GHDFCompound_Deconstruct(&ProfileData);
-		return Error_GetLastErrorCode();
-	}
-	IDCodepointHashMap_AddID(&LTTServerC_GetCurrentContext()->Resources.AccountContext.NameMap, Entry->Value.SingleValue.String, id);
+		UserAccount Account;
+		if (!ReadAccountFromDatabase(&Account, IDs[i]))
+		{
+			AccountDeconstruct(&Account);
+			continue;
+		}
 
-	if (GHDFCompound_GetVerifiedEntry(&ProfileData, ENTRY_ID_ACCOUNT_SURNAME, &Entry, GHDFType_String, AccountID) != ErrorCode_Success)
+		if (String_Equals(email, Account.Email))
+		{
+			FoundEmail = true;
+			AccountDeconstruct(&Account);
+			break;
+		}
+		AccountDeconstruct(&Account);
+	}
+
+	Memory_Free(IDs);
+	return FoundEmail;
+}
+
+static UserAccount* GetAccountsByName(const char* name, size_t* accountArraySize)
+{
+
+}
+
+
+/* Hashmap. */
+static ErrorCode GenerateMetaInfoForSingleAccount(DBAccountContext* context, UserAccount* account)
+{
+	char* LowerName = String_CreateCopy(account->Name);
+	String_ToLowerUTF8(LowerName);
+	char* LowerSurname = String_CreateCopy(account->Surname);
+	String_ToLowerUTF8(LowerName);
+
+
+	IDCodepointHashMap_AddID(&context->NameMap, LowerName, account->ID);
+	IDCodepointHashMap_AddID(&context->NameMap, LowerSurname, account->ID);
+	IDCodepointHashMap_AddID(&context->EmailMap, account->Email, account->ID);
+
+	Memory_Free(LowerName);
+	Memory_Free(LowerSurname);
+}
+
+static ErrorCode GenerateMetaInfoForAccounts(DBAccountContext* context)
+{
+	unsigned long long MaxIDExclusive = context->AvailableAccountID;
+	for (unsigned long long ID = 0; ID < MaxIDExclusive; ID++)
 	{
-		GHDFCompound_Deconstruct(&ProfileData);
-		return Error_GetLastErrorCode();
-	}
-	IDCodepointHashMap_AddID(&LTTServerC_GetCurrentContext()->Resources.AccountContext.NameMap, Entry->Value.SingleValue.String, id);
+		UserAccount Account;
+		if (!ReadAccountFromDatabase(&Account, ID))
+		{
+			if (Error_GetLastErrorCode() != ErrorCode_Success)
+			{
+				return Error_GetLastErrorCode();
+			}
+			continue;
+		}
 
-	if (GHDFCompound_GetVerifiedEntry(&ProfileData, ENTRY_ID_ACCOUNT_EMAIL, &Entry, GHDFType_String, AccountID) != ErrorCode_Success)
-	{
-		GHDFCompound_Deconstruct(&ProfileData);
-		return Error_GetLastErrorCode();
+		if (GenerateMetaInfoForSingleAccount(context, &Account) != ErrorCode_Success)
+		{
+			return Error_GetLastErrorCode();
+		}
+		AccountDeconstruct(&Account);
 	}
-	IDCodepointHashMap_AddID(&LTTServerC_GetCurrentContext()->Resources.AccountContext.EmailMap, Entry->Value.SingleValue.String, id);
 
-	GHDFCompound_Deconstruct(&ProfileData);
 	return ErrorCode_Success;
 }
 
@@ -393,16 +600,17 @@ static ErrorCode GenerateMetaInfoForSingleAccount(unsigned long long id)
 ErrorCode AccountManager_ConstructContext(DBAccountContext* context, unsigned long long availableID, unsigned long long availableImageID)
 {
 	context->AvailableAccountID = availableID;
+	context->AvailableImageID = availableImageID;
 	IDCodepointHashMap_Construct(&context->NameMap);
 	IDCodepointHashMap_Construct(&context->EmailMap);
 
-	unsigned long long MaxIDExclusive = context->AvailableAccountID;
-	for (unsigned long long ID = 0; ID < MaxIDExclusive; ID++)
+	context->ActiveSessions = (SessionID*)Memory_SafeMalloc(sizeof(SessionID) * GENERIC_LIST_CAPACITY);
+	context->SessionCount = 0;
+	context->_sessionListCapacity = 0;
+
+	if (GenerateMetaInfoForAccounts(context) != ErrorCode_Success)
 	{
-		if (GenerateMetaInfoForSingleAccount(ID) != ErrorCode_Success)
-		{
-			return Error_GetLastErrorCode();
-		}
+		return Error_GetLastErrorCode();
 	}
 
 	return ErrorCode_Success;
@@ -431,26 +639,18 @@ ErrorCode AccountManager_TryCreateUser(UserAccount* account,
 		return Error_SetError(ErrorCode_InvalidArgument, "AccountManager_TryCreateUser: Account with the same email already exists.");
 	}
 
-	time_t CurrentTime = time(NULL);
-	if (CurrentTime == -1)
+	if (AccountCreateNew(account, name, surname, email, password) != ErrorCode_Success)
 	{
-		return Error_SetError(ErrorCode_DatabaseError, "AccountManager_TryCreateUser: Failed to generate account creation time.");
+		return Error_GetLastErrorCode();
 	}
-	
-	account->ID = GetAndUseAccountID();
-	account->Name = String_CreateCopy(name);
-	account->Surname = String_CreateCopy(surname);
-	account->Email = String_CreateCopy(email);
-	GeneratePasswordHash(account->PasswordHash, password);
-	account->CreationTime = CurrentTime;
-	account->PostCount = 0;
-	account->Posts = NULL;
-	account->ProfileImageID = NO_ACCOUNT_IMAGE_ID;
 
 	if (WriteAccountToDatabase(account) != ErrorCode_Success)
 	{
 		return Error_GetLastErrorCode();
 	}
+
+	GenerateMetaInfoForSingleAccount(&LTTServerC_GetCurrentContext()->Resources.AccountContext, account);
+	return ErrorCode_Success;
 }
 
 ErrorCode AccountManager_TryCreateUnverifiedUser(UserAccount* account,
@@ -469,7 +669,8 @@ bool AccountManager_IsUserAdmin(SessionID* sessionID)
 
 bool AccountManager_GetAccount(UserAccount* account, unsigned long long id)
 {
-
+	Error_ClearError();
+	return ReadAccountFromDatabase(account, id);
 }
 
 ErrorCode AccountManager_GenerateAccountHashMaps() 

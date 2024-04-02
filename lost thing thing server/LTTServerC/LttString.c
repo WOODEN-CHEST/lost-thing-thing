@@ -20,29 +20,31 @@
 size_t String_LengthCodepointsUTF8(const char* string)
 {
 	size_t Length = 0;
-	char Character;
 
-	for (size_t i = 0; string[i] != '\0'; i++)
+	for (size_t i = 0; string[i] != '\0'; i += Char_GetByteCount(string + i))
 	{
-		Character = string[i];
-
-		if ((Character & UTF8_TWO_BYTES_COMBINED) == UTF8_TWO_BYTES)
-		{
-			i += 1;
-		}
-		else if ((Character & UTF8_THREE_BYTES_COMBINED) == UTF8_THREE_BYTES)
-		{
-			i += 2;
-		}
-		else if ((Character & UTF8_FOUR_BYTES_COMBINED) == UTF8_FOUR_BYTES)
-		{
-			i += 3;
-		}
-
 		Length++;
 	}
 
 	return Length;
+}
+
+_Bool String_IsValidUTF8String(const char* string)
+{
+	int ExpectedByteCount;
+	for (size_t Index = 0; string[Index] != '\0'; Index++)
+	{
+		ExpectedByteCount = Char_GetByteCount(string + Index);
+
+		for (int SubByteIndex = 1; SubByteIndex < ExpectedByteCount; SubByteIndex++)
+		{
+			if ((string[Index + SubByteIndex] & UTF8_TRAILING_BYTE_COMBINED) != UTF8_TRAILING_BYTE)
+			{
+				return false;
+			}
+		}
+	}
+	return true;
 }
 
 size_t String_LengthBytes(const char* string)

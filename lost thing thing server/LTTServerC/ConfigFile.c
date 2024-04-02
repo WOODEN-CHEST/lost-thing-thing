@@ -72,7 +72,7 @@ static void AddDomain(ServerConfig* config, const char* domain)
 {
 	EnsureDomainCapacity(config, config->AcceptedDomainCount + 1);
 	config->AcceptedDomains[config->AcceptedDomainCount] = String_CreateCopy(domain);
-	config->AcceptedDomainCount++;
+	config->AcceptedDomainCount += 1;
 }
 
 static ErrorCode SetAddress(ServerConfig* config, const char* address)
@@ -83,6 +83,7 @@ static ErrorCode SetAddress(ServerConfig* config, const char* address)
 	}
 
 	String_CopyTo(address, config->Address);
+	return ErrorCode_Success;
 }
 
 static ErrorCode HandleConfigurationKeyValuePar(ServerConfig* config, const char* key, const char* value)

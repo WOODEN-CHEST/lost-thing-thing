@@ -391,7 +391,7 @@ static void CountCodepoints(const char* string, StringCodepointCountList* list, 
 	size_t Index = 0;
 	while (string[Index] != '\0')
 	{
-		if (ignoreWhitespace && Char_IsWhitespace(string[Index]))
+		if (ignoreWhitespace && Char_IsWhitespace(string + Index))
 		{
 			continue;
 		}

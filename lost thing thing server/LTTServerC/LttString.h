@@ -27,6 +27,14 @@ typedef struct StringBuilderStruct StringBuilder;
 size_t String_LengthCodepointsUTF8(const char* string);
 
 /// <summary>
+/// Tests whether the string is a valid UTF-8 string with no invalid byte sequences.
+/// Invalid strings are dangerous and can cause issues while parsing them.
+/// </summary>
+/// <param name="string"> The string to test.</param>
+/// <returns>true if the string is valid, otherwise false.</returns>
+_Bool String_IsValidUTF8String(const char* string);
+
+/// <summary>
 /// Returns the amount of bytes in the provided string, excluding the null terminator.
 /// </summary>
 /// <param name="string">The string to count the bytes of.</param>

@@ -90,9 +90,14 @@ static int RunServer(const char* executablePath)
 		return EXIT_FAILURE;
 	}
 
+	UserAccount Account;
+	//AccountManager_TryCreateUser(&Account, "Kristofers", "Cernavskis", "kristofers.cernavskis@marupe.edu.lv", "1234");
+	//AccountManager_TryCreateUser(&Account, "Keigers", "Klibers", "KeigersKlibers@gmail.com", "1234");
+	//AccountManager_GetAccount(&Account, 0);
+
 
 	// Start server.
-	ErrorCode Error = HttpListener_Listen(LTTServerC_GetCurrentContext()->Configuration.Address);
+ 	ErrorCode Error = HttpListener_Listen(LTTServerC_GetCurrentContext()->Configuration.Address);
 	if (Error != ErrorCode_Success)
 	{
 		Logger_LogError(Error_GetLastErrorMessage());
