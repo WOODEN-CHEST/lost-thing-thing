@@ -37,7 +37,7 @@
 #define ENTRY_ID_ACCOUNT_PROFILE_IMAGE_ID 5 // ulong
 #define ENTRY_ID_ACCOUNT_POSTS 6 // ulong array with length >= 1, MAY NOT BE PRESENT IF ACCOUNT HAS NO POSTS
 #define ENTRY_ID_ACCOUNT_CREATION_TIME 7 // long
-#define ENTRY_ID_ACCOUNT_ID 7 // ulong
+#define ENTRY_ID_ACCOUNT_ID 8 // ulong
 
 
 // Types.
@@ -59,22 +59,15 @@ static unsigned long long GetAndUseAccountID()
 
 
 /* Account. */
-void AccountConstruct(UserAccount* account,
-	const char* name,
-	const char* surname,
-	const char* email,
-	long long* passwordHash,
-	long long creationTime,
-	unsigned long long profileImageID,
-	unsigned long long* posts,
-	unsigned int postCount)
-{
-
-}
-
 void AccountDeconstruct(UserAccount* account)
 {
-
+	Memory_Free(account->Name);
+	Memory_Free(account->Surname);
+	Memory_Free(account->Email);
+	if (account->Posts)
+	{
+		Memory_Free(account->Posts);
+	}
 }
 
 
@@ -97,14 +90,18 @@ void AccountListDeconstruct(AccountList* self)
 	Memory_Free(self->Accounts);
 }
 
-void AccountListEnsureCapacity(AccountList* self)
+void AccountListEnsureCapacity(AccountList* self, size_t capacity)
 {
+	if (self->_capacity > capacity)
+	{
+		return;
+	}
 
-}
-
-void AccountListAdd(AccountList* self()
-{
-
+	while (self->_capacity < capacity)
+	{
+		self->_capacity *= ACCOUNT_LIST_GROWTH;
+	}
+	self->Accounts = (UserAccount*)Memory_SafeRealloc(self->Accounts, sizeof(UserAccount) * self->_capacity);
 }
 
 /* Data verification and generation. */
@@ -299,14 +296,54 @@ static UserAccount* GetAccountsByName(const char* name, size_t* accountArraySize
 
 
 /* Account loading and saving. */
-static ErrorCode ReadAccountFromCompound(UserAccount* account, GHDFCompound* compound)
+static bool ReadAccountFromDatabase(UserAccount* account, unsigned long long id)
 {
 
 }
 
-static ErrorCode WriteAccountToCompound(UserAccount* account, GHDFCompound* compound)
+static ErrorCode WriteAccountToDatabase(UserAccount* account)
 {
+	GHDFCompound Compound;
+	GHDFCompound_Construct(&Compound, COMPOUND_DEFAULT_CAPACITY);
+	GHDFPrimitive SingleValue;
 
+	SingleValue.String = String_CreateCopy(account->Name);
+	GHDFCompound_AddSingleValueEntry(&Compound, GHDFType_String, ENTRY_ID_ACCOUNT_NAME, SingleValue);
+	SingleValue.String = String_CreateCopy(account->Surname);
+	GHDFCompound_AddSingleValueEntry(&Compound, GHDFType_String, ENTRY_ID_ACCOUNT_SURNAME, SingleValue);
+	SingleValue.String = String_CreateCopy(account->Email);
+	GHDFCompound_AddSingleValueEntry(&Compound, GHDFType_String, ENTRY_ID_ACCOUNT_EMAIL, SingleValue);
+
+	GHDFPrimitive* PrimitiveArray = (GHDFPrimitive*)Memory_SafeMalloc(sizeof(GHDFPrimitive) * PASSWORD_HASH_LENGTH);
+	for (int i = 0; i < PASSWORD_HASH_LENGTH; i++)
+	{
+		PrimitiveArray[i].Long = account->PasswordHash[i];
+	}
+	GHDFCompound_AddArrayEntry(&Compound, GHDFType_Long, ENTRY_ID_ACCOUNT_PASSWORD, PrimitiveArray, PASSWORD_HASH_LENGTH);
+
+	SingleValue.ULong = account->ProfileImageID;
+	GHDFCompound_AddSingleValueEntry(&Compound, GHDFType_ULong, ENTRY_ID_ACCOUNT_PROFILE_IMAGE_ID, SingleValue);
+
+	if (account->PostCount > 0)
+	{
+		PrimitiveArray = (GHDFPrimitive*)Memory_SafeMalloc(sizeof(GHDFPrimitive) * account->PostCount);
+		for (int i = 0; i < account->PostCount; i++)
+		{
+			PrimitiveArray[i].ULong = account->Posts[i];
+		}
+		GHDFCompound_AddArrayEntry(&Compound, GHDFType_ULong, ENTRY_ID_ACCOUNT_POSTS, PrimitiveArray, account->PostCount);
+	}
+	
+	SingleValue.Long = account->CreationTime;
+	GHDFCompound_AddSingleValueEntry(&Compound, GHDFType_Long, ENTRY_ID_ACCOUNT_CREATION_TIME, SingleValue);
+	SingleValue.ULong = account->ID;
+	GHDFCompound_AddSingleValueEntry(&Compound, GHDFType_ULong, ENTRY_ID_ACCOUNT_ID, SingleValue);
+
+	const char* AccountPath = ResourceManager_GetPathToIDFile(account->ID, DIR_NAME_ACCOUNTS);
+	ErrorCode ResultCode = GHDFCompound_WriteToFile(AccountPath, &Compound);
+	Memory_Free(AccountPath);
+	GHDFCompound_Deconstruct(&Compound);
+	return ResultCode;
 }
 
 
@@ -388,6 +425,32 @@ ErrorCode AccountManager_TryCreateUser(UserAccount* account,
 	{
 		return Error_GetLastErrorCode();
 	}
+	
+	if (IsEmailInDatabase(email))
+	{
+		return Error_SetError(ErrorCode_InvalidArgument, "AccountManager_TryCreateUser: Account with the same email already exists.");
+	}
+
+	time_t CurrentTime = time(NULL);
+	if (CurrentTime == -1)
+	{
+		return Error_SetError(ErrorCode_DatabaseError, "AccountManager_TryCreateUser: Failed to generate account creation time.");
+	}
+	
+	account->ID = GetAndUseAccountID();
+	account->Name = String_CreateCopy(name);
+	account->Surname = String_CreateCopy(surname);
+	account->Email = String_CreateCopy(email);
+	GeneratePasswordHash(account->PasswordHash, password);
+	account->CreationTime = CurrentTime;
+	account->PostCount = 0;
+	account->Posts = NULL;
+	account->ProfileImageID = NO_ACCOUNT_IMAGE_ID;
+
+	if (WriteAccountToDatabase(account) != ErrorCode_Success)
+	{
+		return Error_GetLastErrorCode();
+	}
 }
 
 ErrorCode AccountManager_TryCreateUnverifiedUser(UserAccount* account,
@@ -396,7 +459,7 @@ ErrorCode AccountManager_TryCreateUnverifiedUser(UserAccount* account,
 	const char* email,
 	const char* password)
 {
-
+	
 }
 
 bool AccountManager_IsUserAdmin(SessionID* sessionID)

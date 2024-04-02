@@ -158,7 +158,7 @@ ErrorCode ResourceManager_ConstructContext(ServerResourceContext* context, const
 	unsigned long long ;
 	ReadGlobalData(context->GlobalDataFilePath, &AvailableAccountID, &AvailableAccountImageID, &AvailablePostID);
 
-	if (AccountManager_ConstructContext(&context->AccountContext, AvailableAccountID) != ErrorCode_Success)
+	if (AccountManager_ConstructContext(&context->AccountContext, AvailableAccountID, AvailablePostID) != ErrorCode_Success)
 	{
 		return Error_GetLastErrorCode();
 	}
