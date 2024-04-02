@@ -7,7 +7,7 @@ void* Memory_SafeMalloc(size_t size)
 {
 	void* Pointer = malloc(size);
 
-	if (Pointer == NULL)
+	if (!Pointer)
 	{
 		Error_AbortProgram("Failed to safely allocate memory.");
 		return NULL;
@@ -20,7 +20,7 @@ void* Memory_SafeRealloc(void* ptr, size_t size)
 {
 	void* Pointer = realloc(ptr, size);
 
-	if (Pointer == NULL)
+	if (!Pointer)
 	{
 		Error_AbortProgram("Failed to safely reallocate memory.");
 		return NULL;

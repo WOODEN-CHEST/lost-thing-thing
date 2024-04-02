@@ -20,7 +20,7 @@
 
 // Static functions.
 /* Compound. */
-static void EnsureCompoundCapacity(GHDFCompound* self, size_t capacity)
+static void EnsureCompoundCapacity(GHDFCompound* self, unsigned int capacity)
 {
 	if (self->_capacity >= capacity)
 	{
@@ -52,7 +52,7 @@ static void FreeEntryMemory(GHDFEntry* entry)
 {
 	if (entry->ValueType & GHDF_TYPE_ARRAY_BIT)
 	{
-		for (size_t i = 0; i < entry->Value.ValueArray.Size; i++)
+		for (unsigned int i = 0; i < entry->Value.ValueArray.Size; i++)
 		{
 			FreeSingleValue(entry->Value.ValueArray.Array[i], GetValueType(entry->ValueType));
 		}
@@ -119,7 +119,7 @@ static ErrorCode WriteCompound(FILE* file, GHDFCompound* compound)
 		return Error_GetLastErrorCode();
 	}
 
-	for (size_t i = 0; i < compound->Count; i++)
+	for (unsigned int i = 0; i < compound->Count; i++)
 	{
 		if (WriteEntry(file, &compound->Entries[i]) != ErrorCode_Success)
 		{
@@ -166,7 +166,7 @@ static ErrorCode WriteSingleValue(FILE* file, GHDFPrimitive value, GHDFType type
 {
 	if (GetValueType(type) == GHDFType_String)
 	{
-		size_t StringLength = String_LengthBytes(value.String);
+		unsigned int StringLength = String_LengthBytes(value.String);
 
 		if (Write7BitEncodedInt(file, (unsigned int)StringLength) != ErrorCode_Success)
 		{
@@ -205,7 +205,7 @@ static ErrorCode WriteArrayValue(FILE* file, GHDFArray array, GHDFType type)
 		return Error_SetError(ErrorCode_IO, "WriteArrayValue: Failed to write array size.");
 	}
 
-	for (size_t i = 0; i < array.Size; i++)
+	for (unsigned int i = 0; i < array.Size; i++)
 	{
 		if (WriteSingleValue(file, array.Array[i], type) != ErrorCode_Success) // Not optimal solution.
 		{
@@ -328,7 +328,7 @@ static ErrorCode ReadSingleValue(FILE* file, GHDFType type, GHDFPrimitive* value
 	return ErrorCode_Success;
 }
 
-static ErrorCode ReadArrayValue(FILE* file, GHDFType type, GHDFPrimitive** arrayPtr, size_t* arraySizePtr)
+static ErrorCode ReadArrayValue(FILE* file, GHDFType type, GHDFPrimitive** arrayPtr, unsigned int* arraySizePtr)
 {
 	unsigned int ArraySize;
 	if (Read7BitEncodedInt(file, (unsigned int*)(&ArraySize)) != ErrorCode_Success)
@@ -337,7 +337,7 @@ static ErrorCode ReadArrayValue(FILE* file, GHDFType type, GHDFPrimitive** array
 	}
 
 	GHDFPrimitive* PrimitiveArray = (GHDFPrimitive*)Memory_SafeMalloc(sizeof(GHDFPrimitive) * ArraySize);
-	for (int i = 0; i < ArraySize; i++)
+	for (unsigned int i = 0; i < ArraySize; i++)
 	{
 		if (ReadSingleValue(file, type, PrimitiveArray + i) != ErrorCode_Success)
 		{
@@ -346,7 +346,7 @@ static ErrorCode ReadArrayValue(FILE* file, GHDFType type, GHDFPrimitive** array
 	}
 
 	*arrayPtr = PrimitiveArray;
-	*arraySizePtr = (size_t)ArraySize;
+	*arraySizePtr = ArraySize;
 	return ErrorCode_Success;
 }
 
@@ -384,7 +384,7 @@ static ErrorCode ReadEntryValue(FILE* file, int id, GHDFType type, GHDFCompound*
 	if (type & GHDF_TYPE_ARRAY_BIT)
 	{
 		GHDFPrimitive* Array;
-		size_t ArraySize;
+		unsigned int ArraySize;
 		if (ReadArrayValue(file, type, &Array, &ArraySize) != ErrorCode_Success)
 		{
 			return Error_GetLastErrorCode();
@@ -439,7 +439,7 @@ static ErrorCode ReadCompound(FILE* file, GHDFCompound* compound)
 
 
 // Functions.
-void GHDFCompound_Construct(GHDFCompound* self, size_t capacity)
+void GHDFCompound_Construct(GHDFCompound* self, unsigned int capacity)
 {
 	if (capacity <= 0)
 	{
@@ -451,7 +451,7 @@ void GHDFCompound_Construct(GHDFCompound* self, size_t capacity)
 	self->_capacity = capacity;
 }
 
-GHDFCompound* GHDFCompound_Construct2(size_t capacity)
+GHDFCompound* GHDFCompound_Construct2(unsigned int capacity)
 {
 	GHDFCompound* Compound = (GHDFCompound*)Memory_SafeMalloc(sizeof(GHDFCompound));
 	GHDFCompound_Construct(Compound, capacity);
@@ -473,7 +473,7 @@ ErrorCode GHDFCompound_AddSingleValueEntry(GHDFCompound* self, GHDFType type, in
 	self->Count += 1;
 }
 
-ErrorCode GHDFCompound_AddArrayEntry(GHDFCompound* self, GHDFType type, int id, GHDFPrimitive* valueArray, size_t count)
+ErrorCode GHDFCompound_AddArrayEntry(GHDFCompound* self, GHDFType type, int id, GHDFPrimitive* valueArray, unsigned int count)
 {
 	if (id == 0)
 	{
@@ -503,12 +503,12 @@ void GHDFCompound_RemoveEntry(GHDFCompound* self, int id)
 		}
 	}
 
-	if (TargetIndex == -1)
+	if (TargetIndex <= -1)
 	{
 		return;
 	}
 
-	for (long long i = TargetIndex + 1; i < self->Count; i++)
+	for (unsigned int i = TargetIndex + 1; i < self->Count; i++)
 	{
 		self->Entries[i - 1] = self->Entries[i];
 	}
@@ -518,7 +518,7 @@ void GHDFCompound_RemoveEntry(GHDFCompound* self, int id)
 
 void GHDFCompound_Clear(GHDFCompound* self)
 {
-	for (size_t i = 0; i < self->Count; i++)
+	for (unsigned int i = 0; i < self->Count; i++)
 	{
 		FreeEntryMemory(self->Entries + i);
 	}
@@ -528,7 +528,7 @@ void GHDFCompound_Clear(GHDFCompound* self)
 
 GHDFEntry* GHDFCompound_GetEntry(GHDFCompound* self, int id)
 {
-	for (size_t i = 0; i < self->Count; i++)
+	for (unsigned int i = 0; i < self->Count; i++)
 	{
 		if (self->Entries[i].ID == id)
 		{
@@ -539,7 +539,7 @@ GHDFEntry* GHDFCompound_GetEntry(GHDFCompound* self, int id)
 	return NULL;
 }
 
-ErrorCode GHDFCompound_GetVerifiedEntry(GHDFEntry* self, int id, GHDFEntry** entry, GHDFType expectedType, const char* optionalMessage)
+ErrorCode GHDFCompound_GetVerifiedEntry(GHDFCompound* self, int id, GHDFEntry** entry, GHDFType expectedType, const char* optionalMessage)
 {
 	GHDFEntry* FoundEntry = GHDFCompound_GetEntry(self, id);
 	char Message[256];
@@ -563,7 +563,7 @@ ErrorCode GHDFCompound_GetVerifiedEntry(GHDFEntry* self, int id, GHDFEntry** ent
 
 GHDFEntry* GHDFCompound_GetEntryOrDefault(GHDFCompound* self, int id, GHDFEntry* defaultEntry)
 {
-	for (size_t i = 0; i < self->Count; i++)
+	for (unsigned int i = 0; i < self->Count; i++)
 	{
 		if (self->Entries[i].ID == id)
 		{
@@ -577,6 +577,12 @@ GHDFEntry* GHDFCompound_GetEntryOrDefault(GHDFCompound* self, int id, GHDFEntry*
 ErrorCode GHDFCompound_ReadFromFile(const char* path, GHDFCompound* emptyBaseCompound)
 {
 	GHDFCompound_Construct(emptyBaseCompound, COMPOUND_DEFAULT_CAPACITY);
+
+	if (!File_Exists(path))
+	{
+		return Error_SetError(ErrorCode_IO, "GHDFCompound_ReadFromFile: Provided GHDF file doesn't exist.");
+	}
+
 	FILE* File = File_Open(path, FileOpenMode_ReadBinary);
 	if (!File)
 	{
@@ -631,7 +637,7 @@ ErrorCode GHDFCompound_WriteToFile(const char* path, GHDFCompound* compound)
 
 void GHDFCompound_Deconstruct(GHDFCompound* self)
 {
-	for (size_t i = 0; i < self->Count; i++)
+	for (unsigned int i = 0; i < self->Count; i++)
 	{
 		FreeEntryMemory(self->Entries + i);
 	}

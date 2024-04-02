@@ -3,10 +3,13 @@
 #include "LTTServerC.h"
 #include "Memory.h"
 #include "LTTServerResourceManager.h"
+#include "math.h"
 
 
 // Macros.
 #define DIR_NAME_ACCOUNTS "accounts"
+
+#define NO_ACCOUNT_IMAGE_ID 0
 
 
 #define MIN_NAME_LENGTH_CODEPOINTS 1
@@ -22,10 +25,11 @@
 #define EMAIL_SPECIAL_CHAR_DASH '-'
 #define EMAIL_SPECIAL_CHAR_AT '@'
 
+#define ACCOUNT_LIST_CAPACITY 8
+#define ACCOUNT_LIST_GROWTH 2
 
-#define SESSION_ID_BYTE_COUNT 128
 
-
+/* Account struct. */
 #define ENTRY_ID_ACCOUNT_NAME 1 // String
 #define ENTRY_ID_ACCOUNT_SURNAME 2 // String
 #define ENTRY_ID_ACCOUNT_EMAIL 3 // String
@@ -36,12 +40,71 @@
 #define ENTRY_ID_ACCOUNT_ID 7 // ulong
 
 
+// Types.
+typedef struct AccountListStruct
+{
+	UserAccount* Accounts;
+	size_t Count;
+	size_t _capacity;
+} AccountList;
+
+
 // Static functions.
 static unsigned long long GetAndUseAccountID()
 {
-	unsigned long long ID = LTTServerC_GetCurrentContext()->Resources.AccountContext.AvailableID;
-	LTTServerC_GetCurrentContext()->Resources.AccountContext.AvailableID += 1;
+	unsigned long long ID = LTTServerC_GetCurrentContext()->Resources.AccountContext.AvailableAccountID;
+	LTTServerC_GetCurrentContext()->Resources.AccountContext.AvailableAccountID += 1;
 	return ID;
+}
+
+
+/* Account. */
+void AccountConstruct(UserAccount* account,
+	const char* name,
+	const char* surname,
+	const char* email,
+	long long* passwordHash,
+	long long creationTime,
+	unsigned long long profileImageID,
+	unsigned long long* posts,
+	unsigned int postCount)
+{
+
+}
+
+void AccountDeconstruct(UserAccount* account)
+{
+
+}
+
+
+
+/* Account list. */
+void AccountListConstruct(AccountList* self)
+{
+	self->Count = 0;
+	self->Accounts = (UserAccount*)Memory_SafeMalloc(sizeof(UserAccount) * ACCOUNT_LIST_CAPACITY);
+	self->_capacity = ACCOUNT_LIST_CAPACITY;
+}
+
+void AccountListDeconstruct(AccountList* self)
+{
+	for (size_t i = 0; i < self->Count; i++)
+	{
+		AccountDeconstruct(self->Accounts + i);
+	}
+
+	Memory_Free(self->Accounts);
+}
+
+void AccountListEnsureCapacity(AccountList* self)
+{
+
+}
+
+void AccountListAdd(AccountList* self()
+{
+
 }
 
 /* Data verification and generation. */
@@ -196,20 +259,44 @@ static void GeneratePasswordHash(long long* longArray, const char* password) // 
 	{
 		for (int j = 0; j < PasswordLength; j++)
 		{
-			longArray[i] = (long long)((sinf(password[i]) * password[i]) + (cbrtf(password[i] * i)));
+			long long HashNumber = password[j] * (i + 57 + i + password[j]);
+		    float FloatNumber = sinf(HashNumber);
+			HashNumber &= *(long long*)(&FloatNumber);
+			FloatNumber = cbrtf(i + password[j] + 7);
+			HashNumber += *(long long*)(&FloatNumber);
+			HashNumber |= PasswordLength * PasswordLength * PasswordLength * PasswordLength / (i + 1);
+			HashNumber ^= password[j] * i;
 		}
 	}
 
-	//for (int i = 0; i < PASSWORD_HASH_LENGTH; i++)
-	//{
+	for (int i = 0; i < PASSWORD_HASH_LENGTH; i++)
+	{
+		longArray[i] = longArray[i * 7 % PASSWORD_HASH_LENGTH] ^ PasswordLength;
+		longArray[i] *= longArray[(i + longArray[i]) / longArray[i] % PASSWORD_HASH_LENGTH];
+	}
 
-	//}
-
-	//for (int i = 0; i < PASSWORD_HASH_LENGTH; i++)
-	//{
-
-	//}
+	for (int i = 0; i < PASSWORD_HASH_LENGTH; i++)
+	{
+		int Index1 = (i + longArray[i]) % PASSWORD_HASH_LENGTH;
+		long long Temp = longArray[Index1];
+		int Index2 = (Index1 + Temp) % PASSWORD_HASH_LENGTH;
+		longArray[Index1] = longArray[Index2];
+		longArray[Index2] = Temp;
+	}
 }
+
+/* Searching database. */
+static bool IsEmailInDatabase(const char* email)
+{
+	size_t IDArraySize;
+	IDCodepointHashMap_FindByString(&LTTServerC_GetCurrentContext()->Resources.AccountContext.EmailMap, email, true, &IDArraySize);
+}
+
+static UserAccount* GetAccountsByName(const char* name, size_t* accountArraySize)
+{
+
+}
+
 
 /* Account loading and saving. */
 static ErrorCode ReadAccountFromCompound(UserAccount* account, GHDFCompound* compound)
@@ -266,13 +353,13 @@ static ErrorCode GenerateMetaInfoForSingleAccount(unsigned long long id)
 
 
 // Functions.
-ErrorCode AccountManager_ConstructContext(DBAccountContext* context, unsigned long long availableID)
+ErrorCode AccountManager_ConstructContext(DBAccountContext* context, unsigned long long availableID, unsigned long long availableImageID)
 {
-	context->AvailableID = availableID;
+	context->AvailableAccountID = availableID;
 	IDCodepointHashMap_Construct(&context->NameMap);
 	IDCodepointHashMap_Construct(&context->EmailMap);
 
-	unsigned long long MaxIDExclusive = context->AvailableID;
+	unsigned long long MaxIDExclusive = context->AvailableAccountID;
 	for (unsigned long long ID = 0; ID < MaxIDExclusive; ID++)
 	{
 		if (GenerateMetaInfoForSingleAccount(ID) != ErrorCode_Success)

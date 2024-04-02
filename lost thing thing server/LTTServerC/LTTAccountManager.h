@@ -2,6 +2,7 @@
 #include "LttErrors.h"
 #include <stdbool.h>
 #include <time.h>
+#include "IDCodepointHashMap.h"
 
 
 // Macros.
@@ -17,7 +18,9 @@ typedef struct UserAccountStruct
 	long long PasswordHash[16];
 	long long CreationTime;
 	unsigned long long ProfileImageID;
+
 	unsigned long long* Posts;
+	unsigned int PostCount;
 } UserAccount;
 
 typedef struct SessionIDStruct
@@ -28,7 +31,8 @@ typedef struct SessionIDStruct
 
 typedef struct DBAccountContextStruct
 {
-	unsigned long long AvailableID;
+	unsigned long long AvailableAccountID;
+	unsigned long long AvailableImageID;
 	IDCodepointHashMap NameMap;
 	IDCodepointHashMap EmailMap;
 	SessionID* ActiveSessions;
@@ -39,7 +43,7 @@ typedef struct DBAccountContextStruct
 
 
 // Functions.
-ErrorCode AccountManager_ConstructContext(DBAccountContext* context, unsigned long long availableID);
+ErrorCode AccountManager_ConstructContext(DBAccountContext* context, unsigned long long availableID, unsigned long long availableImageID);
 
 void AccountManager_CloseContext(DBAccountContext* context);
 

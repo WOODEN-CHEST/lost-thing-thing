@@ -49,4 +49,4 @@ ResourceResult ResourceManager_Get(ServerResourceRequest* request);
 
 ResourceResult ResourceManager_Post(ServerResourceRequest* request);
 
-static const char* ResourceManager_GetPathToIDFile(unsigned long long id, const char* dirName);
+const char* ResourceManager_GetPathToIDFile(unsigned long long id, const char* dirName);

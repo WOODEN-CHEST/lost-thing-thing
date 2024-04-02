@@ -13,12 +13,6 @@
 #include "IDCodepointHashMap.h"
 
 
-// Macros.
-
-
-
-
-
 // Static variables.
 static ServerContext s_currentContext;
 
@@ -58,10 +52,9 @@ static const char* CreateContext(ServerContext* context, const char* serverExecu
 
 static void CloseContext()
 {
-	SaveGlobalServerData();
+	ResourceManager_CloseContext(&LTTServerC_GetCurrentContext()->Resources);
 	Logger_CloseContext(&LTTServerC_GetCurrentContext()->Logger);
 	Memory_Free(LTTServerC_GetCurrentContext()->RootPath);
-	ResourceManager_CloseContext(&LTTServerC_GetCurrentContext()->Resources);
 	Error_CloseContext(&LTTServerC_GetCurrentContext()->Errors);
 }
 

@@ -74,7 +74,7 @@ typedef union GHDFPrimitiveUnion
 typedef struct GHDFArrayStruct
 {
 	GHDFPrimitive* Array;
-	size_t Size;
+	unsigned int Size;
 } GHDFArray;
 
 typedef union GHDFEntryValueUnion
@@ -93,8 +93,8 @@ typedef struct GHDFEntryStruct
 typedef struct GHDFCompoundStruct
 {
 	GHDFEntry* Entries;
-	size_t Count;
-	size_t _capacity;
+	unsigned int Count;
+	unsigned int _capacity;
 } GHDFCompound;
 
 
