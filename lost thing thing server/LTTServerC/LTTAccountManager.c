@@ -6,6 +6,7 @@
 #include "math.h"
 #include "File.h"
 #include "LTTChar.h"
+#include "LTTMath.h"
 
 
 // Macros.
@@ -13,6 +14,9 @@
 
 #define GENERIC_LIST_CAPACITY 8
 #define GENERIC_LIST_GROWTH 2
+
+#define MAX_ACCOUNT_ERIFICATION_TIME 60 * 5
+#define MAX_VERIFICATION_ATTEMPTS 3
 
 
 /* Account data. */
@@ -145,6 +149,169 @@ static void AccountListEnsureCapacity(AccountList* self, size_t capacity)
 	}
 	self->Accounts = (UserAccount*)Memory_SafeRealloc(self->Accounts, sizeof(UserAccount) * self->_capacity);
 }
+
+
+/* Unverified account. */
+static void UnverifiedAccountDeconstruct(UnverifiedUserAccount* account)
+{
+	Memory_Free(account->Name);
+	Memory_Free(account->Surname);
+	Memory_Free(account->Email);
+	Memory_Free(account->Password);
+}
+
+static void UnverifiedAccountTryVerify(UnverifiedUserAccount* account, int code)
+{
+	account->VerificationAttempts += 1;
+
+	time_t CurrentTime = time(NULL);
+	if ((CurrentTime == -1) || (CurrentTime - account->VerificationStartTime > MAX_ACCOUNT_ERIFICATION_TIME)
+		|| (account->VerificationCode != code) || (account->VerificationAttempts >= MAX_VERIFICATION_ATTEMPTS))
+	{
+		return false;
+	}
+
+	account->VerificationAttempts++;
+	return true;
+}
+
+/* Unverified account list. */
+static void UnverifiedAccountListEnsureCapacity(size_t capacity)
+{
+	DBAccountContext* Context = &LTTServerC_GetCurrentContext()->Resources.AccountContext;
+	if (Context->_unverifiedAccountCapacity >= capacity)
+	{
+		return;
+	}
+
+	while (Context->_unverifiedAccountCapacity < capacity)
+	{
+		Context->_unverifiedAccountCapacity *= GENERIC_LIST_GROWTH;
+	}
+	Context->UnverifiedAccounts = (UnverifiedUserAccount*)
+		Memory_SafeRealloc(Context->UnverifiedAccounts, sizeof(UnverifiedUserAccount) * Context->_unverifiedAccountCapacity);
+}
+
+static ErrorCode UnverifiedAccountListAdd(const char* name, const char* surname, const char* email, const char* password)
+{
+	DBAccountContext* Context = &LTTServerC_GetCurrentContext()->Resources.AccountContext;
+	SessionIDListEnsureCapacity(Context->UnverifiedAccountCount + 1);
+
+	UnverifiedUserAccount* Account = Context->UnverifiedAccounts + Context->UnverifiedAccountCount;
+
+	time_t Time = time(NULL);
+	if (Time == -1)
+	{
+		return Error_SetError(ErrorCode_DatabaseError, "Failed to generate time for unverified accounnt.");
+	}
+
+	Account->VerificationAttempts = 0;
+	Account->VerificationCode = Math_RandomInt();
+	Account->VerificationStartTime = Time;
+	Account->Name = String_CreateCopy(name);
+	Account->Surname = String_CreateCopy(surname);
+	Account->Email = String_CreateCopy(email);
+	Account->Password = String_CreateCopy(password);
+	
+	Context->SessionCount++;
+	return ErrorCode_Success;
+}
+
+static UnverifiedUserAccount* UnverifiedAccountListGet(const char* email)
+{
+	DBAccountContext* Context = &LTTServerC_GetCurrentContext()->Resources.AccountContext;
+
+	for (size_t i = 0; i < Context->UnverifiedAccountCount; i++)
+	{
+		if (String_Equals(email, Context->UnverifiedAccounts[i].Email))
+		{
+			return Context->UnverifiedAccounts + i;
+		}
+	}
+
+	return NULL;
+}
+
+static void UnverifiedAccountListRemove(const char* email)
+{
+	DBAccountContext* Context = &LTTServerC_GetCurrentContext()->Resources.AccountContext;
+
+	size_t RemovalIndex = Context->UnverifiedAccountCount;
+	for (size_t i = 0; i < Context->UnverifiedAccountCount; i++)
+	{
+		if (String_Equals(email, Context->UnverifiedAccounts[i].Email))
+		{
+			Context->UnverifiedAccountCount -= 1;
+			UnverifiedAccountDeconstruct(Context->UnverifiedAccounts + i);
+			RemovalIndex = i;
+		}
+	}
+
+	for (size_t i = RemovalIndex + 1; i < Context->UnverifiedAccountCount + 1; i++)
+	{
+		Context->UnverifiedAccounts[i - 1] = Context->UnverifiedAccounts[i];
+	}
+}
+
+
+/* Session list. */
+static void SessionIDListEnsureCapacity(size_t capacity)
+{
+	DBAccountContext* Context = &LTTServerC_GetCurrentContext()->Resources.AccountContext;
+	if (Context->_sessionListCapacity >= capacity)
+	{
+		return;
+	}
+
+	while (Context->_sessionListCapacity < capacity)
+	{
+		Context->_sessionListCapacity *= GENERIC_LIST_GROWTH;
+	}
+	Context->ActiveSessions = (SessionID*)Memory_SafeRealloc(Context->ActiveSessions, sizeof(SessionID) * Context->_sessionListCapacity);
+}
+
+static bool IsSessionIDValuesEqual(unsigned char* idValues1, unsigned char* idValues2)
+{
+	for (int i = 0; i < SESSION_ID_LENGTH; i++)
+	{
+		if (idValues1[i] != idValues2[i])
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+static void SessionIDListAdd(SessionID* sessionID)
+{
+	DBAccountContext* Context = &LTTServerC_GetCurrentContext()->Resources.AccountContext;
+	SessionIDListEnsureCapacity(Context->SessionCount + 1);
+
+	Context->ActiveSessions[Context->SessionCount] = *sessionID;
+	Context->SessionCount++;
+}
+
+static void SessionIDListRemove(unsigned char* idValues)
+{
+	DBAccountContext* Context = &LTTServerC_GetCurrentContext()->Resources.AccountContext;
+
+	size_t RemovalIndex = Context->SessionCount;
+	for (size_t i = 0; i < Context->SessionCount; i++)
+	{
+		if (IsSessionIDValuesEqual(&Context->ActiveSessions[i].IDValues, idValues))
+		{
+			Context->SessionCount -= 1;
+			RemovalIndex = i;
+		}
+	}
+
+	for (size_t i = RemovalIndex + 1; i < Context->SessionCount + 1; i++)
+	{
+		Context->ActiveSessions[i - 1] = Context->ActiveSessions[i];
+	}
+}
+
 
 /* Data verification and generation. */
 static ErrorCode VerifyName(const char* name)
@@ -608,6 +775,10 @@ ErrorCode AccountManager_ConstructContext(DBAccountContext* context, unsigned lo
 	context->SessionCount = 0;
 	context->_sessionListCapacity = 0;
 
+	context->UnverifiedAccounts = (UnverifiedUserAccount*)Memory_SafeMalloc(sizeof(UnverifiedUserAccount) * GENERIC_LIST_CAPACITY);
+	context->UnverifiedAccountCount = 0;
+	context->_unverifiedAccountCapacity = GENERIC_LIST_CAPACITY;
+
 	if (GenerateMetaInfoForAccounts(context) != ErrorCode_Success)
 	{
 		return Error_GetLastErrorCode();
@@ -620,6 +791,8 @@ void AccountManager_CloseContext(DBAccountContext* context)
 {
 	IDCodepointHashMap_Deconstruct(&context->NameMap);
 	IDCodepointHashMap_Deconstruct(&context->EmailMap);
+	Memory_Free(context->ActiveSessions);
+	Memory_Free(context->UnverifiedAccounts);
 }
 
 ErrorCode AccountManager_TryCreateUser(UserAccount* account,
@@ -639,6 +812,7 @@ ErrorCode AccountManager_TryCreateUser(UserAccount* account,
 		return Error_SetError(ErrorCode_InvalidArgument, "AccountManager_TryCreateUser: Account with the same email already exists.");
 	}
 
+	AccountSetDefaultValues(account);
 	if (AccountCreateNew(account, name, surname, email, password) != ErrorCode_Success)
 	{
 		return Error_GetLastErrorCode();
@@ -646,6 +820,7 @@ ErrorCode AccountManager_TryCreateUser(UserAccount* account,
 
 	if (WriteAccountToDatabase(account) != ErrorCode_Success)
 	{
+		AccountDeconstruct(account);
 		return Error_GetLastErrorCode();
 	}
 
@@ -659,12 +834,32 @@ ErrorCode AccountManager_TryCreateUnverifiedUser(UserAccount* account,
 	const char* email,
 	const char* password)
 {
-	
+	if ((VerifyName(name) != ErrorCode_Success) || (VerifyName(surname) != ErrorCode_Success)
+		|| (VerifyPassword(password) != ErrorCode_Success) || (VerifyEmail(email) != ErrorCode_Success))
+	{
+		return Error_GetLastErrorCode();
+	}
+
+	if (IsEmailInDatabase(email))
+	{
+		return Error_SetError(ErrorCode_InvalidArgument, "AccountManager_TryCreateUser: Account with the same email already exists.");
+	}
+
+
 }
 
-bool AccountManager_IsUserAdmin(SessionID* sessionID)
+bool AccountManager_IsSessionAdmin(unsigned char* sessionIdValues)
 {
+	DBAccountContext* Context = &LTTServerC_GetCurrentContext()->Resources.AccountContext;
 
+	for (size_t i = 0; i < Context->SessionCount; i++)
+	{
+		if (IsSessionIDValuesEqual(&Context->ActiveSessions[i].IDValues, sessionIdValues))
+		{
+			return Context->ActiveSessions[i].IsAdmin;
+		}
+	}
+	return false;
 }
 
 bool AccountManager_GetAccount(UserAccount* account, unsigned long long id)
@@ -673,9 +868,34 @@ bool AccountManager_GetAccount(UserAccount* account, unsigned long long id)
 	return ReadAccountFromDatabase(account, id);
 }
 
-ErrorCode AccountManager_GenerateAccountHashMaps() 
+ErrorCode AccountManager_VerifyAccount(const char* email)
 {
-	
+	UnverifiedUserAccount* UnverifiedAccount = UnverifiedAccountListGet(email);
+	if (!UnverifiedAccount)
+	{
+		return ErrorCode_Success;
+	}
+
+	UserAccount Account;
+	if (AccountManager_TryCreateUser(&Account, UnverifiedAccount->Name, UnverifiedAccount->Surname,
+		UnverifiedAccount->Surname, UnverifiedAccount->Password) != ErrorCode_Success)
+	{
+		return Error_GetLastErrorCode();
+	}
+	AccountDeconstruct(&Account);
+
+	UnverifiedAccountListRemove(email);
 
 	return ErrorCode_Success;
+}
+
+bool AccountManager_TryVerifyAccount(const char* email, int code)
+{
+	UnverifiedUserAccount* UnverifiedAccount = UnverifiedAccountListGet(email);
+	if (!UnverifiedAccount)
+	{
+		return ErrorCode_Success;
+	}
+
+	
 }

@@ -29,6 +29,7 @@ typedef struct UnverifiedUserAccount
 {
 	int VerificationCode;
 	int VerificationAttempts;
+	time_t VerificationStartTime;
 	const char* Name;
 	const char* Surname;
 	const char* Email;
@@ -38,7 +39,8 @@ typedef struct UnverifiedUserAccount
 typedef struct SessionIDStruct
 {
 	time_t SessionStartTime;
-	unsigned char SessionFlags;
+	bool IsAdmin;
+	unsigned long long AccountID;
 	unsigned char IDValues[SESSION_ID_LENGTH];
 } SessionID;
 
@@ -77,6 +79,10 @@ ErrorCode AccountManager_TryCreateUnverifiedUser(UserAccount* account,
 	const char* email,
 	const char* password);
 
-bool AccountManager_IsUserAdmin(SessionID* sessionID);
+bool AccountManager_IsSessionAdmin(unsigned char* sessionIdValues);
 
 bool AccountManager_GetAccount(UserAccount* account, unsigned long long id);
+
+ErrorCode AccountManager_VerifyAccount(const char* email);
+
+bool AccountManager_TryVerifyAccount(const char* email, int code);
