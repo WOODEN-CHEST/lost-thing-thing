@@ -98,22 +98,22 @@ void Char_SetCodePoint(char* character, int codepoint)
 	switch (ByteCount)
 	{
 		case 1:
-			*Character = codepoint;
+			*Character = (unsigned char)codepoint;
 			break;
 		case 2:
-			*Character = (((codepoint >> 6) & (~UTF8_TWO_BYTES_COMBINED))) | UTF8_TWO_BYTES;
-			*(Character + 1) = ((codepoint & (~UTF8_TRAILING_BYTE_COMBINED))) | UTF8_TRAILING_BYTE;
+			*Character = (unsigned char)((((codepoint >> 6) & (~UTF8_TWO_BYTES_COMBINED))) | UTF8_TWO_BYTES);
+			*(Character + 1) = (unsigned char)(((codepoint & (~UTF8_TRAILING_BYTE_COMBINED))) | UTF8_TRAILING_BYTE);
 			break;
 		case 3:
-			*Character = (((codepoint >> 12) & (~UTF8_THREE_BYTES_COMBINED))) | UTF8_THREE_BYTES;
-			*(Character + 1) = (((codepoint >> 6) & (~UTF8_TRAILING_BYTE_COMBINED))) | UTF8_TRAILING_BYTE;
-			*(Character + 2) = ((codepoint & (~UTF8_TRAILING_BYTE_COMBINED))) | UTF8_TRAILING_BYTE;
+			*Character = (unsigned char)((((codepoint >> 12) & (~UTF8_THREE_BYTES_COMBINED))) | UTF8_THREE_BYTES);
+			*(Character + 1) = (unsigned char)((((codepoint >> 6) & (~UTF8_TRAILING_BYTE_COMBINED))) | UTF8_TRAILING_BYTE);
+			*(Character + 2) = (unsigned char)(((codepoint & (~UTF8_TRAILING_BYTE_COMBINED))) | UTF8_TRAILING_BYTE);
 			break;
 		default:
-			*Character = (((codepoint >> 18) & (~UTF8_FOUR_BYTES_COMBINED))) | UTF8_FOUR_BYTES;
-			*(Character + 1) = (((codepoint >> 12) & (~UTF8_TRAILING_BYTE_COMBINED))) | UTF8_TRAILING_BYTE;
-			*(Character + 2) = (((codepoint >> 6) & (~UTF8_TRAILING_BYTE_COMBINED))) | UTF8_TRAILING_BYTE;
-			*(Character + 3) = ((codepoint & (~UTF8_TRAILING_BYTE_COMBINED))) | UTF8_TRAILING_BYTE;
+			*Character = (unsigned char)((((codepoint >> 18) & (~UTF8_FOUR_BYTES_COMBINED))) | UTF8_FOUR_BYTES);
+			*(Character + 1) = (unsigned char)((((codepoint >> 12) & (~UTF8_TRAILING_BYTE_COMBINED))) | UTF8_TRAILING_BYTE);
+			*(Character + 2) = (unsigned char)((((codepoint >> 6) & (~UTF8_TRAILING_BYTE_COMBINED))) | UTF8_TRAILING_BYTE);
+			*(Character + 3) = (unsigned char)(((codepoint & (~UTF8_TRAILING_BYTE_COMBINED))) | UTF8_TRAILING_BYTE);
 			break;
 	}
 }
@@ -139,7 +139,7 @@ bool Char_IsLetter(const char* character)
 
 bool Char_IsDigit(const char* character)
 {
-	return ('0' <= character) && (character <= '9');
+	return ('0' <= *character) && (*character <= '9');
 }
 
 bool Char_IsWhitespace(const char* character)

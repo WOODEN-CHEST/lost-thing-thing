@@ -186,7 +186,7 @@ char* String_SubString(const char* string, size_t startIndex, size_t endIndex)
 char* String_Trim(const char* string)
 {
 	int StartIndex = 0;
-	while (Char_IsWhitespace(string[StartIndex]))
+	while (Char_IsWhitespace(string + StartIndex))
 	{
 		StartIndex++;
 		
@@ -198,7 +198,7 @@ char* String_Trim(const char* string)
 	}
 	
 	int EndIndex = String_LengthBytes(string) - 1;
-	while ((EndIndex >= StartIndex) && Char_IsWhitespace(string[EndIndex]))
+	while ((EndIndex >= StartIndex) && Char_IsWhitespace(string + EndIndex))
 	{
 		EndIndex--;
 	}
@@ -387,7 +387,7 @@ void StringBuilder_Construct(StringBuilder* builder, size_t capacity)
 StringBuilder* StringBuilder_Construct2(size_t capacity)
 {
 	StringBuilder* Builder = Memory_SafeMalloc(sizeof(StringBuilder));
-	StringBuilder_Construct(&Builder, capacity);
+	StringBuilder_Construct(Builder, capacity);
 	return Builder;
 }
 

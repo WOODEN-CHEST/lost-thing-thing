@@ -47,7 +47,6 @@ ErrorCode Directory_CreateAll(const char* path)
 			Path[i] = ValueAtIndex;
 		}
 	}
-
 	Directory_Create(path);
 
 	Memory_Free(Path);

@@ -142,6 +142,8 @@ ErrorCode Error_SetError(int code, const char* message)
 
 	strcpy(Context->_lastErrorMessage, ErrorName);
 	strcpy(Context->_lastErrorMessage + ErrorTypeMessageLength, message);
+
+	return code;
 }
 
 ErrorCode Error_GetLastErrorCode()

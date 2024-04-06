@@ -11,13 +11,30 @@
 #include "GHDF.h"
 #include "LTTChar.h"
 #include "IDCodepointHashMap.h"
+#include <signal.h>
 
 
 // Static variables.
 static ServerContext s_currentContext;
 
 
-// Static functions.
+// Static functions
+static void CloseContext()
+{
+	ResourceManager_CloseContext(&LTTServerC_GetCurrentContext()->Resources);
+	Logger_LogInfo("Closed database context.");
+	Logger_CloseContext(&LTTServerC_GetCurrentContext()->Logger);
+	Memory_Free(LTTServerC_GetCurrentContext()->RootPath);
+	Error_CloseContext(&LTTServerC_GetCurrentContext()->Errors);
+}
+
+static void OnCloseSignal(int caughtSignal)
+{
+	Logger_LogInfo("Server closed by SIGREAK signal.");
+	CloseContext();
+	exit(EXIT_SUCCESS);
+}
+
 static const char* CreateContext(ServerContext* context, const char* serverExecutablePath)
 {
 	// Errors.
@@ -48,14 +65,6 @@ static const char* CreateContext(ServerContext* context, const char* serverExecu
 	Logger_LogInfo("Constructed database context.");
 
 	return NULL;
-}
-
-static void CloseContext()
-{
-	ResourceManager_CloseContext(&LTTServerC_GetCurrentContext()->Resources);
-	Logger_CloseContext(&LTTServerC_GetCurrentContext()->Logger);
-	Memory_Free(LTTServerC_GetCurrentContext()->RootPath);
-	Error_CloseContext(&LTTServerC_GetCurrentContext()->Errors);
 }
 
 static void Test(IDCodepointHashMap* map)
@@ -90,10 +99,9 @@ static int RunServer(const char* executablePath)
 		return EXIT_FAILURE;
 	}
 
-	UserAccount Account;
-	//AccountManager_TryCreateUser(&Account, "Kristofers", "Cernavskis", "kristofers.cernavskis@marupe.edu.lv", "1234");
-	//AccountManager_TryCreateUser(&Account, "Keigers", "Klibers", "KeigersKlibers@gmail.com", "1234");
-	//AccountManager_GetAccount(&Account, 0);
+	AccountManager_TryCreateUnverifiedAccount("Kristofers", "Cernavskis", "kristofers.cernavskis@marupe.edu.lv", "123456789");
+	AccountManager_TryVerifyAccount(LTTServerC_GetCurrentContext()->Resources.AccountContext.UnverifiedAccounts[0].Email,
+		LTTServerC_GetCurrentContext()->Resources.AccountContext.UnverifiedAccounts[0].VerificationCode);
 
 
 	// Start server.
@@ -104,7 +112,7 @@ static int RunServer(const char* executablePath)
 	}
 
 	// Stop server.
-	Logger_LogInfo("Server closed.");
+	Logger_LogInfo("Server closed by HTTP listener stopping.");
 	CloseContext();
 
 	return EXIT_SUCCESS;
@@ -113,6 +121,7 @@ static int RunServer(const char* executablePath)
 // Functions.
 int main(int argc, const char** argv)
 {
+	signal(SIGBREAK, &OnCloseSignal);
 	return RunServer(argv[0]);
 }
 

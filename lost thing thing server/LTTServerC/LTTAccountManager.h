@@ -67,14 +67,13 @@ ErrorCode AccountManager_ConstructContext(DBAccountContext* context, unsigned lo
 
 void AccountManager_CloseContext(DBAccountContext* context);
 
-ErrorCode AccountManager_TryCreateUser(UserAccount* account,
+bool AccountManager_TryCreateAccount(UserAccount* account,
 	const char* name,
 	const char* surname,
 	const char* email,
 	const char* password);
 
-ErrorCode AccountManager_TryCreateUnverifiedUser(UserAccount* account,
-	const char* name,
+bool AccountManager_TryCreateUnverifiedAccount(const char* name,
 	const char* surname,
 	const char* email,
 	const char* password);

@@ -7,6 +7,7 @@
 #include "File.h"
 #include "LTTChar.h"
 #include "LTTMath.h"
+#include "Directory.h"
 
 
 // Macros.
@@ -15,7 +16,7 @@
 #define GENERIC_LIST_CAPACITY 8
 #define GENERIC_LIST_GROWTH 2
 
-#define MAX_ACCOUNT_ERIFICATION_TIME 60 * 5
+#define MAX_ACCOUNT_VERIFICATION_TIME 60 * 5
 #define MAX_VERIFICATION_ATTEMPTS 3
 
 
@@ -63,6 +64,217 @@ static unsigned long long GetAndUseAccountID()
 	unsigned long long ID = LTTServerC_GetCurrentContext()->Resources.AccountContext.AvailableAccountID;
 	LTTServerC_GetCurrentContext()->Resources.AccountContext.AvailableAccountID += 1;
 	return ID;
+}
+
+static unsigned long long GetAccountID() 
+{
+	return LTTServerC_GetCurrentContext()->Resources.AccountContext.AvailableAccountID;
+}
+
+/* Data verification and generation. */
+static bool VerifyName(const char* name)
+{
+	if (!String_IsValidUTF8String(name))
+	{
+		Logger_LogWarning("Found invalid UTF-8 string while verifying account name.");
+		return false;
+	}
+
+	size_t Length = String_LengthCodepointsUTF8(name);
+	if (Length > MAX_NAME_LENGTH_CODEPOINTS)
+	{
+		return false;
+	}
+	else if (Length < MIN_NAME_LENGTH_CODEPOINTS)
+	{
+		return false;
+	}
+
+	for (size_t i = 0; name[i] != '\0'; i += Char_GetByteCount(name + i))
+	{
+		if (!(Char_IsLetter(name + i) || (name[i] == ' ') || Char_IsDigit(name + i)))
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+static bool VerifyPassword(const char* password)
+{
+	if (!String_IsValidUTF8String(password))
+	{
+		Logger_LogWarning("Found invalid UTF-8 string while verifying account password.");
+		return false;
+	}
+
+	size_t Length = String_LengthCodepointsUTF8(password);
+	if (Length > MAX_PASSWORD_LENGTH_CODEPOINTS)
+	{
+		return false;
+	}
+	else if (Length < MIN_PASSWORD_LENGTH_CODEPOINTS)
+	{
+		return false;
+	}
+
+	for (size_t i = 0; password[i] != '\0'; i += Char_GetByteCount(password + i))
+	{
+		if (Char_IsWhitespace(password + i))
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
+static inline bool IsSpecialEmailChar(const char* character)
+{
+	return (*character == EMAIL_SPECIAL_CHAR_DASH) || (*character == EMAIL_SPECIAL_CHAR_DOT) || (*character == EMAIL_SPECIAL_CHAR_UNDERSCORE);
+}
+
+static inline bool IsValidEmailCharacter(const char* character)
+{
+	return Char_IsLetter(character) || Char_IsDigit(character) || IsSpecialEmailChar(character);
+}
+
+static const char* VerifyEmailPrefix(const char* email)
+{
+	size_t PrefixLength = 0;
+	bool HadSpecialChar = false;
+	const char* ShiftedString;
+
+	for (ShiftedString = email; (*ShiftedString != '\0') && (*ShiftedString != EMAIL_SPECIAL_CHAR_AT);
+		ShiftedString += Char_GetByteCount(ShiftedString), PrefixLength++)
+	{
+		HadSpecialChar = IsSpecialEmailChar(ShiftedString);
+
+		if ((HadSpecialChar && (PrefixLength == 0)) || !IsValidEmailCharacter(ShiftedString))
+		{
+			return NULL;
+		}
+	}
+
+	if ((PrefixLength == 0) || HadSpecialChar)
+	{
+		return NULL;
+	}
+
+	return ShiftedString;
+}
+
+static const char* VerifyEmailDomain(const char* email)
+{
+	size_t DomainLength = 0, SuffixLength = 0;
+	const size_t MIN_SUFFIX_LENGTH = 2;
+	bool HadSpecialChar = false, HadSeparator = false;
+	const char* ShiftedString;
+
+	for (ShiftedString = email; (*ShiftedString != '\0'); ShiftedString += Char_GetByteCount(ShiftedString), DomainLength++)
+	{
+		HadSpecialChar = IsSpecialEmailChar(ShiftedString);
+		if (!IsValidEmailCharacter(ShiftedString) || ((DomainLength == 0) && HadSpecialChar))
+		{
+			return NULL;
+		}
+
+		if (HadSeparator)
+		{
+			SuffixLength++;
+		}
+
+		if (*ShiftedString == EMAIL_SPECIAL_CHAR_DOT)
+		{
+			HadSeparator = true;
+		}
+	}
+
+	if ((DomainLength == 0) || (SuffixLength < MIN_SUFFIX_LENGTH) || HadSpecialChar || !HadSeparator)
+	{
+		return NULL;
+	}
+
+	for (size_t i = 0; i < LTTServerC_GetCurrentContext()->Configuration.AcceptedDomainCount; i++)
+	{
+		if (String_Equals(LTTServerC_GetCurrentContext()->Configuration.AcceptedDomains[i], email))
+		{
+			return ShiftedString;
+		}
+	}
+
+	return NULL;
+}
+
+static bool VerifyEmail(const char* email)
+{
+	if (!String_IsValidUTF8String(email))
+	{
+		Logger_LogWarning("Found invalid UTF-8 string while verifying account email.");
+		return false;
+	}
+
+	if (String_LengthCodepointsUTF8(email) > MAX_EMAIL_LENGTH_CODEPOINTS)
+	{
+		return false;
+	}
+
+	const char* ParsedEmailPosition = VerifyEmailPrefix(email);
+	if (!ParsedEmailPosition)
+	{
+		return false;
+	}
+
+	if (*ParsedEmailPosition != EMAIL_SPECIAL_CHAR_AT)
+	{
+		return false;
+	}
+	ParsedEmailPosition++;
+
+	ParsedEmailPosition = VerifyEmailDomain(ParsedEmailPosition);
+	if (!ParsedEmailPosition)
+	{
+		return false;
+	}
+
+	return true;
+}
+
+static void GeneratePasswordHash(unsigned long long* longArray, const char* password) // World's most secure hash, literally impossible to crack.
+{
+	int PasswordLength = (int)String_LengthBytes(password);
+
+	for (int i = 0; i < PASSWORD_HASH_LENGTH; i++)
+	{
+		unsigned long long HashNumber = 9;
+		for (int j = 0; j < PasswordLength; j++)
+		{
+			HashNumber += password[j] * (i + 57 + i + password[j]);
+			double DoubleNumber = (double)HashNumber;
+			HashNumber &= *(long long*)(&DoubleNumber);
+			DoubleNumber = (i + password[j] + 7) * 0.3984;
+			HashNumber += *(long long*)(&DoubleNumber);
+			HashNumber |= PasswordLength * PasswordLength * PasswordLength * PasswordLength / (i + 1);
+			HashNumber ^= password[j] * i;
+		}
+		longArray[i] = HashNumber;
+	}
+
+	for (int i = 0; i < PASSWORD_HASH_LENGTH; i++)
+	{
+		longArray[i] = longArray[i * 7 % PASSWORD_HASH_LENGTH] ^ PasswordLength;
+		longArray[i] *= longArray[(i + longArray[i]) / longArray[i] % PASSWORD_HASH_LENGTH];
+	}
+
+	for (int i = 0; i < PASSWORD_HASH_LENGTH; i++)
+	{
+		int Index1 = (i + longArray[i]) % PASSWORD_HASH_LENGTH;
+		unsigned long long Temp = longArray[Index1];
+		int Index2 = (Index1 + Temp) % PASSWORD_HASH_LENGTH;
+		longArray[Index1] = longArray[Index2];
+		longArray[Index2] = Temp;
+	}
 }
 
 
@@ -160,22 +372,25 @@ static void UnverifiedAccountDeconstruct(UnverifiedUserAccount* account)
 	Memory_Free(account->Password);
 }
 
-static void UnverifiedAccountTryVerify(UnverifiedUserAccount* account, int code)
+static bool UnverifiedAccountIsExpired(UnverifiedUserAccount* account)
+{
+	time_t CurrentTime = time(NULL);
+	return CurrentTime - account->VerificationStartTime > MAX_ACCOUNT_VERIFICATION_TIME;
+}
+
+static bool UnverifiedAccountTryVerify(UnverifiedUserAccount* account, int code)
 {
 	account->VerificationAttempts += 1;
 
-	time_t CurrentTime = time(NULL);
-	if ((CurrentTime == -1) || (CurrentTime - account->VerificationStartTime > MAX_ACCOUNT_ERIFICATION_TIME)
-		|| (account->VerificationCode != code) || (account->VerificationAttempts >= MAX_VERIFICATION_ATTEMPTS))
+	if (UnverifiedAccountIsExpired(account) || (account->VerificationCode != code)
+		|| (account->VerificationAttempts > MAX_VERIFICATION_ATTEMPTS))
 	{
 		return false;
 	}
 
-	account->VerificationAttempts++;
 	return true;
 }
 
-/* Unverified account list. */
 static void UnverifiedAccountListEnsureCapacity(size_t capacity)
 {
 	DBAccountContext* Context = &LTTServerC_GetCurrentContext()->Resources.AccountContext;
@@ -192,10 +407,10 @@ static void UnverifiedAccountListEnsureCapacity(size_t capacity)
 		Memory_SafeRealloc(Context->UnverifiedAccounts, sizeof(UnverifiedUserAccount) * Context->_unverifiedAccountCapacity);
 }
 
-static ErrorCode UnverifiedAccountListAdd(const char* name, const char* surname, const char* email, const char* password)
+static ErrorCode AddUnverifiedAccount(const char* name, const char* surname, const char* email, const char* password)
 {
 	DBAccountContext* Context = &LTTServerC_GetCurrentContext()->Resources.AccountContext;
-	SessionIDListEnsureCapacity(Context->UnverifiedAccountCount + 1);
+	UnverifiedAccountListEnsureCapacity(Context->UnverifiedAccountCount + 1);
 
 	UnverifiedUserAccount* Account = Context->UnverifiedAccounts + Context->UnverifiedAccountCount;
 
@@ -212,12 +427,13 @@ static ErrorCode UnverifiedAccountListAdd(const char* name, const char* surname,
 	Account->Surname = String_CreateCopy(surname);
 	Account->Email = String_CreateCopy(email);
 	Account->Password = String_CreateCopy(password);
+
+	Context->UnverifiedAccountCount += 1;
 	
-	Context->SessionCount++;
 	return ErrorCode_Success;
 }
 
-static UnverifiedUserAccount* UnverifiedAccountListGet(const char* email)
+static UnverifiedUserAccount* GetUnverifiedAccountByEmail(const char* email)
 {
 	DBAccountContext* Context = &LTTServerC_GetCurrentContext()->Resources.AccountContext;
 
@@ -232,27 +448,46 @@ static UnverifiedUserAccount* UnverifiedAccountListGet(const char* email)
 	return NULL;
 }
 
-static void UnverifiedAccountListRemove(const char* email)
+static void RemoeUnverifiedAccountByIndex(size_t index)
 {
 	DBAccountContext* Context = &LTTServerC_GetCurrentContext()->Resources.AccountContext;
 
-	size_t RemovalIndex = Context->UnverifiedAccountCount;
+	for (size_t i = index + 1; i < Context->UnverifiedAccountCount; i++)
+	{
+		Context->UnverifiedAccounts[i - 1] = Context->UnverifiedAccounts[i];
+	}
+	Context->UnverifiedAccountCount -= 1;
+}
+
+static void RemoveUnverifiedAccountByEmail(const char* email)
+{
+	DBAccountContext* Context = &LTTServerC_GetCurrentContext()->Resources.AccountContext;
+
 	for (size_t i = 0; i < Context->UnverifiedAccountCount; i++)
 	{
 		if (String_Equals(email, Context->UnverifiedAccounts[i].Email))
 		{
-			Context->UnverifiedAccountCount -= 1;
-			UnverifiedAccountDeconstruct(Context->UnverifiedAccounts + i);
-			RemovalIndex = i;
+			RemoeUnverifiedAccountByIndex(i);
+			return;
 		}
-	}
-
-	for (size_t i = RemovalIndex + 1; i < Context->UnverifiedAccountCount + 1; i++)
-	{
-		Context->UnverifiedAccounts[i - 1] = Context->UnverifiedAccounts[i];
 	}
 }
 
+static void RefreshUnverifiedAccounts()
+{
+	DBAccountContext* Context = &LTTServerC_GetCurrentContext()->Resources.AccountContext;
+
+	for (long long i = 0; i < (long long)Context->UnverifiedAccountCount; i++)
+	{
+		
+		if (UnverifiedAccountIsExpired(Context->UnverifiedAccounts + i)) 
+		{
+			// Dangerous thing being done while iterating list, but should be fine because logic works out.
+			RemoeUnverifiedAccountByIndex(i);
+			i--;
+		}
+	}
+}
 
 /* Session list. */
 static void SessionIDListEnsureCapacity(size_t capacity)
@@ -309,210 +544,6 @@ static void SessionIDListRemove(unsigned char* idValues)
 	for (size_t i = RemovalIndex + 1; i < Context->SessionCount + 1; i++)
 	{
 		Context->ActiveSessions[i - 1] = Context->ActiveSessions[i];
-	}
-}
-
-
-/* Data verification and generation. */
-static ErrorCode VerifyName(const char* name)
-{
-	if (!String_IsValidUTF8String(name))
-	{
-		return Error_SetError(ErrorCode_InvalidRequest, "Not a valid UTF-8 name");
-	}
-
-	size_t Length = String_LengthCodepointsUTF8(name);
-	if (Length > MAX_NAME_LENGTH_CODEPOINTS)
-	{
-		return Error_SetError(ErrorCode_InvalidRequest, "Name's length exceeds limits.");
-	}
-	else if (Length < MIN_NAME_LENGTH_CODEPOINTS)
-	{
-		return Error_SetError(ErrorCode_InvalidRequest, "Name is too short.");
-	}
-
-	for (size_t i = 0; name[i] != '\0'; i += Char_GetByteCount(name + i))
-	{
-		if (!(Char_IsLetter(name + i) || (name[i] == ' ') || Char_IsDigit(name + i)))
-		{
-			return Error_SetError(ErrorCode_InvalidRequest, "Name contains invalid characters");
-		}
-	}
-
-	return ErrorCode_Success;
-}
-
-static ErrorCode VerifyPassword(const char* password)
-{
-	if (!String_IsValidUTF8String(password))
-	{
-		return Error_SetError(ErrorCode_InvalidRequest, "Not a valid UTF-8 password");
-	}
-
-	size_t Length = String_LengthCodepointsUTF8(password);
-	if (Length > MAX_PASSWORD_LENGTH_CODEPOINTS)
-	{
-		return Error_SetError(ErrorCode_InvalidRequest, "Password's length exceeds limits.");
-	}
-	else if (Length < MIN_PASSWORD_LENGTH_CODEPOINTS)
-	{
-		return Error_SetError(ErrorCode_InvalidRequest, "Password is too short.");
-	}
-
-	for (size_t i = 0; password[i] != '\0'; i += Char_GetByteCount(password + i))
-	{
-		if (Char_IsWhitespace(password + i))
-		{
-			return Error_SetError(ErrorCode_InvalidRequest, "Password contains invalid characters");
-		}
-	}
-
-	return ErrorCode_Success;
-}
-
-static inline bool IsSpecialEmailChar(const char* character)
-{
-	return (*character == EMAIL_SPECIAL_CHAR_DASH) || (*character == EMAIL_SPECIAL_CHAR_DOT) || (character == EMAIL_SPECIAL_CHAR_UNDERSCORE);
-}
-
-static inline bool IsValidEmailCharacter(const char* character)
-{
-	return Char_IsLetter(character) || Char_IsDigit(character) || IsSpecialEmailChar(character);
-}
-
-static const char* VerifyEmailPrefix(const char* email)
-{
-	size_t PrefixLength = 0;
-	bool HadSpecialChar = false;
-	const char* ShiftedString;
-
-	for (ShiftedString = email; (*ShiftedString != '\0') && (*ShiftedString != EMAIL_SPECIAL_CHAR_AT);
-		ShiftedString += Char_GetByteCount(ShiftedString), PrefixLength++)
-	{
-		HadSpecialChar = IsSpecialEmailChar(ShiftedString);
-
-		if ((HadSpecialChar && (PrefixLength == 0)) || !IsValidEmailCharacter(ShiftedString))
-		{
-			return NULL;
-		}
-	}
-
-	if ((PrefixLength == 0) || HadSpecialChar)
-	{
-		return NULL;
-	}
-
-	return ShiftedString;
-}
-
-static const char* VerifyEmailDomain(const char* email)
-{
-	size_t DomainLength = 0, SuffixLength = 0;
-	const size_t MIN_SUFFIX_LENGTH = 2;
-	bool HadSpecialChar = false, HadSeparator = false;
-	const char* ShiftedString;
-
-	for (ShiftedString = email; (*ShiftedString != '\0'); ShiftedString += Char_GetByteCount(ShiftedString), DomainLength++)
-	{
-		HadSpecialChar = IsSpecialEmailChar(ShiftedString);
-		if (!IsValidEmailCharacter(ShiftedString) || ((DomainLength == 0) && HadSpecialChar))
-		{
-			return NULL;
-		}
-
-		if (HadSeparator)
-		{
-			SuffixLength++;
-		}
-
-		if (*ShiftedString == EMAIL_SPECIAL_CHAR_DOT)
-		{
-			HadSeparator = true;
-		}
-	}
-
-	if ((DomainLength == 0) || (SuffixLength < MIN_SUFFIX_LENGTH) || HadSpecialChar || !HadSeparator)
-	{
-		return NULL;
-	}
-
-	for (size_t i = 0; i < LTTServerC_GetCurrentContext()->Configuration.AcceptedDomainCount; i++)
-	{
-		if (String_Equals(LTTServerC_GetCurrentContext()->Configuration.AcceptedDomains[i], email))
-		{
-			return ShiftedString;
-		}
-	}
-
-	return NULL;
-}
-
-static ErrorCode VerifyEmail(const char* email)
-{
-	if (!String_IsValidUTF8String(email))
-	{
-		return Error_SetError(ErrorCode_InvalidRequest, "Not a valid UTF-8 email");
-	}
-
-	if (String_LengthCodepointsUTF8(email) > MAX_EMAIL_LENGTH_CODEPOINTS)
-	{
-		return Error_SetError(ErrorCode_InvalidRequest, "Email's length exceeds limits.");
-	}
-
-	const char* ParsedEmailPosition = VerifyEmailPrefix(email);
-	if (!ParsedEmailPosition)
-	{
-		return Error_SetError(ErrorCode_InvalidRequest, "Email prefix is invalid.");
-	}
-
-	if (*ParsedEmailPosition != EMAIL_SPECIAL_CHAR_AT)
-	{
-		return Error_SetError(ErrorCode_InvalidRequest, "Email missing @ symbol.");;
-	}
-	ParsedEmailPosition++;
-
-	ParsedEmailPosition = VerifyEmailDomain(ParsedEmailPosition);
-	if (!ParsedEmailPosition)
-	{
-		return Error_SetError(ErrorCode_InvalidRequest, "Email domain is invalid.");
-	}
-
-	return ErrorCode_Success;
-}
-
-static void GeneratePasswordHash(unsigned long long* longArray, const char* password) // World's most secure hash, literally impossible to crack.
-{
-	int PasswordLength = (int)String_LengthBytes(password);
-
-	for (int i = 0; i < PASSWORD_HASH_LENGTH; i++)
-	{
-		unsigned long long HashNumber = 9;
-		for (int j = 0; j < PasswordLength; j++)
-		{
-			HashNumber += password[j] * (i + 57 + i + password[j]);
-			double DoubleNumber = (double)HashNumber;
-			HashNumber &= *(long long*)(&DoubleNumber);
-			DoubleNumber = (i + password[j] + 7) * 0.3984;
-			HashNumber += *(long long*)(&DoubleNumber);
-			HashNumber |= PasswordLength * PasswordLength * PasswordLength * PasswordLength / (i + 1);
-			HashNumber ^= password[j] * i;
-		}
-		longArray[i] = HashNumber;
-	}
-
-	for (int i = 0; i < PASSWORD_HASH_LENGTH; i++)
-	{
-		longArray[i] = longArray[i * 7 % PASSWORD_HASH_LENGTH] ^ PasswordLength;
-		longArray[i] *= longArray[(i + longArray[i]) / longArray[i] % PASSWORD_HASH_LENGTH];
-	}
-
-	for (int i = 0; i < PASSWORD_HASH_LENGTH; i++)
-	{
-		int Index1 = (i + longArray[i]) % PASSWORD_HASH_LENGTH;
-		unsigned long long Temp = longArray[Index1];
-		int Index2 = (Index1 + Temp) % PASSWORD_HASH_LENGTH;
-		longArray[Index1] = longArray[Index2];
-		longArray[Index2] = Temp;
 	}
 }
 
@@ -594,7 +625,8 @@ static bool ReadAccountFromDatabase(UserAccount* account, unsigned long long id)
 	{
 		if (Entry->ValueType != (GHDFType_ULong | GHDF_TYPE_ARRAY_BIT))
 		{
-			return Error_SetError(ErrorCode_DatabaseError, "Account Posts array not of type unsigned long array.");
+			Error_SetError(ErrorCode_DatabaseError, "Account Posts array not of type unsigned long array.");
+			goto ReadFailCase;
 		}
 		unsigned long long* PostIDs = (unsigned long long*)Memory_SafeMalloc(sizeof(unsigned long long) * Entry->Value.ValueArray.Size);
 		for (unsigned int i = 0; i < Entry->Value.ValueArray.Size; i++)
@@ -658,7 +690,7 @@ static ErrorCode WriteAccountToDatabase(UserAccount* account)
 	if (account->PostCount > 0)
 	{
 		PrimitiveArray = (GHDFPrimitive*)Memory_SafeMalloc(sizeof(GHDFPrimitive) * account->PostCount);
-		for (int i = 0; i < account->PostCount; i++)
+		for (unsigned int i = 0; i < account->PostCount; i++)
 		{
 			PrimitiveArray[i].ULong = account->Posts[i];
 		}
@@ -712,11 +744,6 @@ static bool IsEmailInDatabase(const char* email)
 
 	Memory_Free(IDs);
 	return FoundEmail;
-}
-
-static UserAccount* GetAccountsByName(const char* name, size_t* accountArraySize)
-{
-
 }
 
 
@@ -795,57 +822,70 @@ void AccountManager_CloseContext(DBAccountContext* context)
 	Memory_Free(context->UnverifiedAccounts);
 }
 
-ErrorCode AccountManager_TryCreateUser(UserAccount* account,
+bool AccountManager_TryCreateAccount(UserAccount* account,
 	const char* name,
 	const char* surname,
 	const char* email,
 	const char* password)
 {
-	if ((VerifyName(name) != ErrorCode_Success) || (VerifyName(surname) != ErrorCode_Success)
-		|| (VerifyPassword(password) != ErrorCode_Success) || (VerifyEmail(email) != ErrorCode_Success))
+	Error_ClearError();
+	if (!VerifyName(name) || !VerifyName(surname) || !VerifyPassword(password) || !VerifyEmail(email) || IsEmailInDatabase(email))
 	{
-		return Error_GetLastErrorCode();
+		return false;
 	}
-	
-	if (IsEmailInDatabase(email))
+
+	const char* AccountFilePath = ResourceManager_GetPathToIDFile(GetAccountID(), DIR_NAME_ACCOUNTS);
+	if (File_Exists(AccountFilePath))
 	{
-		return Error_SetError(ErrorCode_InvalidArgument, "AccountManager_TryCreateUser: Account with the same email already exists.");
+		Memory_Free(AccountFilePath);
+		char Message[256];
+		snprintf(Message, sizeof(Message), "Account with ID %llu already exists in database (file match), but no email entry was found and "
+			"an attempt to creating this account was made. Corrupted database?", GetAccountID());
+		Error_SetError(ErrorCode_DatabaseError, Message);
+		LTTServerC_GetCurrentContext()->Resources.AccountContext.AvailableAccountID += 1; // Increment so possibly working ID could be found.
+		return false;
 	}
+	Memory_Free(AccountFilePath);
 
 	AccountSetDefaultValues(account);
 	if (AccountCreateNew(account, name, surname, email, password) != ErrorCode_Success)
 	{
-		return Error_GetLastErrorCode();
+		return false;
 	}
 
 	if (WriteAccountToDatabase(account) != ErrorCode_Success)
 	{
 		AccountDeconstruct(account);
-		return Error_GetLastErrorCode();
+		return false;
 	}
 
 	GenerateMetaInfoForSingleAccount(&LTTServerC_GetCurrentContext()->Resources.AccountContext, account);
-	return ErrorCode_Success;
+	return true;
 }
 
-ErrorCode AccountManager_TryCreateUnverifiedUser(UserAccount* account,
-	const char* name,
+bool AccountManager_TryCreateUnverifiedAccount(const char* name,
 	const char* surname,
 	const char* email,
 	const char* password)
 {
-	if ((VerifyName(name) != ErrorCode_Success) || (VerifyName(surname) != ErrorCode_Success)
-		|| (VerifyPassword(password) != ErrorCode_Success) || (VerifyEmail(email) != ErrorCode_Success))
+	Error_ClearError();
+
+	if (!VerifyName(name) || !VerifyName(surname) || !VerifyPassword(password) || !VerifyEmail(email))
 	{
-		return Error_GetLastErrorCode();
+		return false;
 	}
 
 	if (IsEmailInDatabase(email))
 	{
-		return Error_SetError(ErrorCode_InvalidArgument, "AccountManager_TryCreateUser: Account with the same email already exists.");
+		return false;
 	}
 
+	if (AddUnverifiedAccount(name, surname, email, password) != ErrorCode_Success)
+	{
+		return false;
+	}
 
+	return true;
 }
 
 bool AccountManager_IsSessionAdmin(unsigned char* sessionIdValues)
@@ -868,34 +908,53 @@ bool AccountManager_GetAccount(UserAccount* account, unsigned long long id)
 	return ReadAccountFromDatabase(account, id);
 }
 
+
+
 ErrorCode AccountManager_VerifyAccount(const char* email)
 {
-	UnverifiedUserAccount* UnverifiedAccount = UnverifiedAccountListGet(email);
+	RefreshUnverifiedAccounts();
+
+	UnverifiedUserAccount* UnverifiedAccount = GetUnverifiedAccountByEmail(email);
 	if (!UnverifiedAccount)
 	{
 		return ErrorCode_Success;
 	}
 
 	UserAccount Account;
-	if (AccountManager_TryCreateUser(&Account, UnverifiedAccount->Name, UnverifiedAccount->Surname,
-		UnverifiedAccount->Surname, UnverifiedAccount->Password) != ErrorCode_Success)
+	if (!AccountManager_TryCreateAccount(&Account, UnverifiedAccount->Name, UnverifiedAccount->Surname,
+		UnverifiedAccount->Surname, UnverifiedAccount->Password))
 	{
 		return Error_GetLastErrorCode();
 	}
+
 	AccountDeconstruct(&Account);
-
-	UnverifiedAccountListRemove(email);
-
+	RemoveUnverifiedAccountByEmail(email);
 	return ErrorCode_Success;
 }
 
 bool AccountManager_TryVerifyAccount(const char* email, int code)
 {
-	UnverifiedUserAccount* UnverifiedAccount = UnverifiedAccountListGet(email);
+	RefreshUnverifiedAccounts();
+
+	UnverifiedUserAccount* UnverifiedAccount = GetUnverifiedAccountByEmail(email);
 	if (!UnverifiedAccount)
 	{
-		return ErrorCode_Success;
+		return false;
 	}
 
-	
+	if (!UnverifiedAccountTryVerify(UnverifiedAccount, code))
+	{
+		return false;
+	}
+
+	UserAccount Account;
+	if (!AccountManager_TryCreateAccount(&Account, UnverifiedAccount->Name, UnverifiedAccount->Surname,
+		UnverifiedAccount->Email, UnverifiedAccount->Password))
+	{
+		return false;
+	}
+
+	AccountDeconstruct(&Account);
+	RemoveUnverifiedAccountByEmail(email);
+	return true;
 }

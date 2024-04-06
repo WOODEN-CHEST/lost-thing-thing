@@ -512,7 +512,7 @@ static void ProcessHttpRequest(SOCKET clientSocket,
 
 	// Respond.
 	BuildHttpResponse(responseToBuild);
-	if (send(clientSocket, responseToBuild->FinalMessage.Data, responseToBuild->FinalMessage.Length, NULL) == INVALID_SOCKET)
+	if (send(clientSocket, responseToBuild->FinalMessage.Data, responseToBuild->FinalMessage.Length, 0) == INVALID_SOCKET)
 	{
 		closesocket(clientSocket);
 		return SetSocketError("Failed to send data to client.", WSAGetLastError());
@@ -541,7 +541,7 @@ static ErrorCode AcceptSingleClient(SOCKET serverSocket,
 	}
 	runtimeData->RequestCount += 1;
 
-	int ReceivedLength = recv(ClientSocket, unparsedRequestMessage, REQUEST_MESSAGE_BUFFER_LENGTH - 1, NULL);
+	int ReceivedLength = recv(ClientSocket, unparsedRequestMessage, REQUEST_MESSAGE_BUFFER_LENGTH - 1, 0);
 	if (ReceivedLength == SOCKET_ERROR)
 	{
 		ErrorCode Code = SetSocketError("Failed to receive client data", WSAGetLastError());

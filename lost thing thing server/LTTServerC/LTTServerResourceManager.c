@@ -155,7 +155,6 @@ ErrorCode ResourceManager_ConstructContext(ServerResourceContext* context, const
 	Directory_CreateAll(context->SourceRootPath);
 
 	unsigned long long AvailableAccountID, AvailableAccountImageID, AvailablePostID;
-	unsigned long long ;
 	ReadGlobalData(context->GlobalDataFilePath, &AvailableAccountID, &AvailableAccountImageID, &AvailablePostID);
 
 	if (AccountManager_ConstructContext(&context->AccountContext, AvailableAccountID, AvailablePostID) != ErrorCode_Success)

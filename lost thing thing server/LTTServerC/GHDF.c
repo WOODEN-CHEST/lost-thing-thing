@@ -148,8 +148,8 @@ static ErrorCode Write7BitEncodedInt(FILE* file, int integer)
 
 static ErrorCode WriteMetadata(FILE* file)
 {
-	unsigned char Signature[] = { GHDF_SIGNATURE_BYTES };
-	if (File_Write(file, Signature, sizeof(Signature)) != ErrorCode_Success)
+	unsigned const char Signature[] = { GHDF_SIGNATURE_BYTES };
+	if (File_Write(file, (const char*)Signature, sizeof(Signature)) != ErrorCode_Success)
 	{
 		return Error_SetError(ErrorCode_IO, "WriteMetadata: Failed to write GHDF signature.");
 	}
@@ -245,7 +245,7 @@ static ErrorCode ReadMetadata(FILE* file)
 	unsigned char Signature[] = { GHDF_SIGNATURE_BYTES };
 	unsigned char ReadSignature[sizeof(Signature)];
 
-	if (File_Read(file, ReadSignature, sizeof(ReadSignature)) < sizeof(ReadSignature))
+	if (File_Read(file, (char*)ReadSignature, sizeof(ReadSignature)) < sizeof(ReadSignature))
 	{
 		return Error_SetError(ErrorCode_InvalidGHDFFile, "Failed to verify GHDF meta-data: Signature too short.");
 	}
@@ -303,7 +303,7 @@ static ErrorCode ReadSingleValue(FILE* file, GHDFType type, GHDFPrimitive* value
 	else if (type == GHDFType_String)
 	{
 		unsigned int StringLength;
-		if (Read7BitEncodedInt(file, (unsigned int*)(&StringLength)) != ErrorCode_Success)
+		if (Read7BitEncodedInt(file, (int*)(&StringLength)) != ErrorCode_Success)
 		{
 			return Error_GetLastErrorCode();
 		}
@@ -331,7 +331,7 @@ static ErrorCode ReadSingleValue(FILE* file, GHDFType type, GHDFPrimitive* value
 static ErrorCode ReadArrayValue(FILE* file, GHDFType type, GHDFPrimitive** arrayPtr, unsigned int* arraySizePtr)
 {
 	unsigned int ArraySize;
-	if (Read7BitEncodedInt(file, (unsigned int*)(&ArraySize)) != ErrorCode_Success)
+	if (Read7BitEncodedInt(file, (int*)(&ArraySize)) != ErrorCode_Success)
 	{
 		return Error_SetError(ErrorCode_IO, "ReadArrayValue: Failed to read length of array");
 	}
@@ -608,6 +608,10 @@ ErrorCode GHDFCompound_ReadFromFile(const char* path, GHDFCompound* emptyBaseCom
 ErrorCode GHDFCompound_WriteToFile(const char* path, GHDFCompound* compound)
 {
 	const char* Path = Directory_ChangePathExtension(path, GHDF_FILE_EXTENSION);
+
+	const char* DirectoryPath = Directory_GetParentDirectory(Path);
+	Directory_CreateAll(DirectoryPath);
+	Memory_Free(DirectoryPath);
 
 	File_Delete(Path);
 
