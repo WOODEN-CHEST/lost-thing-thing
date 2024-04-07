@@ -10,7 +10,7 @@
 struct StringBuilderStruct
 {
 	char* Data;
-	int Length;
+	size_t Length;
 	size_t _capacity;
 };
 
@@ -82,6 +82,8 @@ int String_LastCharIndexOf(const char* string, const char* sequence);
 /// <param name="endIndex">The end index in the string (exclusive). Must be greater or equal to startIndex.</param>
 /// <returns>A pointer to the substring, or NULL of an error occurred.</returns>
 char* String_SubString(const char* string, size_t startIndex, size_t endIndex);
+
+char* String_Concatenate(const char* string1, const char* string2);
 
 /// <summary>
 /// Creates a trimmed copy of the string. Trims whitespace characters '\n', '\t', ' ' and '\r'.
@@ -162,7 +164,7 @@ char* String_Replace(const char* string, const char* oldSequence, const char* ne
 /// <returns>Error Code</returns>
 //char** String_Split(char* string, const char* sequence, int* splitStringCount)
 
-_Bool String_IsFuzzyMatched(const char* stringToSearchIn, const char* stringToMatch);
+_Bool String_IsFuzzyMatched(const char* stringToSearchIn, const char* stringToMatch, _Bool ignoreWhitespace);
 
 
 // StringBuilder

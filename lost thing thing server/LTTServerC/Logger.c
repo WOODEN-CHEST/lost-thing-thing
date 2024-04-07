@@ -99,7 +99,7 @@ static int CountDigitsInInt(int number)
 }
 
 
-static char* CreateBackupLogFileName(char* oldLogDirectory, char* oldLogFilePath)
+static const char* CreateBackupLogFileName(const char* oldLogDirectory, const char* oldLogFilePath)
 {
 	// Create file name.
 	StringBuilder FileNameBuilder;
@@ -147,12 +147,12 @@ static void BackupLog(const char* oldLogFilePath, const char* logRootDirectoryPa
 	// Backup log.
 	const char* OldLogDirectory = Directory_CombinePaths(logRootDirectoryPath, OLD_LOG_DIR_NAME);
 	Directory_Create(OldLogDirectory);
-	char* OldLogNewPath = CreateBackupLogFileName(OldLogDirectory, oldLogFilePath);
-	MoveFileA(oldLogFilePath, OldLogNewPath);
+	const char* OldLogNewPath = CreateBackupLogFileName(OldLogDirectory, oldLogFilePath);
+	File_Move(oldLogFilePath, OldLogNewPath);
 
 	// Free memory.
-	Memory_Free(OldLogNewPath);
-	Memory_Free(OldLogDirectory);
+	Memory_Free((char*)OldLogNewPath);
+	Memory_Free((char*)OldLogDirectory);
 }
 
 // Functions.
@@ -181,7 +181,7 @@ char* Logger_ConstructContext(LoggerContext* context, const char* rootDirectoryP
 
 
 	// Free memory.
-	Memory_Free(LogFilePath);
+	Memory_Free((char*)LogFilePath);
 	Memory_Free(LogDirPath);
 
 	return NULL;

@@ -39,10 +39,15 @@ typedef struct UnverifiedUserAccount
 typedef struct SessionIDStruct
 {
 	time_t SessionStartTime;
-	bool IsAdmin;
 	unsigned long long AccountID;
 	unsigned char IDValues[SESSION_ID_LENGTH];
 } SessionID;
+
+typedef struct CachedAccountStruct
+{
+	time_t LastAccessTime;
+	UserAccount Account;
+} CachedAccount;
 
 typedef struct DBAccountContextStruct
 {
@@ -58,6 +63,8 @@ typedef struct DBAccountContextStruct
 	UnverifiedUserAccount* UnverifiedAccounts;
 	size_t UnverifiedAccountCount;
 	size_t _unverifiedAccountCapacity;
+
+	CachedAccount* AccountCache;
 } DBAccountContext;
 
 
@@ -67,8 +74,7 @@ ErrorCode AccountManager_ConstructContext(DBAccountContext* context, unsigned lo
 
 void AccountManager_CloseContext(DBAccountContext* context);
 
-bool AccountManager_TryCreateAccount(UserAccount* account,
-	const char* name,
+UserAccount* AccountManager_TryCreateAccount(const char* name,
 	const char* surname,
 	const char* email,
 	const char* password);
@@ -78,10 +84,14 @@ bool AccountManager_TryCreateUnverifiedAccount(const char* name,
 	const char* email,
 	const char* password);
 
-bool AccountManager_IsSessionAdmin(unsigned char* sessionIdValues);
+UserAccount* AccountManager_GetAccountByID(unsigned long long id);
 
-bool AccountManager_GetAccount(UserAccount* account, unsigned long long id);
+UserAccount** AccountManager_GetAccountByName(const char* name, size_t* accountCount);
 
 ErrorCode AccountManager_VerifyAccount(const char* email);
 
 bool AccountManager_TryVerifyAccount(const char* email, int code);
+
+bool AccountManager_IsSessionAdmin(unsigned char* sessionIdValues);
+
+bool AccountManager_CreateSession(const char* email, const char* password);

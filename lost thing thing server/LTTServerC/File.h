@@ -44,3 +44,5 @@ ErrorCode File_Close(FILE* file);
 ErrorCode File_Delete(const char* path);
 
 _Bool File_Exists(const char* path);
+
+ErrorCode File_Move(const char* sourcePath, const char* destinationPath);

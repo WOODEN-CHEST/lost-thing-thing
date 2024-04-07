@@ -73,12 +73,7 @@ char* String_CreateCopy(const char* stringToCopy)
 
 void String_CopyTo(const char* sourceString, char* destinationString)
 {
-	int Index;
-	for (Index = 0; sourceString[Index] != '\0'; Index++)
-	{
-		destinationString[Index] = sourceString[Index];
-	}
-	destinationString[Index] = '\0';
+	strcpy(destinationString, sourceString);
 }
 
 int String_CharIndexOf(const char* string, const char* sequence)
@@ -88,7 +83,7 @@ int String_CharIndexOf(const char* string, const char* sequence)
 		return -1;
 	}
 
-	int SequenceByteLength = String_LengthBytes(sequence);
+	int SequenceByteLength = (int)String_LengthBytes(sequence);
 	int Index = 0, SequenceIndex = 0, StartIndex = -1;
 
 	while (string[Index] != '\0')
@@ -125,9 +120,10 @@ int String_LastCharIndexOf(const char* string, const char* sequence)
 		return -1;
 	}
 
-	size_t StringLengthBytes = String_LengthBytes(string);
-	int MaxSequenceIndex = String_LengthBytes(sequence) - 1;
-	int Index = StringLengthBytes - 1, SequenceIndex = MaxSequenceIndex;
+	int StringLengthBytes = (int)String_LengthBytes(string);
+	int MaxSequenceIndex = (int)String_LengthBytes(sequence) - 1;
+	int Index = (int)StringLengthBytes - 1;
+	int SequenceIndex = MaxSequenceIndex;
 
 	while (Index >= 0)
 	{
@@ -158,7 +154,7 @@ char* String_SubString(const char* string, size_t startIndex, size_t endIndex)
 		return NULL;
 	}
 
-	int ByteLength = String_LengthBytes(string);
+	size_t ByteLength = String_LengthBytes(string);
 	if (startIndex > ByteLength)
 	{
 		Error_SetError(ErrorCode_IndexOutOfRange, "String_SubString: startIndex is greater than the length of the string.");
@@ -174,7 +170,7 @@ char* String_SubString(const char* string, size_t startIndex, size_t endIndex)
 	size_t TotalStringLength = SubStringLength + 1;
 
 	char* NewValue = Memory_SafeMalloc(TotalStringLength);
-	for (int Cur = startIndex, New = 0; Cur < endIndex; Cur++, New++)
+	for (size_t Cur = startIndex, New = 0; Cur < endIndex; Cur++, New++)
 	{
 		NewValue[New] = string[Cur];
 	}
@@ -183,9 +179,20 @@ char* String_SubString(const char* string, size_t startIndex, size_t endIndex)
 	return NewValue;
 }
 
+char* String_Concatenate(const char* string1, const char* string2)
+{
+	size_t String1Length = String_LengthBytes(string1);
+	size_t String2Length = String_LengthBytes(string2);
+	char* NewString = (char*)Memory_SafeMalloc(String1Length + String2Length + 1);
+	String_CopyTo(string1, NewString);
+	String_CopyTo(string2, NewString + String1Length);
+	return NewString;
+}
+
+
 char* String_Trim(const char* string)
 {
-	int StartIndex = 0;
+	long long StartIndex = 0;
 	while (Char_IsWhitespace(string + StartIndex))
 	{
 		StartIndex++;
@@ -197,22 +204,21 @@ char* String_Trim(const char* string)
 		}
 	}
 	
-	int EndIndex = String_LengthBytes(string) - 1;
-	while ((EndIndex >= StartIndex) && Char_IsWhitespace(string + EndIndex))
+	long long EndIndex = (long long)String_LengthBytes(string) - 1;
+	while ((EndIndex > StartIndex) && Char_IsWhitespace(string + EndIndex))
 	{
 		EndIndex--;
 	}
 	EndIndex++;
 
-	return String_SubString(string, StartIndex, EndIndex);
+	return String_SubString(string, (size_t)StartIndex, (size_t)EndIndex);
 }
 
 void String_ToLowerUTF8(char* string)
 {
-	for (int i = 0; string[i] != '\0'; i++)
+	for (int i = 0; string[i] != '\0'; i += Char_GetByteCount(string + i))
 	{
 		Char_ToLower(string + i);
-		i += Char_GetByteCount(string + i);
 	}
 }
 
@@ -284,15 +290,15 @@ bool String_EndsWith(const char* string, const char* sequence)
 		return false;
 	}
 
-	int StringLength = String_LengthBytes(string);
-	int SequenceLength = String_LengthBytes(sequence);
+	long long StringLength = (long long)String_LengthBytes(string);
+	long long SequenceLength = (long long)String_LengthBytes(sequence);
 
 	if (StringLength < SequenceLength)
 	{
 		return false;
 	}
 
-	for (int Index = StringLength - 1, SequenceIndex = SequenceLength - 1; SequenceIndex >= 0; Index--, SequenceIndex--)
+	for (long long Index = StringLength - 1, SequenceIndex = SequenceLength - 1; SequenceIndex >= 0; Index--, SequenceIndex--)
 	{
 		if (string[Index] != sequence[SequenceIndex])
 		{
@@ -321,7 +327,7 @@ char* String_Replace(const char* string, const char* oldSequence, const char* ne
 {
 	if (oldSequence[0] == '\0')
 	{
-		return string;
+		return String_CreateCopy(string);
 	}
 
 	StringBuilder Builder;
@@ -348,7 +354,7 @@ char* String_Replace(const char* string, const char* oldSequence, const char* ne
 	return Builder.Data;
 }
 
-_Bool String_IsFuzzyMatched(const char* stringToSearchIn, const char* stringToMatch)
+_Bool String_IsFuzzyMatched(const char* stringToSearchIn, const char* stringToMatch, _Bool ignoreWhitespace)
 {
 	if (stringToMatch[0] == '\0')
 	{
@@ -357,6 +363,11 @@ _Bool String_IsFuzzyMatched(const char* stringToSearchIn, const char* stringToMa
 
 	for (size_t OriginIndex = 0, MatchIndex = 0; stringToSearchIn[OriginIndex] != '\0'; OriginIndex++)
 	{
+		while (ignoreWhitespace && Char_IsWhitespace(stringToMatch + MatchIndex))
+		{
+			MatchIndex++;
+		}
+
 		if (stringToSearchIn[OriginIndex] == stringToMatch[MatchIndex])
 		{
 			MatchIndex++;
@@ -408,18 +419,16 @@ static void StringBuilder_EnsureCapacity(StringBuilder* this, size_t capacity)
 
 void StringBuilder_Append(StringBuilder* this, const char* string)
 {
-	int AppendLength = String_LengthBytes(string);
+	size_t AppendLength = String_LengthBytes(string);
 	StringBuilder_EnsureCapacity(this, this->Length + AppendLength + 1);
 
-	for (int i = 0; i < AppendLength; i++)
+	for (size_t i = 0; i < AppendLength; i++)
 	{
 		this->Data[this->Length + i] = string[i];
 	}
 	
 	this->Length += AppendLength;
 	this->Data[this->Length] = '\0';
-
-	return 0;
 }
 
 void StringBuilder_AppendChar(StringBuilder* this, char character)
@@ -438,7 +447,7 @@ ErrorCode StringBuilder_Insert(StringBuilder* this, const char* string, size_t c
 		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Insert: Index is larger than the length of the string.");
 	}
 
-	const int StringLength = String_LengthBytes(string);
+	const long long StringLength = (long long)String_LengthBytes(string);
 	if (StringLength == 0)
 	{
 		return ErrorCode_Success;
@@ -446,12 +455,12 @@ ErrorCode StringBuilder_Insert(StringBuilder* this, const char* string, size_t c
 
 	StringBuilder_EnsureCapacity(this, this->Length + 1 + StringLength);
 
-	for (int i = this->Length - 1 + StringLength; i >= charIndex + StringLength; i--)
+	for (long long i = this->Length - 1 + StringLength; i >= (long long)charIndex + StringLength; i--)
 	{
 		this->Data[i] = this->Data[i - StringLength];
 	}
 
-	for (int i = 0; i < StringLength; i++)
+	for (long long i = 0; i < StringLength; i++)
 	{
 		this->Data[charIndex + i] = string[i];
 	}
@@ -469,7 +478,7 @@ ErrorCode StringBuilder_InsertChar(StringBuilder* this, char character, size_t c
 		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_InsertChar: Index is larger than the length of the string.");
 	}
 
-	for (int i = this->Length; i > charIndex; i--)
+	for (size_t i = this->Length; i > charIndex; i--)
 	{
 		this->Data[i] = this->Data[i - 1];
 	}
@@ -496,13 +505,13 @@ ErrorCode StringBuilder_Remove(StringBuilder* this, size_t startIndex, size_t en
 		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: endIndex is greater than the string's length.");
 	}
 
-	int RemovedLength = endIndex - startIndex;
+	size_t RemovedLength = (endIndex - startIndex);
 	if (RemovedLength == 0)
 	{
 		return ErrorCode_Success;
 	}
 	
-	for (int i = endIndex; i < this->Length; i++)
+	for (size_t i = endIndex; i < this->Length; i++)
 	{
 		this->Data[i - RemovedLength] = this->Data[i];
 	}

@@ -6,6 +6,7 @@
 #include <stdbool.h>
 #include <String.h>
 #include <sys/stat.h>
+#include <Windows.h>
 
 
 // Macros.
@@ -193,4 +194,9 @@ _Bool File_Exists(const char* path)
 {
 	struct stat FileStats;
 	return !stat(path, &FileStats);
+}
+
+ErrorCode File_Move(const char* sourcePath, const char* destinationPath)
+{
+	return MoveFileA(sourcePath, destinationPath) ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "File_Move: Failed to move file");
 }

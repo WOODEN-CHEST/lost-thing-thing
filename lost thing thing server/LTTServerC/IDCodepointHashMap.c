@@ -341,7 +341,7 @@ static void DeconstructBucket(CodepointAmountsBucket* bucket)
 
 
 /* Hashmap. */
-static CodepointIDList* GetCodepointIDListFromHashMap(IDCodepointHashMap* self, int codepoint, int count)
+static CodepointIDList* GetCodepointIDListFromHashMap(IDCodepointHashMap* self, int codepoint, size_t count)
 {
 	CodepointAmountsBucket* Bucket = &(self->CodepointBuckets[codepoint % HASHMAP_CAPACITY]);
 	CodepointAmountsEntry* Entry = GetCodepointAmountsEntry(Bucket, codepoint);
@@ -391,12 +391,14 @@ static void CountCodepoints(const char* string, StringCodepointCountList* list, 
 	size_t Index = 0;
 	while (string[Index] != '\0')
 	{
+		int Codepoint = Char_GetCodepoint(string + Index);
+
 		if (ignoreWhitespace && Char_IsWhitespace(string + Index))
 		{
+			Index += Char_GetByteCountCodepoint(Codepoint);
 			continue;
 		}
 
-		int Codepoint = Char_GetCodepoint(string + Index);
 		IncrementCountForCodepoint(Codepoint, list);
 		Index += Char_GetByteCountCodepoint(Codepoint);
 	}
@@ -424,7 +426,7 @@ void IDCodepointHashMap_AddID(IDCodepointHashMap* self, const char* string, unsi
 	for (size_t i = 0; i < CodepointCountList.ElementCount; i++)
 	{
 		int Codepoint = CodepointCountList.Elements[i].Codepoint;
-		int Count = CodepointCountList.Elements[i].Count;
+		size_t Count = CodepointCountList.Elements[i].Count;
 		CodepointIDListAddID(GetCodepointIDListFromHashMap(self, Codepoint, Count), id);
 	}
 
@@ -439,7 +441,7 @@ void IDCodepointHashMap_RemoveID(IDCodepointHashMap* self, const char* string, u
 	for (size_t i = 0; i < CodepointCountList.ElementCount; i++)
 	{
 		int Codepoint = CodepointCountList.Elements[i].Codepoint;
-		int Count = CodepointCountList.Elements[i].Count;
+		size_t Count = CodepointCountList.Elements[i].Count;
 		CodepointIDListRemoveID(GetCodepointIDListFromHashMap(self, Codepoint, Count), id);
 	}
 
@@ -462,6 +464,7 @@ unsigned long long* IDCodepointHashMap_FindByString(IDCodepointHashMap* self, co
 
 	if (CodepointCountList.ElementCount == 0)
 	{
+		Memory_Free(CodepointCountList.Elements);
 		return NULL;
 	}
 
@@ -479,7 +482,8 @@ unsigned long long* IDCodepointHashMap_FindByString(IDCodepointHashMap* self, co
 
 	for (size_t CodepointIndex = 1; CodepointIndex < CodepointCountList.ElementCount; CodepointIndex++)
 	{
-		for (int CountIndex = CodepointCountList.Elements[CodepointIndex].Count; CountIndex < MAX_TRACKED_CODEPOINT_COUNT; CountIndex++)
+		for (size_t CountIndex = CodepointCountList.Elements[CodepointIndex].Count;
+			CountIndex < MAX_TRACKED_CODEPOINT_COUNT; CountIndex++)
 		{
 			CodepointIDList* IDList = GetCodepointIDListFromHashMap(self, CodepointCountList.Elements[CodepointIndex].Codepoint, CountIndex);
 			IDHashSetAddRange(&CodepointIDHashSet, IDList->IDs, IDList->IDCount);
@@ -497,6 +501,7 @@ unsigned long long* IDCodepointHashMap_FindByString(IDCodepointHashMap* self, co
 	unsigned long long* IDArray = IDHashSetToArray(&FinalIDHashSet, arraySize);
 	IDHashsetDeconstruct(&FinalIDHashSet);
 	IDHashsetDeconstruct(&CodepointIDHashSet);
+	Memory_Free(CodepointCountList.Elements);
 	return IDArray;
 }
 

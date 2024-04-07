@@ -8,7 +8,7 @@
 // Macros.
 #define COMPOUND_CAPCITY_GROWHT 2
 #define GHDF_SIGNATURE_BYTES 102, 37, 143, 181, 3, 205, 123, 185, 148, 157, 98, 177, 178, 151, 43, 170
-#define UNDETERMINABLE_ENTRY_SIZE
+#define UNDETERMINABLE_ENTRY_SIZE 0
 
 #define GetValueType(type) ((type) & (~GHDF_TYPE_ARRAY_BIT))
 
@@ -112,6 +112,24 @@ static size_t TryGetTypeSize(GHDFType type)
 /* Writing */
 static ErrorCode WriteEntry(FILE* file, GHDFEntry* entry);
 
+static ErrorCode Write7BitEncodedInt(FILE* file, int integer)
+{
+	unsigned int Value = (unsigned int)integer;
+
+	do
+	{
+		ErrorCode Result = File_WriteByte(file, (Value & ENCODED_INT_MASK) | (Value > ENCODED_INT_MASK ? ENCODED_INT_INDICATOR_BIT : 0));
+		if (Result != ErrorCode_Success)
+		{
+			return Error_SetError(ErrorCode_IO, "Write7BitEncodedInt: Failed to write char.");
+		}
+
+		Value >>= ENCODED_INT_BIT_COUNT_PER_BYTE;
+	} while (Value > 0);
+
+	return ErrorCode_Success;
+}
+
 static ErrorCode WriteCompound(FILE* file, GHDFCompound* compound)
 {
 	if (Write7BitEncodedInt(file, (unsigned int)compound->Count) != ErrorCode_Success)
@@ -128,22 +146,6 @@ static ErrorCode WriteCompound(FILE* file, GHDFCompound* compound)
 	}
 
 	return ErrorCode_Success;
-}
-
-static ErrorCode Write7BitEncodedInt(FILE* file, int integer)
-{
-	unsigned int Value = (unsigned int)integer;
-
-	do
-	{
-		ErrorCode Result = File_WriteByte(file, (Value & ENCODED_INT_MASK) | (Value > ENCODED_INT_MASK ? ENCODED_INT_INDICATOR_BIT : 0));
-		if (Result != ErrorCode_Success)
-		{
-			return Error_SetError(ErrorCode_IO, "Write7BitEncodedInt: Failed to write char.");
-		}
-
-		Value >>= ENCODED_INT_BIT_COUNT_PER_BYTE;
-	} while (Value > 0);
 }
 
 static ErrorCode WriteMetadata(FILE* file)
@@ -166,7 +168,7 @@ static ErrorCode WriteSingleValue(FILE* file, GHDFPrimitive value, GHDFType type
 {
 	if (GetValueType(type) == GHDFType_String)
 	{
-		unsigned int StringLength = String_LengthBytes(value.String);
+		unsigned int StringLength = (unsigned int)String_LengthBytes(value.String);
 
 		if (Write7BitEncodedInt(file, (unsigned int)StringLength) != ErrorCode_Success)
 		{
@@ -240,6 +242,8 @@ static ErrorCode WriteEntry(FILE* file, GHDFEntry* entry)
 
 
 /* Reading. */
+static ErrorCode ReadCompound(FILE* file, GHDFCompound* compound);
+
 static ErrorCode ReadMetadata(FILE* file)
 {
 	unsigned char Signature[] = { GHDF_SIGNATURE_BYTES };
@@ -471,6 +475,7 @@ ErrorCode GHDFCompound_AddSingleValueEntry(GHDFCompound* self, GHDFType type, in
 	self->Entries[self->Count].ValueType = type;
 
 	self->Count += 1;
+	return ErrorCode_Success;
 }
 
 ErrorCode GHDFCompound_AddArrayEntry(GHDFCompound* self, GHDFType type, int id, GHDFPrimitive* valueArray, unsigned int count)
@@ -487,6 +492,7 @@ ErrorCode GHDFCompound_AddArrayEntry(GHDFCompound* self, GHDFType type, int id, 
 	self->Entries[self->Count].ValueType = (type | GHDF_TYPE_ARRAY_BIT);
 
 	self->Count += 1;
+	return ErrorCode_Success;
 }
 
 void GHDFCompound_RemoveEntry(GHDFCompound* self, int id)
@@ -508,7 +514,7 @@ void GHDFCompound_RemoveEntry(GHDFCompound* self, int id)
 		return;
 	}
 
-	for (unsigned int i = TargetIndex + 1; i < self->Count; i++)
+	for (unsigned int i = (unsigned int)TargetIndex + 1; i < self->Count; i++)
 	{
 		self->Entries[i - 1] = self->Entries[i];
 	}
@@ -603,6 +609,7 @@ ErrorCode GHDFCompound_ReadFromFile(const char* path, GHDFCompound* emptyBaseCom
 	}
 
 	File_Close(File);
+	return ErrorCode_Success;
 }
 
 ErrorCode GHDFCompound_WriteToFile(const char* path, GHDFCompound* compound)
@@ -611,12 +618,12 @@ ErrorCode GHDFCompound_WriteToFile(const char* path, GHDFCompound* compound)
 
 	const char* DirectoryPath = Directory_GetParentDirectory(Path);
 	Directory_CreateAll(DirectoryPath);
-	Memory_Free(DirectoryPath);
+	Memory_Free((char*)DirectoryPath);
 
 	File_Delete(Path);
 
 	FILE* File = File_Open(Path, FileOpenMode_WriteBinary);
-	Memory_Free(Path);
+	Memory_Free((char*)Path);
 
 	if (!File)
 	{

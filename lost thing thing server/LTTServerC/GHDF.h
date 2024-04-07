@@ -99,13 +99,13 @@ typedef struct GHDFCompoundStruct
 
 
 // Functions.
-void GHDFCompound_Construct(GHDFCompound* self, size_t capacity);
+void GHDFCompound_Construct(GHDFCompound* self, unsigned int capacity);
 
-GHDFCompound* GHDFCompound_Construct2(size_t capacity);
+GHDFCompound* GHDFCompound_Construct2(unsigned int capacity);
 
 ErrorCode GHDFCompound_AddSingleValueEntry(GHDFCompound* self, GHDFType type, int id, GHDFPrimitive value);
 
-ErrorCode GHDFCompound_AddArrayEntry(GHDFCompound* self, GHDFType type, int id, GHDFPrimitive* valueArray, size_t count);
+ErrorCode GHDFCompound_AddArrayEntry(GHDFCompound* self, GHDFType type, int id, GHDFPrimitive* valueArray, unsigned int count);
 
 void GHDFCompound_RemoveEntry(GHDFCompound* self, int id);
 
@@ -113,7 +113,7 @@ void GHDFCompound_Clear(GHDFCompound* self);
 
 GHDFEntry* GHDFCompound_GetEntry(GHDFCompound* self, int id);
 
-ErrorCode GHDFCompound_GetVerifiedEntry(GHDFEntry* self, int id, GHDFEntry** entry, GHDFType expectedType, const char* optionalMessage);
+ErrorCode GHDFCompound_GetVerifiedEntry(GHDFCompound* self, int id, GHDFEntry** entry, GHDFType expectedType, const char* optionalMessage);
 
 GHDFEntry* GHDFCompound_GetEntryOrDefault(GHDFCompound* self, int id, GHDFEntry* defaultEntry);
 

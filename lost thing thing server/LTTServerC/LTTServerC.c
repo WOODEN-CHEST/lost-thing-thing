@@ -24,13 +24,13 @@ static void CloseContext()
 	ResourceManager_CloseContext(&LTTServerC_GetCurrentContext()->Resources);
 	Logger_LogInfo("Closed database context.");
 	Logger_CloseContext(&LTTServerC_GetCurrentContext()->Logger);
-	Memory_Free(LTTServerC_GetCurrentContext()->RootPath);
+	Memory_Free((char*)LTTServerC_GetCurrentContext()->RootPath);
 	Error_CloseContext(&LTTServerC_GetCurrentContext()->Errors);
 }
 
 static void OnCloseSignal(int caughtSignal)
 {
-	Logger_LogInfo("Server closed by SIGREAK signal.");
+	Logger_LogInfo("Server closing by SIGREAK signal.");
 	CloseContext();
 	exit(EXIT_SUCCESS);
 }
@@ -99,11 +99,6 @@ static int RunServer(const char* executablePath)
 		return EXIT_FAILURE;
 	}
 
-	AccountManager_TryCreateUnverifiedAccount("Kristofers", "Cernavskis", "kristofers.cernavskis@marupe.edu.lv", "123456789");
-	AccountManager_TryVerifyAccount(LTTServerC_GetCurrentContext()->Resources.AccountContext.UnverifiedAccounts[0].Email,
-		LTTServerC_GetCurrentContext()->Resources.AccountContext.UnverifiedAccounts[0].VerificationCode);
-
-
 	// Start server.
  	ErrorCode Error = HttpListener_Listen(LTTServerC_GetCurrentContext()->Configuration.Address);
 	if (Error != ErrorCode_Success)
@@ -112,7 +107,7 @@ static int RunServer(const char* executablePath)
 	}
 
 	// Stop server.
-	Logger_LogInfo("Server closed by HTTP listener stopping.");
+	Logger_LogInfo("Server closing by HTTP listener stopping.");
 	CloseContext();
 
 	return EXIT_SUCCESS;

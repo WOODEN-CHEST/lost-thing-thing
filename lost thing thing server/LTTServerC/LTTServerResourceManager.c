@@ -169,9 +169,9 @@ void ResourceManager_CloseContext(ServerResourceContext* context)
 {
 	SaveGlobalServerData(context);
 	AccountManager_CloseContext(&context->AccountContext);
-	Memory_Free(context->DatabaseRootPath);
-	Memory_Free(context->SourceRootPath);
-	Memory_Free(context->GlobalDataFilePath);
+	Memory_Free((char*)context->DatabaseRootPath);
+	Memory_Free((char*)context->SourceRootPath);
+	Memory_Free((char*)context->GlobalDataFilePath);
 }
 
 ResourceResult ResourceManager_Get(ServerResourceRequest* request)

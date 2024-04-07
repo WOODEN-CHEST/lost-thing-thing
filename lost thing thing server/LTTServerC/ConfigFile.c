@@ -141,7 +141,7 @@ static ErrorCode ParseConfiguration(ServerConfig* config, const char* configText
 	return ErrorCode_Success;
 }
 
-static ErrorCode LoadDefaultConfig(ServerConfig* config)
+static void LoadDefaultConfig(ServerConfig* config)
 {
 	config->AcceptedDomainCount = 1;
 	config->AcceptedDomains[0] = String_CreateCopy(DEFAULT_EMAIL_DOMAIN);
@@ -194,7 +194,7 @@ void ServerConfig_Deconstruct(ServerConfig* config)
 {
 	for (size_t i = 0; i < config->AcceptedDomainCount; i++)
 	{
-		Memory_Free(config->AcceptedDomains[i]);
+		Memory_Free((char*)config->AcceptedDomains[i]);
 	}
 	Memory_Free(config->AcceptedDomains);
 }

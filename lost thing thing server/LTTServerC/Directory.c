@@ -116,8 +116,8 @@ char* Directory_ChangePathExtension(const char* path, const char* newExtension)
 		return Builder.Data;
 	}
 
-	int InsertionIndex = -1;
-	for (int i = Builder.Length - 1; (i >= 0) && !Directory_IsPathSeparator(Builder.Data[i]); i--)
+	long long InsertionIndex = -1;
+	for (long long i = (long long)Builder.Length - 1; (i >= 0) && !Directory_IsPathSeparator(Builder.Data[i]); i--)
 	{
 		if (Builder.Data[i] == EXTENSION_SPEARATOR)
 		{

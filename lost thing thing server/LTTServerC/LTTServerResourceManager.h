@@ -35,8 +35,8 @@ typedef struct ServerResourceRequestStruct
 	const char* Target;
 	const char* Data;
 	HttpCookie* CookieArray;
-	size_t* CookieCount;
-	StringBuilder** Result;
+	size_t CookieCount;
+	StringBuilder* Result;
 } ServerResourceRequest;
 
 

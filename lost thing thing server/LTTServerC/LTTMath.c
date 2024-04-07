@@ -16,8 +16,7 @@ static void Math_InitRandom()
 		return;
 	}
 
-	time_t Time;
-	srand(time(&Time));
+	srand((unsigned int)time(NULL));
 	IsRandomInitialized = true;
 }
 

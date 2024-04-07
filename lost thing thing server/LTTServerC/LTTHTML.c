@@ -100,7 +100,6 @@ static void AppendHTMLElementAsString(StringBuilder* builder, HTMLElement* eleme
 	StringBuilder_AppendChar(builder, TAG_SYMBOL_OPEN);
 	StringBuilder_Append(builder, element->Name);
 
-	bool HadAttribute = false;
 	for (size_t i = 0; i < element->AttributeCount; i++)
 	{
 		StringBuilder_AppendChar(builder, ATTRIBUTE_SEPARATOR);
@@ -205,6 +204,7 @@ ErrorCode HTMLElement_Construct(HTMLElement* element, const char* name)
 	element->_subElementArrayCapacity = 0;
 
 	element->Contents = NULL;
+	return ErrorCode_Success;
 }
 
 ErrorCode HTMLElement_SetAttribute(HTMLElement* element, const char* name, const char* value)
@@ -220,7 +220,7 @@ ErrorCode HTMLElement_SetAttribute(HTMLElement* element, const char* name, const
 
 		Memory_Free(Attribute->Value);
 		Attribute->Value = String_CreateCopy(value);
-		return;
+		return ErrorCode_Success;
 	}
 
 	EnsureAttributeArrayCapacity(element, element->AttributeCount + 1);
@@ -233,6 +233,8 @@ ErrorCode HTMLElement_SetAttribute(HTMLElement* element, const char* name, const
 	String_CopyTo(name, element->AttributeArray[element->AttributeCount].Name);
 	element->AttributeArray[element->AttributeCount].Value = String_CreateCopy(value);
 	element->AttributeCount += 1;
+
+	return ErrorCode_Success;
 }
 
 HTMLAttribute* HTMLElement_GetAttribute(HTMLElement* element, const char* name)
@@ -296,6 +298,8 @@ HTMLElement* HTMLElement_AddElement2(HTMLElement* baseElement, HTMLElement* elem
 	EnsureSubElementArrayCapacity(baseElement, baseElement->SubElementCount + 1);
 	baseElement->SubElementArray[baseElement->SubElementCount] = elementToAdd;
 	baseElement->SubElementCount += 1;
+
+	return elementToAdd;
 }
 
 HTMLElement* HTMLElement_GetElementByID(HTMLElement* element, const char* id)

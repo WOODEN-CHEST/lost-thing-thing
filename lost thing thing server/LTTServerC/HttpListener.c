@@ -398,10 +398,9 @@ static void ParseHttpRequestMessage(const char* message, HttpClientRequest* fina
 {
 	message = ReadHttpRequestLine(message, finalRequest);
 
-	int HeaderLength;
 	do
 	{
-		message = ReadHttpHeader(message, finalRequest, &HeaderLength);
+		message = ReadHttpHeader(message, finalRequest);
 	} while ((*message != '\r') && !IsEndOfMessageLine(*message));
 
 	message = SkipUntilNextLine(message);
@@ -486,7 +485,7 @@ static void HandleSpecialAction(SOCKET clientSocket, SpecialAction action, Serve
 	}
 }
 
-static void ProcessHttpRequest(SOCKET clientSocket, 
+static ErrorCode ProcessHttpRequest(SOCKET clientSocket, 
 	char* unparsedRequestMessage,
 	HttpClientRequest* requestToBuild,
 	HttpResponse* responseToBuild,
@@ -512,7 +511,7 @@ static void ProcessHttpRequest(SOCKET clientSocket,
 
 	// Respond.
 	BuildHttpResponse(responseToBuild);
-	if (send(clientSocket, responseToBuild->FinalMessage.Data, responseToBuild->FinalMessage.Length, 0) == INVALID_SOCKET)
+	if (send(clientSocket, responseToBuild->FinalMessage.Data, (int)responseToBuild->FinalMessage.Length, 0) == INVALID_SOCKET)
 	{
 		closesocket(clientSocket);
 		return SetSocketError("Failed to send data to client.", WSAGetLastError());
@@ -523,6 +522,8 @@ static void ProcessHttpRequest(SOCKET clientSocket,
 	{
 		HandleSpecialAction(clientSocket, RequestedAction, runtimeData);
 	}
+
+	return ErrorCode_Success;
 }
 
 /* Client listener. */
@@ -551,7 +552,10 @@ static ErrorCode AcceptSingleClient(SOCKET serverSocket,
 	unparsedRequestMessage[ReceivedLength] = '\0';
 
 	// Process.
-	ProcessHttpRequest(ClientSocket, unparsedRequestMessage, requestToBuild, responseToBuild, runtimeData);
+	if (ProcessHttpRequest(ClientSocket, unparsedRequestMessage, requestToBuild, responseToBuild, runtimeData) != ErrorCode_Success)
+	{
+		return Error_GetLastErrorCode();
+	}
 
 	// Close connection.
 	if (closesocket(ClientSocket) == SOCKET_ERROR)
@@ -623,7 +627,7 @@ static ErrorCode InitializeSocket(SOCKET* targetSocket, const char* address)
 	inet_pton(AF_INET, address, &Address.sin_addr.S_un.S_addr);
 
 	// Bind socket.
-	if (bind(*targetSocket, &Address, sizeof(Address)) == SOCKET_ERROR)
+	if (bind(*targetSocket, (const struct sockaddr*)&Address, sizeof(Address)) == SOCKET_ERROR)
 	{
 		return SetSocketError("Failed to bind socket.", WSAGetLastError());;
 	}
