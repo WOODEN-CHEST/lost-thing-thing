@@ -99,6 +99,9 @@ static int RunServer(const char* executablePath)
 		return EXIT_FAILURE;
 	}
 
+	UserAccount* Account = AccountManager_GetAccountByEmail("keigers.klivers@marupe.edu.lv");
+	AccountManager_TryCreateSession(Account, "123456789");
+
 	// Start server.
  	ErrorCode Error = HttpListener_Listen(LTTServerC_GetCurrentContext()->Configuration.Address);
 	if (Error != ErrorCode_Success)

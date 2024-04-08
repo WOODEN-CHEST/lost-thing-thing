@@ -323,6 +323,20 @@ bool String_Equals(const char* string1, const char* string2)
 	return string1[Index] == string2[Index];
 }
 
+_Bool String_EqualsCaseInsensitive(const char* string1, const char* string2)
+{
+	size_t Index;
+	for (Index = 0; (string1[Index] != '\0') && (string2[Index] != '\0'); Index += Char_GetByteCount(string1 + Index))
+	{
+		if (!Char_EqualsCaseInsensitive(string1 + Index, string2 + Index))
+		{
+			return false;
+		}
+	}
+
+	return string1[Index] == string2[Index];
+}
+
 char* String_Replace(const char* string, const char* oldSequence, const char* newSequence)
 {
 	if (oldSequence[0] == '\0')
@@ -361,16 +375,17 @@ _Bool String_IsFuzzyMatched(const char* stringToSearchIn, const char* stringToMa
 		return stringToSearchIn[0] == '\0';
 	}
 
-	for (size_t OriginIndex = 0, MatchIndex = 0; stringToSearchIn[OriginIndex] != '\0'; OriginIndex++)
+	for (size_t OriginIndex = 0, MatchIndex = 0; stringToSearchIn[OriginIndex] != '\0';
+		OriginIndex += Char_GetByteCount(stringToSearchIn + OriginIndex))
 	{
 		while (ignoreWhitespace && Char_IsWhitespace(stringToMatch + MatchIndex))
 		{
-			MatchIndex++;
+			MatchIndex += Char_GetByteCount(stringToMatch + MatchIndex);
 		}
 
-		if (stringToSearchIn[OriginIndex] == stringToMatch[MatchIndex])
+		if (Char_EqualsCaseInsensitive(stringToSearchIn + OriginIndex, stringToMatch + MatchIndex))
 		{
-			MatchIndex++;
+			MatchIndex += Char_GetByteCount(stringToMatch + MatchIndex);
 			if (stringToMatch[MatchIndex] == '\0')
 			{
 				return true;

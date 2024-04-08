@@ -391,9 +391,13 @@ static void CountCodepoints(const char* string, StringCodepointCountList* list, 
 	size_t Index = 0;
 	while (string[Index] != '\0')
 	{
-		int Codepoint = Char_GetCodepoint(string + Index);
+		char Character[MAX_UTF8_CODEPOINT_SIZE];
+		Char_CopyTo(string + Index, Character);
+		Char_ToLower(Character);
 
-		if (ignoreWhitespace && Char_IsWhitespace(string + Index))
+		int Codepoint = Char_GetCodepoint(Character);
+
+		if (ignoreWhitespace && Char_IsWhitespace(Character))
 		{
 			Index += Char_GetByteCountCodepoint(Codepoint);
 			continue;

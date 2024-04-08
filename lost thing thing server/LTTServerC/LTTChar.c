@@ -146,3 +146,24 @@ bool Char_IsWhitespace(const char* character)
 {
 	return (0 <= *character) && (*character <= 32);
 }
+
+void Char_CopyTo(const char* source, char* destination)
+{
+	int ByteCount = Char_GetByteCount(source);
+
+	for (int i = 0; i < ByteCount; i++)
+	{
+		destination[i] = source[i];
+	}
+}
+
+bool Char_EqualsCaseInsensitive(const char* char1, const char* char2)
+{
+	char Char1Lower[MAX_UTF8_CODEPOINT_SIZE];
+	char Char2Lower[MAX_UTF8_CODEPOINT_SIZE];
+	Char_CopyTo(char1, Char1Lower);
+	Char_CopyTo(char2, Char2Lower);
+	Char_ToLower(Char1Lower);
+	Char_ToLower(Char2Lower);
+	return Char_GetCodepoint(Char1Lower) == Char_GetCodepoint(Char2Lower);
+}

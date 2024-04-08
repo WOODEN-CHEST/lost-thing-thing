@@ -23,6 +23,8 @@
 #define UTF8_LATIN1_CODEPOINT_OFFSET 32
 #define UTF8_EXTENDED_CODEPOINT_OFFSET 1
 
+#define MAX_UTF8_CODEPOINT_SIZE 4
+
 
 #define IsLatinACharacter(characterNumber) ((256 <= characterNumber) && (characterNumber <= 383))
 
@@ -45,3 +47,7 @@ bool Char_IsLetter(const char* character);
 bool Char_IsDigit(const char* character);
 
 bool Char_IsWhitespace(const char* character);
+
+void Char_CopyTo(const char* source, char* destination);
+
+bool Char_EqualsCaseInsensitive(const char* char1, const char* char2);

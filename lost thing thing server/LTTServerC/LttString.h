@@ -146,6 +146,8 @@ _Bool String_EndsWith(const char* string, const char* sequence);
 /// <returns>true if the strings are equal, otherwise false</returns>
 _Bool String_Equals(const char* string1, const char* string2);
 
+_Bool String_EqualsCaseInsensitive(const char* string1, const char* string2);
+
 /// <summary>
 /// Creates a new string where all the sequences in the given string are replaced with new sequences of characters.
 /// </summary>

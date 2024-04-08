@@ -10,7 +10,6 @@
 #include "LTTChar.h"
 #include "LTTAccountManager.h"
 
-/* Mega source-code file which hold it all together, somehow. */
 
 // Macros.
 #define DIR_NAME_DATABASE "data"
@@ -23,14 +22,13 @@
 #define DEFAULT_AVAILABLE_ACCOUNT_ID 0;
 #define DEFAULT_AVAILABLE_POST_ID 0;
 #define DEFAULT_AVAILABLE_ACCOUNT_IMAGE_ID 1;
+#define DEFAILT_SESSION_COUNT 0
+
 #define ENTRY_ID_POST_ID 1
 #define ENTRY_ID_ACCOUNT_ID 2
 #define ENTRY_ID_ACCOUNT_IMAGE_ID 3
-
-
-
-/* User account. */
-
+#define ENTRY_ID_SESSION_ARRAY 4
+#define ENTRY_ID_SESSION_ARRAY 4
 
 
 // Types.
@@ -189,57 +187,3 @@ ResourceResult ResourceManager_Post(ServerResourceRequest* request)
 	// --------------------------- REMOVE IN FINAL CODE OUTSIDE TESTS PLEASE!!! ---------------------------------- //
 	return ResourceResult_Successful;
 }
-
-//ErrorCode ResourceManager_CreateAccountInDatabase(const char* name, const char* surname, const char* email, const char* password)
-//{
-//	unsigned long long ID = GetAndUseAccountID();
-//	const char* DataPath = ResourceManager_GetPathToIDFile(ID, DIR_NAME_ACCOUNTS);
-//	const char* DataDirectoryPath = Directory_GetParentDirectory(DataPath);
-//
-//	if (File_Exists(DataPath))
-//	{
-//		return Error_SetError(ErrorCode_InvalidArgument, "Resource Manager attempted to create account which already exists (file match).");
-//	}
-//
-//	Directory_CreateAll(DataDirectoryPath);
-//
-//	if ((VerifyName(name) != ErrorCode_Success) || (VerifyName(surname) != ErrorCode_Success)
-//		|| (VerifyPassword(password) != ErrorCode_Success) || (VerifyEmail(email) != ErrorCode_Success))
-//	{
-//		return Error_GetLastErrorCode();
-//	}
-//
-//	long long PasswordHash[PASSWORD_HASH_LENGTH];
-//	GeneratePasswordHash(PasswordHash, password);
-//	GHDFPrimitive* PrimitiveHashArray = (GHDFPrimitive*)Memory_SafeMalloc(sizeof(GHDFPrimitive) * PASSWORD_HASH_LENGTH);
-//	for (int i = 0; i < PASSWORD_HASH_LENGTH; i++)
-//	{
-//		PrimitiveHashArray[i].Long = PasswordHash[i];
-//	}
-//
-//	GHDFPrimitive Value;
-//	GHDFCompound UserDataCompound;
-//	GHDFCompound_Construct(&UserDataCompound, COMPOUND_DEFAULT_CAPACITY);
-//
-//	Value.String = name;
-//	GHDFCompound_AddSingleValueEntry(&UserDataCompound, GHDFType_String, ENTRY_ID_ACCOUNT_NAME, Value);
-//	Value.String = surname;
-//	GHDFCompound_AddSingleValueEntry(&UserDataCompound, GHDFType_String, ENTRY_ID_ACCOUNT_SURNAME, Value);
-//	Value.String = email;
-//	GHDFCompound_AddSingleValueEntry(&UserDataCompound, GHDFType_String, ENTRY_ID_ACCOUNT_EMAIL, Value);
-//
-//	GHDFCompound_AddArrayEntry(&UserDataCompound, GHDFType_Long, ENTRY_ID_ACCOUNT_PASSWORD, PrimitiveHashArray, PASSWORD_HASH_LENGTH);
-//
-//	Value.ULong = 0;
-//	GHDFCompound_AddSingleValueEntry(&UserDataCompound, GHDFType_ULong, ENTRY_ID_ACCOUNT_PROFILE_IMAGE_ID, Value);
-//
-//	if (GHDFCompound_WriteToFile(DataPath, &UserDataCompound) != ErrorCode_Success)
-//	{
-//		GHDFCompound_Deconstruct(&UserDataCompound);
-//		return Error_GetLastErrorCode();
-//	}
-//
-//	GHDFCompound_Deconstruct(&UserDataCompound);
-//	Memory_Free(DataPath);
-//	Memory_Free(DataDirectoryPath);
-//}

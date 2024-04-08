@@ -6,7 +6,7 @@
 
 
 // Macros.
-#define SESSION_ID_LENGTH 128
+#define SESSION_ID_LENGTH 32
 #define MAX_SESSION_TIME 60 * 60 * 24 * 7
 
 
@@ -40,7 +40,7 @@ typedef struct SessionIDStruct
 {
 	time_t SessionStartTime;
 	unsigned long long AccountID;
-	unsigned char IDValues[SESSION_ID_LENGTH];
+	unsigned int IDValues[SESSION_ID_LENGTH];
 } SessionID;
 
 typedef struct CachedAccountStruct
@@ -70,7 +70,11 @@ typedef struct DBAccountContextStruct
 
 
 // Functions.
-ErrorCode AccountManager_ConstructContext(DBAccountContext* context, unsigned long long availableID, unsigned long long availableImageID);
+ErrorCode AccountManager_ConstructContext(DBAccountContext* context,
+	unsigned long long availableID,
+	unsigned long long availableImageID,
+	SessionID* sessions,
+	size_t sessionCount);
 
 void AccountManager_CloseContext(DBAccountContext* context);
 
@@ -84,14 +88,22 @@ bool AccountManager_TryCreateUnverifiedAccount(const char* name,
 	const char* email,
 	const char* password);
 
-UserAccount* AccountManager_GetAccountByID(unsigned long long id);
-
-UserAccount** AccountManager_GetAccountByName(const char* name, size_t* accountCount);
-
 ErrorCode AccountManager_VerifyAccount(const char* email);
 
 bool AccountManager_TryVerifyAccount(const char* email, int code);
 
-bool AccountManager_IsSessionAdmin(unsigned char* sessionIdValues);
+UserAccount* AccountManager_GetAccountByID(unsigned long long id);
 
-bool AccountManager_CreateSession(const char* email, const char* password);
+UserAccount** AccountManager_GetAccountsByName(const char* name, size_t* accountCount);
+
+UserAccount* AccountManager_GetAccountByEmail(const char* email);
+
+void AccountManager_DeleteAccount(UserAccount* account);
+
+void AccountManager_DeleteAllAccounts();
+
+bool AccountManager_IsSessionAdmin(unsigned int* sessionIdValues);
+
+SessionID* AccountManager_TryCreateSession(UserAccount* account, const char* password);
+
+SessionID* AccountManager_CreateSession(UserAccount* account);
