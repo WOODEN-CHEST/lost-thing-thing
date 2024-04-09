@@ -12,6 +12,7 @@
 #include "LTTChar.h"
 #include "IDCodepointHashMap.h"
 #include <signal.h>
+#include "ConfigFile.h"
 
 
 // Static variables.
@@ -19,20 +20,12 @@ static ServerContext s_currentContext;
 
 
 // Static functions
-static void CloseContext()
+static void CloseContext(ServerContext* context)
 {
-	ResourceManager_CloseContext(&LTTServerC_GetCurrentContext()->Resources);
-	Logger_LogInfo("Closed database context.");
+	ResourceManager_Deconstruct(&LTTServerC_GetCurrentContext()->Resources);
+	Logger_LogInfo(context->Logger, "Closed database context.");
 	Logger_CloseContext(&LTTServerC_GetCurrentContext()->Logger);
 	Memory_Free((char*)LTTServerC_GetCurrentContext()->RootPath);
-	Error_CloseContext(&LTTServerC_GetCurrentContext()->Errors);
-}
-
-static void OnCloseSignal(int caughtSignal)
-{
-	Logger_LogInfo("Server closing by SIGREAK signal.");
-	CloseContext();
-	exit(EXIT_SUCCESS);
 }
 
 static const char* CreateContext(ServerContext* context, const char* serverExecutablePath)
@@ -58,7 +51,7 @@ static const char* CreateContext(ServerContext* context, const char* serverExecu
 	Logger_LogInfo("Read configuration.");
 
 	// Database.
-	if (ResourceManager_ConstructContext(&context->Resources, context->RootPath) != ErrorCode_Success)
+	if (ResourceManager_Construct(&context->Resources, context->RootPath) != ErrorCode_Success)
 	{
 		return Error_GetLastErrorMessage();
 	}
@@ -92,25 +85,24 @@ static void Test(IDCodepointHashMap* map)
 static int RunServer(const char* executablePath)
 {
 	// Create context.
-	const char* ReturnErrorMessage = CreateContext(&s_currentContext, executablePath);
+	ServerContext Context;
+
+	const char* ReturnErrorMessage = CreateContext(&Context, executablePath);
 	if (ReturnErrorMessage)
 	{
 		printf("Failed to create server context: %s", ReturnErrorMessage);
 		return EXIT_FAILURE;
 	}
 
-	UserAccount* Account = AccountManager_GetAccountByEmail("keigers.klivers@marupe.edu.lv");
-	AccountManager_TryCreateSession(Account, "123456789");
-
 	// Start server.
- 	ErrorCode Error = HttpListener_Listen(LTTServerC_GetCurrentContext()->Configuration.Address);
-	if (Error != ErrorCode_Success)
+ 	Error Error = HttpListener_Listen(Context.Configuration->Address);
+	if (Error.Code != ErrorCode_Success)
 	{
 		Logger_LogError(Error_GetLastErrorMessage());
 	}
 
 	// Stop server.
-	Logger_LogInfo("Server closing by HTTP listener stopping.");
+	Logger_LogInfo(Context.Logger, "Server closing by HTTP listener stopping.");
 	CloseContext();
 
 	return EXIT_SUCCESS;
@@ -119,7 +111,6 @@ static int RunServer(const char* executablePath)
 // Functions.
 int main(int argc, const char** argv)
 {
-	signal(SIGBREAK, &OnCloseSignal);
 	return RunServer(argv[0]);
 }
 

@@ -103,9 +103,9 @@ void GHDFCompound_Construct(GHDFCompound* self, unsigned int capacity);
 
 GHDFCompound* GHDFCompound_Construct2(unsigned int capacity);
 
-ErrorCode GHDFCompound_AddSingleValueEntry(GHDFCompound* self, GHDFType type, int id, GHDFPrimitive value);
+Error GHDFCompound_AddSingleValueEntry(GHDFCompound* self, GHDFType type, int id, GHDFPrimitive value);
 
-ErrorCode GHDFCompound_AddArrayEntry(GHDFCompound* self, GHDFType type, int id, GHDFPrimitive* valueArray, unsigned int count);
+Error GHDFCompound_AddArrayEntry(GHDFCompound* self, GHDFType type, int id, GHDFPrimitive* valueArray, unsigned int count);
 
 void GHDFCompound_RemoveEntry(GHDFCompound* self, int id);
 
@@ -113,14 +113,14 @@ void GHDFCompound_Clear(GHDFCompound* self);
 
 GHDFEntry* GHDFCompound_GetEntry(GHDFCompound* self, int id);
 
-ErrorCode GHDFCompound_GetVerifiedEntry(GHDFCompound* self, int id, GHDFEntry** entry, GHDFType expectedType, const char* optionalMessage);
+Error GHDFCompound_GetVerifiedEntry(GHDFCompound* self, int id, GHDFEntry** entry, GHDFType expectedType, const char* optionalMessage);
 
-ErrorCode GHDFCompound_GetVerifiedOptionalEntry(GHDFCompound* self, int id, GHDFEntry** entry, GHDFType expectedType, const char* optionalMessage);
+Error GHDFCompound_GetVerifiedOptionalEntry(GHDFCompound* self, int id, GHDFEntry** entry, GHDFType expectedType, const char* optionalMessage);
 
 GHDFEntry* GHDFCompound_GetEntryOrDefault(GHDFCompound* self, int id, GHDFEntry* defaultEntry);
 
-ErrorCode GHDFCompound_ReadFromFile(const char* path, GHDFCompound* emptyBaseCompound);
+Error GHDFCompound_ReadFromFile(const char* path, GHDFCompound* emptyBaseCompound);
 
-ErrorCode GHDFCompound_WriteToFile(const char* path, GHDFCompound* compound);
+Error GHDFCompound_WriteToFile(const char* path, GHDFCompound* compound);
 
 void GHDFCompound_Deconstruct(GHDFCompound* self);

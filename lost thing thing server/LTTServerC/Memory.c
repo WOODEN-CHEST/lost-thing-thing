@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include "Memory.h"
 #include "LttErrors.h"
+#include <memory.h>
 
 // Functions.
 void* Memory_SafeMalloc(size_t size)
@@ -9,7 +10,7 @@ void* Memory_SafeMalloc(size_t size)
 
 	if (!Pointer)
 	{
-		Error_AbortProgram("Failed to safely allocate memory.");
+		Error_AbortProgram("Failed to safely allocate memory. Will now commit sewer slide.");
 		return NULL;
 	}
 
@@ -22,7 +23,7 @@ void* Memory_SafeRealloc(void* ptr, size_t size)
 
 	if (!Pointer)
 	{
-		Error_AbortProgram("Failed to safely reallocate memory.");
+		Error_AbortProgram("Failed to safely reallocate memory. Will now self destruct.");
 		return NULL;
 	}
 
@@ -36,16 +37,10 @@ void Memory_Free(void* ptr)
 
 void Memory_Copy(const char* source, char* destination, size_t size)
 {
-	for (size_t i = 0; i < size; i++)
-	{
-		destination[i] = source[i];
-	}
+	memcpy(destination, source, size);
 }
 
-void Memory_Set(unsigned char* memoryToSet, size_t memorySize, unsigned char value)
+void Memory_Set(char* memoryToSet, size_t memorySize, unsigned char value)
 {
-	for (int i = 0; i < memorySize; i++)
-	{
-		memoryToSet[i] = value;
-	}
+	memset(memoryToSet, value, memorySize);
 }

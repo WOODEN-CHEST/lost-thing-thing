@@ -1,10 +1,8 @@
 #pragma once
 #include "HttpListener.h"
 #include <stddef.h>
-#include "IDCodepointHashMap.h"
 #include "LTTErrors.h"
 #include "LttString.h"
-#include "LTTAccountManager.h"
 
 
 // Types.
@@ -21,9 +19,6 @@ typedef struct ServerResourceContextStruct
 {
 	const char* SourceRootPath;
 	const char* DatabaseRootPath;
-	const char* GlobalDataFilePath;
-
-	DBAccountContext AccountContext;
 
 	unsigned long long AvailablePostID;
 	IDCodepointHashMap PostTitleMap;
@@ -41,12 +36,12 @@ typedef struct ServerResourceRequestStruct
 
 
 // Functions.
-ErrorCode ResourceManager_ConstructContext(ServerResourceContext* context, const char* dataRootPath);
+void ResourceManager_Construct(ServerResourceContext* context, const char* dataRootPath);
 
-void ResourceManager_CloseContext(ServerResourceContext* context);
+void ResourceManager_Deconstruct(ServerResourceContext* context);
 
-ResourceResult ResourceManager_Get(ServerResourceRequest* request);
+ResourceResult ResourceManager_Get(ServerContext* context, ServerResourceRequest* request);
 
-ResourceResult ResourceManager_Post(ServerResourceRequest* request);
+ResourceResult ResourceManager_Post(ServerContext* context, ServerResourceRequest* request);
 
-const char* ResourceManager_GetPathToIDFile(unsigned long long id, const char* dirName);
+const char* ResourceManager_GetPathToIDFile(const char* rootPath, unsigned long long id);

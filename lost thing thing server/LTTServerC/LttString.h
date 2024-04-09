@@ -178,11 +178,11 @@ void StringBuilder_Append(StringBuilder* this, const char* string);
 
 void StringBuilder_AppendChar(StringBuilder* this, char character);
 
-ErrorCode StringBuilder_Insert(StringBuilder* this, const char* string, size_t charIndex);
+Error StringBuilder_Insert(StringBuilder* this, const char* string, size_t charIndex);
 
-ErrorCode StringBuilder_InsertChar(StringBuilder* this, char character, size_t charIndex);
+Error StringBuilder_InsertChar(StringBuilder* this, char character, size_t charIndex);
 
-ErrorCode StringBuilder_Remove(StringBuilder* this, size_t startIndex, size_t endIndex);
+Error StringBuilder_Remove(StringBuilder* this, size_t startIndex, size_t endIndex);
 
 void StringBuilder_Clear(StringBuilder* this);
 

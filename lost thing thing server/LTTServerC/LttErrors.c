@@ -4,18 +4,11 @@
 #include <stdio.h>
 #include <string.h>
 #include "LTTServerC.h"
-
-
-// Macros.
-#define ERROR_MESSAGE_DEFAULT_CAPACITY 512
-#define ERROR_MESSAGE_CAPACITY_GROWTH 2
-
-
-// Variables.
+#include "Memory.h"
 
 
 // Static functions.
-static void CopyErrorNameIntoBuffer(int code, char* buffer)
+static void CopyErrorNameIntoBuffer(ErrorCode code, char* buffer)
 {
 	switch (code)
 	{
@@ -73,91 +66,57 @@ static void CopyErrorNameIntoBuffer(int code, char* buffer)
 	}
 }
 
-static void EnsureMessageBufferCapacity(size_t capacity)
+static const char* GetErrorMessage(ErrorCode code, const char* message)
 {
-	ErrorContext* Context = &LTTServerC_GetCurrentContext()->Errors;
-	if (Context->_lastErrorMessageCapacity < capacity)
+	if (code == ErrorCode_Success)
 	{
-		do
-		{
-			Context->_lastErrorMessageCapacity *= ERROR_MESSAGE_CAPACITY_GROWTH;
-		} while (Context->_lastErrorMessageCapacity < capacity);
-
-		void* NewPointer = realloc(Context->_lastErrorMessage , Context->_lastErrorMessageCapacity);
-		if (!NewPointer)
-		{
-			free(Context->_lastErrorMessage);
-			Error_AbortProgram("Error handler failed to reallocate memory.");
-			return;
-		}
-		Context->_lastErrorMessage = (char*)NewPointer;
+		return NULL;
 	}
+
+	const size_t MAX_ERROR_NAME_SIZE = 50;
+	size_t MessageLength = strlen(message);
+
+	char* FinalMessage = (char*)Memory_SafeMalloc(MessageLength + MAX_ERROR_NAME_SIZE);
+
+	CopyErrorNameIntoBuffer(code, FinalMessage);
+	size_t CodeNameLength = strlen(FinalMessage);
+	strcpy(FinalMessage + CodeNameLength, message);
+
+	return FinalMessage;
 }
 
 
 // Functions.
-void Error_ConstructContext(ErrorContext* context)
+Error Error_CreateError(ErrorCode code, const char* message)
 {
-	context->_lastErrorCode = ErrorCode_Success;
-	context->_lastErrorMessageCapacity = ERROR_MESSAGE_DEFAULT_CAPACITY;
-
-	context->_lastErrorMessage = (char*)malloc(context->_lastErrorMessageCapacity);
-	if (!context->_lastErrorMessage)
+	Error CreatedError =
 	{
-		Error_AbortProgram("Failed to initialize error handling.");
-		return;
-	}
-
-	context->_lastErrorMessage[0] = '\0';
+		.Code = code,
+		.Message = GetErrorMessage(code, message)
+	};
+	return CreatedError;
 }
 
-void Error_CloseContext(ErrorContext* context)
+Error Error_CreateSuccess()
 {
-	free(context->_lastErrorMessage);
+	Error CreatedError =
+	{
+		.Code = ErrorCode_Success,
+		.Message = NULL
+	};
+	return CreatedError;
+}
+
+void Error_Deconstruct(Error* error)
+{
+	if (error->Message)
+	{
+		free(error->Message);
+	}
 }
 
 void Error_AbortProgram(const char* message)
 {
 	printf(message);
 	exit(EXIT_FAILURE);
-}
-
-ErrorCode Error_SetError(int code, const char* message)
-{
-	if ((code < ErrorCode_Success) || (code > ErrorCode_Unknown))
-	{
-		code = ErrorCode_Unknown;
-	}
-
-	ErrorContext* Context = &LTTServerC_GetCurrentContext()->Errors;
-	Context->_lastErrorCode = code;
-
-	char ErrorName[128];
-	CopyErrorNameIntoBuffer(code, ErrorName);
-
-	size_t ErrorTypeMessageLength = strlen(ErrorName);
-	size_t MessageLength = strlen(message);
-	size_t RequiredMemory = ErrorTypeMessageLength + MessageLength + 1;
-	EnsureMessageBufferCapacity(RequiredMemory);
-
-	strcpy(Context->_lastErrorMessage, ErrorName);
-	strcpy(Context->_lastErrorMessage + ErrorTypeMessageLength, message);
-
-	return code;
-}
-
-ErrorCode Error_GetLastErrorCode()
-{
-	return LTTServerC_GetCurrentContext()->Errors._lastErrorCode;
-}
-
-const char* Error_GetLastErrorMessage()
-{
-	return LTTServerC_GetCurrentContext()->Errors._lastErrorMessage;
-}
-
-void Error_ClearError()
-{
-	LTTServerC_GetCurrentContext()->Errors._lastErrorCode = ErrorCode_Success;
-	LTTServerC_GetCurrentContext()->Errors._lastErrorMessage[0] = '\0';
 }

@@ -21,28 +21,28 @@ typedef enum File_OpenModeEnum File_OpenMode;
 
 
 // Functions.
-FILE* File_Open(const char* path, File_OpenMode mode);
+FILE* File_Open(const char* path, File_OpenMode mode, Error* error);
 
-int File_ReadByte(FILE* file);
+int File_ReadByte(FILE* file, Error* error);
 
 size_t File_Read(FILE* file, char* dataBuffer, size_t count);
 
-char* File_ReadAllText(FILE* file);
+char* File_ReadAllText(FILE* file, Error* error);
 
-char* File_ReadAllData(FILE* file, size_t* dataLength);
+char* File_ReadAllData(FILE* file, size_t* dataLength, Error* error);
 
-ErrorCode File_Write(FILE* file, const char* data, size_t dataLength);
+Error File_Write(FILE* file, const char* data, size_t dataLength);
 
-ErrorCode File_WriteText(FILE* file, const char* string);
+Error File_WriteText(FILE* file, const char* string);
 
-ErrorCode File_WriteByte(FILE* file, int byte);
+Error File_WriteByte(FILE* file, int byte);
 
-ErrorCode File_Flush(FILE* file);
+Error File_Flush(FILE* file);
 
-ErrorCode File_Close(FILE* file);
+Error File_Close(FILE* file);
 
-ErrorCode File_Delete(const char* path);
+void File_Delete(const char* path);
 
 _Bool File_Exists(const char* path);
 
-ErrorCode File_Move(const char* sourcePath, const char* destinationPath);
+Error File_Move(const char* sourcePath, const char* destinationPath);

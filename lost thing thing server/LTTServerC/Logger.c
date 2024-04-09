@@ -156,9 +156,9 @@ static void BackupLog(const char* oldLogFilePath, const char* logRootDirectoryPa
 }
 
 // Functions.
-char* Logger_ConstructContext(LoggerContext* context, const char* rootDirectoryPath)
+Error Logger_Construct(Logger* logger, const char* rootDirectoryPath)
 {
-	context->LogFile = NULL;
+	logger->LogFile = NULL;
 
 	// Create directories.
 	char* LogDirPath = Directory_CombinePaths(rootDirectoryPath, LOGS_DIR_NAME);
@@ -170,76 +170,64 @@ char* Logger_ConstructContext(LoggerContext* context, const char* rootDirectoryP
 
 	// Create current log  file.
 	File_Delete(LogFilePath);
-	context->LogFile = File_Open(LogFilePath, FileOpenMode_Write);
+	logger->LogFile = File_Open(LogFilePath, FileOpenMode_Write);
 
-	if (context->LogFile == NULL)
+	if (logger->LogFile == NULL)
 	{
-		return "IO Error creating logger file.";
+		return Error_CreateError(ErrorCode_IO, "Failed to create log file.");
 	}
 
-	StringBuilder_Construct(&context->_logTextBuilder, DEFAULT_STRING_BUILDER_CAPACITY);
-
+	StringBuilder_Construct(&logger->_logTextBuilder, DEFAULT_STRING_BUILDER_CAPACITY);
 
 	// Free memory.
 	Memory_Free((char*)LogFilePath);
 	Memory_Free(LogDirPath);
 
-	return NULL;
+	return Error_CreateSuccess();
 }
 
 
-ErrorCode Logger_CloseContext(LoggerContext* context)
+Error Logger_Deconstruct(Logger* logger)
 {
-	if (context->LogFile == NULL)
-	{
-		return Error_SetError(ErrorCode_IllegalOperation, "Cannot close logger since it isn't initialized yet.");
-	}
+	File_Close(logger->LogFile);
+	StringBuilder_Deconstruct(&logger->_logTextBuilder);
 
-	File_Close(context->LogFile);
-	StringBuilder_Deconstruct(&context->_logTextBuilder);
-
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
-ErrorCode Logger_Log(Logger_LogLevel level, const char* string)
+Error Logger_Log(Logger* logger, Logger_LogLevel level, const char* string)
 {
-	LoggerContext* Context = &LTTServerC_GetCurrentContext()->Logger;
+	AddDateTime(&logger->_logTextBuilder);
+	AddLevel(&logger->_logTextBuilder, level);
+	StringBuilder_AppendChar(&logger->_logTextBuilder, ' ');
+	StringBuilder_Append(&logger->_logTextBuilder, string);
+	StringBuilder_AppendChar(&logger->_logTextBuilder, '\n');
 
-	if (Context->LogFile == NULL)
-	{
-		return Error_SetError(ErrorCode_IllegalOperation, "Cannot log, logger not initialized.");
-	}
+	File_WriteText(logger->LogFile, logger->_logTextBuilder.Data);
+	File_Flush(logger->LogFile);
+	printf(logger->_logTextBuilder.Data);
 
-	AddDateTime(&Context->_logTextBuilder);
-	AddLevel(&Context->_logTextBuilder, level);
-	StringBuilder_AppendChar(&Context->_logTextBuilder, ' ');
-	StringBuilder_Append(&Context->_logTextBuilder, string);
-	StringBuilder_AppendChar(&Context->_logTextBuilder, '\n');
+	StringBuilder_Clear(&logger->_logTextBuilder);
 
-	File_WriteText(Context->LogFile, Context->_logTextBuilder.Data);
-	printf(Context->_logTextBuilder.Data);
-
-	StringBuilder_Clear(&Context->_logTextBuilder);
-
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
-ErrorCode Logger_LogInfo(const char* string)
+Error Logger_LogInfo(Logger* logger, const char* string)
 {
-	return Logger_Log(LogLevel_Info, string);
+	return Logger_Log(logger, LogLevel_Info, string);
 }
 
-ErrorCode Logger_LogWarning(const char* string)
+Error Logger_LogWarning(Logger* logger, const char* string)
 {
-	return Logger_Log(LogLevel_Warning, string);
+	return Logger_Log(logger, LogLevel_Warning, string);
 }
 
-ErrorCode Logger_LogError(const char* string)
+Error Logger_LogError(Logger* logger, const char* string)
 {
-	return Logger_Log(LogLevel_Error, string);
+	return Logger_Log(logger, LogLevel_Error, string);
 }
 
-ErrorCode Logger_LogCritical(const char* string)
+Error Logger_LogCritical(Logger* logger, const char* string)
 {
-	return Logger_Log(LogLevel_Critical, string);
+	return Logger_Log(logger, LogLevel_Critical, string);
 }

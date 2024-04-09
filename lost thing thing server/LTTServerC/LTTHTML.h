@@ -2,16 +2,19 @@
 #include <stddef.h>
 #include "LTTErrors.h"
 
+#define HTML_ATTRIBUTE_MAX_NAME_LENGTH 32
+#define HTML_ELEMENT_MAX_NAME_LENGTH 32
+
 typedef struct HTMLAttributeStruct
 {
-	char Name[32];
+	char Name[HTML_ATTRIBUTE_MAX_NAME_LENGTH];
 	char* Value;
 } HTMLAttribute;
 
 
 typedef struct HTMLElementStruct
 {
-	char Name[32];
+	char Name[HTML_ELEMENT_MAX_NAME_LENGTH];
 	char* Contents; // May be null.
 
 	struct HTMLElementStruct** SubElementArray; // May be null.
@@ -51,9 +54,9 @@ void HTMLDocument_Deconstruct(HTMLDocument* document);
 
 /* Elements. */
 /* All elements MUST be allocated on the heap. */
-ErrorCode HTMLElement_Construct(HTMLElement* element, const char* name);
+Error HTMLElement_Construct(HTMLElement* element, const char* name);
 
-ErrorCode HTMLElement_SetAttribute(HTMLElement* element, const char* name, const char* value);
+Error HTMLElement_SetAttribute(HTMLElement* element, const char* name, const char* value);
 
 HTMLAttribute* HTMLElement_GetAttribute(HTMLElement* element, const char* name);
 

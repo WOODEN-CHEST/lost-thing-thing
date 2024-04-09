@@ -19,6 +19,6 @@ typedef struct ServerConfigStruct
 
 
 // Functions.
-ErrorCode ServerConfig_Read(const char* configPath, ServerConfig* config);
+Error ServerConfig_Read(ServerConfig* config, Logger* logger, const char* configPath);
 
 void ServerConfig_Deconstruct(ServerConfig* config);

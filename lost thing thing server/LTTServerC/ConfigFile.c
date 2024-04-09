@@ -75,41 +75,42 @@ static void AddDomain(ServerConfig* config, const char* domain)
 	config->AcceptedDomainCount += 1;
 }
 
-static ErrorCode SetAddress(ServerConfig* config, const char* address)
+static Error SetAddress(ServerConfig* config, const char* address)
 {
 	if ((String_LengthBytes(address) + 1) > sizeof(config->Address))
 	{
-		return Error_SetError(ErrorCode_InvalidConfigFile, "IP address too long in config file.");
+		return Error_CreateError(ErrorCode_InvalidConfigFile, "IP address too long in config file.");
 	}
 
 	String_CopyTo(address, config->Address);
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
-static ErrorCode HandleConfigurationKeyValuePar(ServerConfig* config, const char* key, const char* value)
+static Error HandleConfigurationKeyValuePar(ServerConfig* config, Logger* logger, const char* key, const char* value)
 {
-	if (String_Equals(key, KEY_EMAIL_DOMAIN))
+	if (String_EqualsCaseInsensitive(key, KEY_EMAIL_DOMAIN))
 	{
 		AddDomain(config, value);
 	}
-	else if (String_Equals(key, KEY_ADDRESS))
+	else if (String_EqualsCaseInsensitive(key, KEY_ADDRESS))
 	{
-		if (SetAddress(config, value) != ErrorCode_Success)
+		Error ReturnedError = SetAddress(config, value);
+		if (ReturnedError.Code != ErrorCode_Success)
 		{
-			return Error_GetLastErrorCode();
+			return ReturnedError;
 		}
 	}
 	else
 	{
 		char Message[KEY_BUFFER_SIZE * 2];
 		sprintf(Message, "Unknown configuration key found: \"%s\"", key);
-		Logger_LogWarning(Message);
+		Logger_LogWarning(logger, Message);
 	}
 
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
-static ErrorCode ParseConfiguration(ServerConfig* config, const char* configText)
+static Error ParseConfiguration(ServerConfig* config, Logger* logger, const char* configText)
 {
 	const char* ShiftedText = configText;
 
@@ -120,16 +121,17 @@ static ErrorCode ParseConfiguration(ServerConfig* config, const char* configText
 
 		if (*ShiftedText != VALUE_ASSIGNMENT_OPERATOR)
 		{
-			return Error_SetError(ErrorCode_InvalidConfigFile, "Did not find value assignment operator '=' after key in config file.");
+			return Error_CreateError(ErrorCode_InvalidConfigFile, "Did not find value assignment operator '=' after key in config file.");
 		}
 		ShiftedText++;
 
 		char Value[VALUE_BUFFER_SIZE];
 		ShiftedText = ParseUntil(ShiftedText, Value, sizeof(Value), '\n');
 		
-		if (HandleConfigurationKeyValuePar(config, Key, Value) != ErrorCode_Success)
+		Error ReturnedError = HandleConfigurationKeyValuePar(config, logger, Key, Value);
+		if (ReturnedError.Code != ErrorCode_Success)
 		{
-			return Error_GetLastErrorCode();
+			return ReturnedError;
 		}
 
 		if (*ShiftedText == '\n')
@@ -138,7 +140,7 @@ static ErrorCode ParseConfiguration(ServerConfig* config, const char* configText
 		}
 	}
 
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
 static void LoadDefaultConfig(ServerConfig* config)
@@ -159,7 +161,7 @@ static void ServerConfigConstruct(ServerConfig* config)
 
 
 // Functions.
-ErrorCode ServerConfig_Read(const char* configPath, ServerConfig* config)
+Error ServerConfig_Read(ServerConfig* config, Logger* logger, const char* configPath)
 {
 	ServerConfigConstruct(config);
 
@@ -167,8 +169,8 @@ ErrorCode ServerConfig_Read(const char* configPath, ServerConfig* config)
 	if (!File)
 	{
 		LoadDefaultConfig(config);
-		Logger_LogWarning("No config file found, loading default config.");
-		return ErrorCode_Success;
+		Logger_LogWarning(logger, "No config file found, loading default config.");
+		return Error_CreateSuccess();
 	}
 
 	const char* FileData = File_ReadAllText(File);
@@ -176,18 +178,21 @@ ErrorCode ServerConfig_Read(const char* configPath, ServerConfig* config)
 
 	if (!FileData)
 	{
-		Logger_LogWarning("Config file found, but failed to read it's contents. Loading default config.");
+		Logger_LogWarning(logger, "Config file found, but failed to read it's contents. Loading default config.");
 		LoadDefaultConfig(config);
+		return Error_CreateSuccess();
 	}
 
-	if (ParseConfiguration(config, FileData) != ErrorCode_Success)
+	Error ReturnedError = ParseConfiguration(config, logger, FileData);
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
+		Logger_LogWarning(logger, ReturnedError.Message);
 		ServerConfig_Deconstruct(config); // Get rid of any data left while trying to parse config.
 		ServerConfigConstruct(config); // Prepare for default config.
 		LoadDefaultConfig(config);
 	}
 
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
 void ServerConfig_Deconstruct(ServerConfig* config)

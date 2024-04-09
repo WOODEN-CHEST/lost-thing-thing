@@ -15,24 +15,24 @@ enum Logger_LogLevelEnum
 
 typedef enum Logger_LogLevelEnum Logger_LogLevel;
 
-typedef struct LoggerContextStruct
+typedef struct LoggerStruct
 {
 	FILE* LogFile;
 	StringBuilder _logTextBuilder;
-} LoggerContext;
+} Logger;
 
 
 // Functions.
-char* Logger_ConstructContext(LoggerContext* context, const char* serverRootPath);
+Error Logger_Construct(Logger* logger, const char* serverRootPath);
 
-ErrorCode Logger_CloseContext(LoggerContext* context);
+ErrorCode Logger_Deconstruct(Logger* logger);
 
-ErrorCode Logger_Log(Logger_LogLevel level, const char* string);
+ErrorCode Logger_Log(Logger* logger, Logger_LogLevel level, const char* string);
 
-ErrorCode Logger_LogInfo(const char* string);
+ErrorCode Logger_LogInfo(Logger* logger, const char* string);
 
-ErrorCode Logger_LogWarning(const char* string);
+ErrorCode Logger_LogWarning(Logger* logger, const char* string);
 
-ErrorCode Logger_LogError(const char* string);
+ErrorCode Logger_LogError(Logger* logger, const char* string);
 
-ErrorCode Logger_LogCritical(const char* string);
+ErrorCode Logger_LogCritical(Logger* logger, const char* string);

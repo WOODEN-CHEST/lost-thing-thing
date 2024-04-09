@@ -1,6 +1,7 @@
 #pragma once
 #include "LttErrors.h"
 #include <stdbool.h>
+#include "LTTServerC.h"
 
 
 // Macros.
@@ -39,4 +40,4 @@ typedef struct HttpClientRequestStruct
 
 
 // Functions.
-ErrorCode HttpListener_Listen(const char* address);
+Error HttpListener_Listen(ServerContext* context);

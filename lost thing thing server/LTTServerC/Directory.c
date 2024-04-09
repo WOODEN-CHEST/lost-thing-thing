@@ -23,17 +23,17 @@ _Bool Directory_Exists(const char* path)
 	return Result == 0;
 }
 
-ErrorCode Directory_Create(const char* path)
+Error Directory_Create(const char* path)
 {
 	bool Result = CreateDirectoryA(path, NULL);
-	return Result ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "Directory_Create: Failed to create directory.");
+	return Result ? Error_CreateSuccess() : Error_CreateError(ErrorCode_IO, "Directory_Create: Failed to create directory.");
 }
 
-ErrorCode Directory_CreateAll(const char* path)
+void Directory_CreateAll(const char* path)
 {
 	if (path[0] == '\0')
 	{
-		return ErrorCode_Success;
+		return;
 	}
 	char* Path = String_CreateCopy(path);
 
@@ -50,14 +50,12 @@ ErrorCode Directory_CreateAll(const char* path)
 	Directory_Create(path);
 
 	Memory_Free(Path);
-
-	return ErrorCode_Success;
 }
 
-ErrorCode Directory_Delete(const char* path)
+Error Directory_Delete(const char* path)
 {
 	bool Result = RemoveDirectoryA(path);
-	return Result ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "Directory_Delete: Failed to delete directory.");
+	return Result ? Error_CreateSuccess(0) : Error_CreateError(ErrorCode_IO, "Directory_Delete: Failed to delete directory.");
 }
 
 char* Directory_GetParentDirectory(const char* path)

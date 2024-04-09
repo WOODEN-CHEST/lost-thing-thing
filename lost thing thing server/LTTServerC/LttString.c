@@ -10,13 +10,11 @@
 
 // Macros.
 #define STRING_BUILDER_CAPACITY_GROWTH 4
-
 #define STRING_ARRAY_CAPACITY_GROWTH 2
 
 
 // Static functions.
-// Functions.
-// String.
+/* String */
 size_t String_LengthCodepointsUTF8(const char* string)
 {
 	size_t Length = 0;
@@ -150,19 +148,12 @@ char* String_SubString(const char* string, size_t startIndex, size_t endIndex)
 {
 	if (endIndex < startIndex)
 	{
-		Error_SetError(ErrorCode_IndexOutOfRange, "String_SubString: endIndex is lower than startIndex");
 		return NULL;
 	}
 
 	size_t ByteLength = String_LengthBytes(string);
-	if (startIndex > ByteLength)
+	if ((startIndex > ByteLength) || (endIndex > ByteLength))
 	{
-		Error_SetError(ErrorCode_IndexOutOfRange, "String_SubString: startIndex is greater than the length of the string.");
-		return NULL;
-	}
-	if (endIndex > ByteLength)
-	{
-		Error_SetError(ErrorCode_IndexOutOfRange, "String_SubString: endIndex is greater than the length of the string.");
 		return NULL;
 	}
 
@@ -455,17 +446,17 @@ void StringBuilder_AppendChar(StringBuilder* this, char character)
 	this->Length++;
 }
 
-ErrorCode StringBuilder_Insert(StringBuilder* this, const char* string, size_t charIndex)
+Error StringBuilder_Insert(StringBuilder* this, const char* string, size_t charIndex)
 {
 	if (charIndex > this->Length)
 	{
-		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Insert: Index is larger than the length of the string.");
+		return Error_CreateError(ErrorCode_IndexOutOfRange, "StringBuilder_Insert: Index is larger than the length of the string.");
 	}
 
 	const long long StringLength = (long long)String_LengthBytes(string);
 	if (StringLength == 0)
 	{
-		return ErrorCode_Success;
+		return Error_CreateSuccess();
 	}
 
 	StringBuilder_EnsureCapacity(this, this->Length + 1 + StringLength);
@@ -483,14 +474,14 @@ ErrorCode StringBuilder_Insert(StringBuilder* this, const char* string, size_t c
 	this->Length += StringLength;
 	this->Data[this->Length] = '\0';
 
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
-ErrorCode StringBuilder_InsertChar(StringBuilder* this, char character, size_t charIndex)
+Error StringBuilder_InsertChar(StringBuilder* this, char character, size_t charIndex)
 {
 	if (charIndex > this->Length)
 	{
-		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_InsertChar: Index is larger than the length of the string.");
+		return Error_CreateError(ErrorCode_IndexOutOfRange, "StringBuilder_InsertChar: Index is larger than the length of the string.");
 	}
 
 	for (size_t i = this->Length; i > charIndex; i--)
@@ -502,28 +493,28 @@ ErrorCode StringBuilder_InsertChar(StringBuilder* this, char character, size_t c
 	this->Length += 1;
 	this->Data[this->Length] = '\0';
 
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
-ErrorCode StringBuilder_Remove(StringBuilder* this, size_t startIndex, size_t endIndex)
+Error StringBuilder_Remove(StringBuilder* this, size_t startIndex, size_t endIndex)
 {
 	if (startIndex > endIndex)
 	{
-		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: startIndex is greater than endIndex.");
+		return Error_CreateError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: startIndex is greater than endIndex.");
 	}
 	if (startIndex > this->Length)
 	{
-		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: startIndex is greater than the string's length.");
+		return Error_CreateError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: startIndex is greater than the string's length.");
 	}
 	if (endIndex > this->Length)
 	{
-		return Error_SetError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: endIndex is greater than the string's length.");
+		return Error_CreateError(ErrorCode_IndexOutOfRange, "StringBuilder_Remove: endIndex is greater than the string's length.");
 	}
 
 	size_t RemovedLength = (endIndex - startIndex);
 	if (RemovedLength == 0)
 	{
-		return ErrorCode_Success;
+		return Error_CreateSuccess();
 	}
 	
 	for (size_t i = endIndex; i < this->Length; i++)
@@ -534,7 +525,7 @@ ErrorCode StringBuilder_Remove(StringBuilder* this, size_t startIndex, size_t en
 	this->Length -= RemovedLength;
 	this->Data[this->Length] = '\0';
 
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
 void StringBuilder_Clear(StringBuilder* this)

@@ -14,44 +14,45 @@
 
 
 // Static functions.
-static char* AllocateMemoryForFileRead(FILE* file, size_t* fileSize, size_t extraBufferSize)
+static char* AllocateMemoryForFileRead(FILE* file, size_t* fileSize, size_t extraBufferSize, Error* error)
 {
 	long long CurPosition = ftell(file);
 	if (CurPosition == -1)
 	{
-		Error_SetError(ErrorCode_IO, "(File) AllocateMemoryForFileRead: Failed to tell current position.");
+		*error = Error_CreateError(ErrorCode_IO, "(File) AllocateMemoryForFileRead: Failed to tell current position.");
 		return NULL;
 	}
 
 	int Result = fseek(file, 0, SEEK_END);
 	if (Result)
 	{
-		Error_SetError(ErrorCode_IO, "File_ReadAllText: Failed to seek to file end.");
+		*error = Error_CreateError(ErrorCode_IO, "(File) AllocateMemoryForFileRead: Failed to seek to file end.");
 		return NULL;
 	}
 
 	long long Length = ftell(file);
 	if (Length == -1)
 	{
-		Error_SetError(ErrorCode_IO, "File_ReadAllText: Failed to tell the file's stream position.");
+		*error = Error_CreateError(ErrorCode_IO, "(File) AllocateMemoryForFileRead: Failed to tell the file's stream position.");
 		return NULL;
 	}
 
 	Result = fseek(file, 0, SEEK_SET);
 	if (Result)
 	{
-		Error_SetError(ErrorCode_IO, "File_ReadAllText: Failed to seek to file start.");
+		*error = Error_CreateError(ErrorCode_IO, "(File) AllocateMemoryForFileRead: Failed to seek to file start.");
 		return NULL;
 	}
 
 	*fileSize = (size_t)Length;
 	char* Data = Memory_SafeMalloc((size_t)Length + extraBufferSize);
+	*error = Error_CreateSuccess();
 	return Data;
 }
 
 
 // Functions.
-FILE* File_Open(const char* path, File_OpenMode mode)
+FILE* File_Open(const char* path, File_OpenMode mode, Error* error)
 {
 	char OpenMode[MODE_STRING_LENGTH];
 	switch (mode)
@@ -93,28 +94,43 @@ FILE* File_Open(const char* path, File_OpenMode mode)
 			break;
 
 		default:
-			Error_SetError(ErrorCode_InvalidArgument, "File_Open: Invalid open mode.");
+			if (error)
+			{
+				*error = Error_CreateError(ErrorCode_InvalidArgument, "File_Open: Invalid open mode.");
+			}
 			return NULL;
 	}
 
 	FILE* File = fopen(path, OpenMode);
-	if (File == NULL)
+	if (!File && error)
 	{
-		Error_SetError(ErrorCode_IO, "File_Open: Failed to open file.");
+		*error = Error_CreateError(ErrorCode_IO, "File_Open: Failed to open file.");
 	}
+	else if (error)
+	{
+		*error = Error_CreateSuccess();
+	}
+
 	return File;
 }
 
-int File_ReadByte(FILE* file)
+int File_ReadByte(FILE* file, Error* error)
 {
-	Error_ClearError();
-
 	int Result = fgetc(file);
 	if (Result == EOF)
 	{
-		Error_SetError(ErrorCode_IO, "File_ReadByte: Failed to read byte.");
+		if (error)
+		{
+			*error = Error_CreateError(ErrorCode_IO, "File_ReadByte: Failed to read byte.");
+		}
 		return 0;
 	}
+
+	if (error)
+	{
+		*error = Error_CreateSuccess();
+	}
+
 	return Result;
 }
 
@@ -123,71 +139,93 @@ size_t File_Read(FILE* file, char* dataBuffer, size_t count)
 	return fread(dataBuffer, sizeof(char), count, file);
 }
 
-char* File_ReadAllText(FILE* file)
+char* File_ReadAllText(FILE* file, Error* error)
 {
 	size_t FileSize;
-	char* Buffer = AllocateMemoryForFileRead(file, &FileSize, 1);
-	if (!Buffer)
+	Error ReturnedError;
+	char* Buffer = AllocateMemoryForFileRead(file, &FileSize, 1, &ReturnedError);
+
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
-		Error_SetError(ErrorCode_IO, "File_ReadAllText: Failed to create buffer for file data.");
+		if (error)
+		{
+			*error = ReturnedError;
+		}
 		return NULL;
 	}
 
 	size_t Result = fread(Buffer, sizeof(char), FileSize, file);
 
 	Buffer[Result] = '\0';
+
+	if (error)
+	{
+		*error = Error_CreateSuccess();
+	}
+
 	return Buffer;
 }
 
-char* File_ReadAllData(FILE* file, size_t* dataLength)
+char* File_ReadAllData(FILE* file, size_t* dataLength, Error* error)
 {
 	size_t FileSize;
-	char* Buffer = AllocateMemoryForFileRead(file, &FileSize, 0);
+	Error ReturnedError;
+	char* Buffer = AllocateMemoryForFileRead(file, &FileSize, 0, &ReturnedError);
+
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		if (error)
+		{
+			*error = ReturnedError;
+		}
+		return NULL;
+	}
+
 	*dataLength = fread(Buffer, sizeof(char), FileSize, file);
+
+	if (error)
+	{
+		*error = Error_CreateSuccess();
+	}
+	
 	return Buffer;
 }
 
-ErrorCode File_Write(FILE* file, const char* data, size_t dataLength)
+Error File_Write(FILE* file, const char* data, size_t dataLength)
 {
 	size_t Result = fwrite(data, 1, dataLength, file);;
-	return Result != EOF ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "File_Write: Failed to write bytes to file.");
+	return Result != EOF ? Error_CreateSuccess() : Error_CreateError(ErrorCode_IO, "File_Write: Failed to write bytes to file.");
 }
 
-ErrorCode File_WriteText(FILE* file, const char* string)
+Error File_WriteText(FILE* file, const char* string)
 {
 	int Result = fputs(string, file);
-	return Result != EOF ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "File_WriteString: Failed to write string to file.");
+	return Result != EOF ? Error_CreateSuccess() : Error_CreateError(ErrorCode_IO, "File_WriteString: Failed to write string to file.");
 }
 
-ErrorCode File_WriteByte(FILE* file, int byte)
+Error File_WriteByte(FILE* file, int byte)
 {
 	int Result = fputc(byte, file);
-	return Result == byte ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "File_WriteByte: Failed to write byte");
+	return Result == byte ? Error_CreateSuccess() : Error_CreateError(ErrorCode_IO, "File_WriteByte: Failed to write byte");
 }
 
-ErrorCode File_Flush(FILE* file)
+Error File_Flush(FILE* file)
 {
 	int Success = fflush(file);
 
-	return Success == 0 ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "File_Flush: Failed to flush file.");
+	return Success == 0 ? Error_CreateSuccess() : Error_CreateError(ErrorCode_IO, "File_Flush: Failed to flush file.");
 }
 
-ErrorCode File_Close(FILE* file)
+Error File_Close(FILE* file)
 {
 	int Success = fclose(file);
 
-	return Success == 0 ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "File_Close: Failed to close file.");
+	return Success == 0 ? Error_CreateSuccess() : Error_CreateError(ErrorCode_IO, "File_Close: Failed to close file.");
 }
 
-ErrorCode File_Delete(const char* path)
+void File_Delete(const char* path)
 {
-	int Result = remove(path);
-
-	if (!Result)
-	{
-		return ErrorCode_Success;
-	}
-	return Error_SetError(ErrorCode_IO, "File_Delete: Failed to delete file.");
+	remove(path);
 }
 
 _Bool File_Exists(const char* path)
@@ -196,7 +234,7 @@ _Bool File_Exists(const char* path)
 	return !stat(path, &FileStats);
 }
 
-ErrorCode File_Move(const char* sourcePath, const char* destinationPath)
+Error File_Move(const char* sourcePath, const char* destinationPath)
 {
-	return MoveFileA(sourcePath, destinationPath) ? ErrorCode_Success : Error_SetError(ErrorCode_IO, "File_Move: Failed to move file");
+	return MoveFileA(sourcePath, destinationPath) ? Error_CreateSuccess() : Error_CreateError(ErrorCode_IO, "File_Move: Failed to move file");
 }

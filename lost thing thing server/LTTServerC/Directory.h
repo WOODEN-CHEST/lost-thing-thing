@@ -18,21 +18,21 @@ _Bool Directory_Exists(const char* path);
 /// </summary>
 /// <param name="path">A path to the directory to be created.</param>
 /// <returns>0 on success, error code on failure.</returns>
-ErrorCode Directory_Create(const char* path);
+Error Directory_Create(const char* path);
 
 /// <summary>
 /// Creates all directories in a given path.
 /// </summary>
 /// <param name="path">A path to a directory.</param>
 /// <returns>0 on success, error code on failure.</returns>
-ErrorCode Directory_CreateAll(const char* path);
+void Directory_CreateAll(const char* path);
 
 /// <summary>
 /// Deletes a directory.
 /// </summary>
 /// <param name="path">The path of the directory to delete.</param>
 /// <returns>0 on success, error code on failure.</returns>
-ErrorCode Directory_Delete(const char* path);
+Error Directory_Delete(const char* path);
 
 /// <summary>
 /// Returns a path to the parent directory of a directory or file.

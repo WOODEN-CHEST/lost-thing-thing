@@ -186,11 +186,11 @@ void HTMLDocument_Deconstruct(HTMLDocument* document)
 
 
 /* Element. */
-ErrorCode HTMLElement_Construct(HTMLElement* element, const char* name)
+Error HTMLElement_Construct(HTMLElement* element, const char* name)
 {
 	if (String_LengthBytes(name) > sizeof(element->Name))
 	{
-		return Error_SetError(ErrorCode_InvalidArgument, "HTMLElement_Construct: name is longer than allowed.");
+		return Error_CreateError(ErrorCode_InvalidArgument, "HTMLElement_Construct: name is longer than allowed.");
 	}
 
 	String_CopyTo(name, element->Name);
@@ -204,10 +204,10 @@ ErrorCode HTMLElement_Construct(HTMLElement* element, const char* name)
 	element->_subElementArrayCapacity = 0;
 
 	element->Contents = NULL;
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
-ErrorCode HTMLElement_SetAttribute(HTMLElement* element, const char* name, const char* value)
+Error HTMLElement_SetAttribute(HTMLElement* element, const char* name, const char* value)
 {
 	for (size_t i = 0; i < element->AttributeCount; i++)
 	{
@@ -220,21 +220,21 @@ ErrorCode HTMLElement_SetAttribute(HTMLElement* element, const char* name, const
 
 		Memory_Free(Attribute->Value);
 		Attribute->Value = String_CreateCopy(value);
-		return ErrorCode_Success;
+		return Error_CreateSuccess();
 	}
 
 	EnsureAttributeArrayCapacity(element, element->AttributeCount + 1);
 
-	if (String_LengthBytes(name) > sizeof(element->AttributeArray[0].Name))
+	if (String_LengthBytes(name) > sizeof(HTML_ATTRIBUTE_MAX_NAME_LENGTH))
 	{
-		return Error_SetError(ErrorCode_InvalidArgument, "HTMLElement_SetAttribute: Attribute name is too long.");
+		return Error_CreateError(ErrorCode_InvalidArgument, "HTMLElement_SetAttribute: Attribute name is too long.");
 	}
 
 	String_CopyTo(name, element->AttributeArray[element->AttributeCount].Name);
 	element->AttributeArray[element->AttributeCount].Value = String_CreateCopy(value);
 	element->AttributeCount += 1;
 
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
 HTMLAttribute* HTMLElement_GetAttribute(HTMLElement* element, const char* name)

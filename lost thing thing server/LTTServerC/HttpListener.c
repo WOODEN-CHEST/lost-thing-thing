@@ -10,6 +10,7 @@
 #include "Memory.h"
 #include "LttString.h"
 #include "Logger.h"
+#include "ConfigFile.h"
 
 
 // Macros.
@@ -83,11 +84,11 @@ typedef struct HttpResponseStruct
 
 
 // Static functions.
-static ErrorCode SetSocketError(const char* message, int wsaCode)
+static Error SetSocketError(const char* message, int wsaCode)
 {
 	char ErrorMessage[256];
 	snprintf(ErrorMessage, sizeof(ErrorMessage), "%s (Code: %d)", message, wsaCode);
-	return Error_SetError(ErrorCode_SocketError, ErrorMessage);
+	return Error_CreateError(ErrorCode_SocketError, ErrorMessage);
 }
 
 /* Responses. */
@@ -485,7 +486,7 @@ static void HandleSpecialAction(SOCKET clientSocket, SpecialAction action, Serve
 	}
 }
 
-static ErrorCode ProcessHttpRequest(SOCKET clientSocket, 
+static Error ProcessHttpRequest(SOCKET clientSocket, 
 	char* unparsedRequestMessage,
 	HttpClientRequest* requestToBuild,
 	HttpResponse* responseToBuild,
@@ -523,11 +524,11 @@ static ErrorCode ProcessHttpRequest(SOCKET clientSocket,
 		HandleSpecialAction(clientSocket, RequestedAction, runtimeData);
 	}
 
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
 /* Client listener. */
-static ErrorCode AcceptSingleClient(SOCKET serverSocket,
+static Error AcceptSingleClient(SOCKET serverSocket,
 	char* unparsedRequestMessage,
 	HttpClientRequest* requestToBuild, 
 	HttpResponse* responseToBuild,
@@ -535,6 +536,7 @@ static ErrorCode AcceptSingleClient(SOCKET serverSocket,
 {
 	// Accept client.
 	SOCKET ClientSocket;
+	Error ReturnedError;
 	ClientSocket = accept(serverSocket, NULL, NULL);
 	if (ClientSocket == INVALID_SOCKET)
 	{
@@ -545,16 +547,17 @@ static ErrorCode AcceptSingleClient(SOCKET serverSocket,
 	int ReceivedLength = recv(ClientSocket, unparsedRequestMessage, REQUEST_MESSAGE_BUFFER_LENGTH - 1, 0);
 	if (ReceivedLength == SOCKET_ERROR)
 	{
-		ErrorCode Code = SetSocketError("Failed to receive client data", WSAGetLastError());
+		ReturnedError = SetSocketError("Failed to receive client data", WSAGetLastError());
 		closesocket(ClientSocket);
-		return Code;
+		return ReturnedError;
 	}
 	unparsedRequestMessage[ReceivedLength] = '\0';
 
 	// Process.
-	if (ProcessHttpRequest(ClientSocket, unparsedRequestMessage, requestToBuild, responseToBuild, runtimeData) != ErrorCode_Success)
+	ReturnedError = ProcessHttpRequest(ClientSocket, unparsedRequestMessage, requestToBuild, responseToBuild, runtimeData);
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
-		return Error_GetLastErrorCode();
+		return ReturnedError;
 	}
 
 	// Close connection.
@@ -563,11 +566,11 @@ static ErrorCode AcceptSingleClient(SOCKET serverSocket,
 		return SetSocketError("AcceptSingleClient: Failed to close the socket.", WSAGetLastError());
 	}
 
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
 
-static void AcceptClients(SOCKET serverSocket)
+static void AcceptClients(ServerContext* context, SOCKET serverSocket)
 {
 	// Initialize memory.
 	char* UnparsedRequestBuffer = (char*)Memory_SafeMalloc(REQUEST_MESSAGE_BUFFER_LENGTH);
@@ -583,15 +586,16 @@ static void AcceptClients(SOCKET serverSocket)
 	ServerRuntimeData RuntimeData = { false, 0 };
 
 	// Main listening loop.
-	Logger_LogInfo("Started accepting clients.");
+	Logger_LogInfo(context->Logger, "Started accepting clients.");
 	while (!RuntimeData.IsStopRequested)
 	{
-		if (AcceptSingleClient(serverSocket, UnparsedRequestBuffer, &Request, &Response, &RuntimeData) != ErrorCode_Success)
+		Error ReturnedError = AcceptSingleClient(serverSocket, UnparsedRequestBuffer, &Request, &Response, &RuntimeData);
+		if (ReturnedError.Code != ErrorCode_Success)
 		{
-			Logger_LogError(Error_GetLastErrorMessage());
+			Logger_LogError(context->Logger, Error_GetLastErrorMessage());
 		}
 	}
-	Logger_LogInfo("Stopped accepting clients.");
+	Logger_LogInfo(context->Logger, "Stopped accepting clients.");
 
 	// Cleanup.
 	StringBuilder_Deconstruct(&Response.Body);
@@ -600,7 +604,7 @@ static void AcceptClients(SOCKET serverSocket)
 
 
 /* Socket. */
-static ErrorCode InitializeSocket(SOCKET* targetSocket, const char* address)
+static Error InitializeSocket(SOCKET* targetSocket, const char* address)
 {
 	// Startup.
 	WSADATA	WinSocketData;
@@ -632,10 +636,10 @@ static ErrorCode InitializeSocket(SOCKET* targetSocket, const char* address)
 		return SetSocketError("Failed to bind socket.", WSAGetLastError());;
 	}
 
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
-static ErrorCode CloseSocket(SOCKET* targetSocket)
+static Error CloseSocket(SOCKET* targetSocket)
 {
 	if (closesocket(*targetSocket) == SOCKET_ERROR)
 	{
@@ -647,18 +651,21 @@ static ErrorCode CloseSocket(SOCKET* targetSocket)
 		return SetSocketError("Failed to accept client.", WSAGetLastError());
 	}
 
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
 
 // Functions.
-ErrorCode HttpListener_Listen(const char* address)
+Error HttpListener_Listen(ServerContext* context)
 {
+	Error ReturnedError;
+
 	// Initialize.
 	SOCKET Socket = INVALID_SOCKET;
-	if (InitializeSocket(&Socket, address) != ErrorCode_Success)
+	ReturnedError = InitializeSocket(&Socket, context->Configuration->Address);
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
-		return Error_GetLastErrorCode();
+		return ReturnedError;
 	}
 
 	// Listen.
@@ -667,12 +674,13 @@ ErrorCode HttpListener_Listen(const char* address)
 		return SetSocketError("Failed to listen to client.", WSAGetLastError());
 	}
 
-	AcceptClients(Socket);
+	AcceptClients(context, Socket);
 
 	// End.
-	if (CloseSocket(&Socket) != ErrorCode_Success)
+	ReturnedError = CloseSocket(&Socket);
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
-		return Error_GetLastErrorCode();
+		return ReturnedError;
 	}
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }

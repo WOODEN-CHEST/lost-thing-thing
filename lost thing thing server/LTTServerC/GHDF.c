@@ -110,75 +110,80 @@ static size_t TryGetTypeSize(GHDFType type)
 
 
 /* Writing */
-static ErrorCode WriteEntry(FILE* file, GHDFEntry* entry);
+static Error WriteEntry(FILE* file, GHDFEntry* entry);
 
-static ErrorCode Write7BitEncodedInt(FILE* file, int integer)
+static Error Write7BitEncodedInt(FILE* file, int integer)
 {
 	unsigned int Value = (unsigned int)integer;
 
 	do
 	{
-		ErrorCode Result = File_WriteByte(file, (Value & ENCODED_INT_MASK) | (Value > ENCODED_INT_MASK ? ENCODED_INT_INDICATOR_BIT : 0));
-		if (Result != ErrorCode_Success)
+		Error ReturnedError = File_WriteByte(file, (Value & ENCODED_INT_MASK) | (Value > ENCODED_INT_MASK ? ENCODED_INT_INDICATOR_BIT : 0));
+		if (ReturnedError.Code != ErrorCode_Success)
 		{
-			return Error_SetError(ErrorCode_IO, "Write7BitEncodedInt: Failed to write char.");
+			return ReturnedError;
 		}
 
 		Value >>= ENCODED_INT_BIT_COUNT_PER_BYTE;
 	} while (Value > 0);
 
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
-static ErrorCode WriteCompound(FILE* file, GHDFCompound* compound)
+static Error WriteCompound(FILE* file, GHDFCompound* compound)
 {
-	if (Write7BitEncodedInt(file, (unsigned int)compound->Count) != ErrorCode_Success)
+	Error ReturnedError = Write7BitEncodedInt(file, (unsigned int)compound->Count);
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
-		return Error_GetLastErrorCode();
+		return ReturnedError;
 	}
 
 	for (unsigned int i = 0; i < compound->Count; i++)
 	{
-		if (WriteEntry(file, &compound->Entries[i]) != ErrorCode_Success)
+		ReturnedError = WriteEntry(file, &compound->Entries[i]);
+		if (ReturnedError.Code != ErrorCode_Success)
 		{
-			return Error_GetLastErrorCode();
+			return ReturnedError;
 		}
 	}
 
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
-static ErrorCode WriteMetadata(FILE* file)
+static Error WriteMetadata(FILE* file)
 {
 	unsigned const char Signature[] = { GHDF_SIGNATURE_BYTES };
-	if (File_Write(file, (const char*)Signature, sizeof(Signature)) != ErrorCode_Success)
+	Error ReturnedError = File_Write(file, (const char*)Signature, sizeof(Signature));
+
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
-		return Error_SetError(ErrorCode_IO, "WriteMetadata: Failed to write GHDF signature.");
+		return ReturnedError;
 	}
 	
 	int Version = GHDF_FORMAT_VERSION;
-	if (File_Write(file, (char*)(&Version), GHDF_SIZE_INT) != ErrorCode_Success)
+	ReturnedError = File_Write(file, (char*)(&Version), GHDF_SIZE_INT);
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
-		return Error_SetError(ErrorCode_IO, "WriteMetadata: Failed to write format version.");
+		return ReturnedError;
 	}
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
-static ErrorCode WriteSingleValue(FILE* file, GHDFPrimitive value, GHDFType type)
+static Error WriteSingleValue(FILE* file, GHDFPrimitive value, GHDFType type)
 {
+	Error ReturnedError;
 	if (GetValueType(type) == GHDFType_String)
 	{
 		unsigned int StringLength = (unsigned int)String_LengthBytes(value.String);
-
-		if (Write7BitEncodedInt(file, (unsigned int)StringLength) != ErrorCode_Success)
+		ReturnedError = Write7BitEncodedInt(file, (unsigned int)StringLength);
+		if (ReturnedError.Code != ErrorCode_Success)
 		{
-			return Error_GetLastErrorCode();
+			return ReturnedError;
 		}
-		if (File_Write(file, value.String, StringLength) != ErrorCode_Success)
+		ReturnedError = File_Write(file, value.String, StringLength);
+		if (ReturnedError.Code != ErrorCode_Success)
 		{
-			char Message[128];
-			sprintf(Message, "WriteSingleValue: Failed to write string of size %d.", (int)StringLength);
-			return Error_SetError(ErrorCode_IO, Message);
+			return ReturnedError;
 		}
 	}
 	else if (GetValueType(type) == GHDFType_Compound)
@@ -188,91 +193,91 @@ static ErrorCode WriteSingleValue(FILE* file, GHDFPrimitive value, GHDFType type
 	else
 	{
 		size_t Size = TryGetTypeSize(type);
-		if (File_Write(file, (const char*)(&value), Size) != ErrorCode_Success)
+		ReturnedError = File_Write(file, (const char*)(&value), Size);
+		if (ReturnedError.Code != ErrorCode_Success)
 		{
-			char Message[128];
-			sprintf(Message, "WriteSingleValue: Failed to write simple entry with type %d and size %d.", (int)type, (int)Size);
-			return Error_SetError(ErrorCode_IO, Message);
+			return ReturnedError;
 		}
 	}
 
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
 
-static ErrorCode WriteArrayValue(FILE* file, GHDFArray array, GHDFType type)
+static Error WriteArrayValue(FILE* file, GHDFArray array, GHDFType type)
 {
-	if (Write7BitEncodedInt(file, (unsigned int)array.Size) != ErrorCode_Success)
+	Error ReturnedError = Write7BitEncodedInt(file, (unsigned int)array.Size);
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
-		return Error_SetError(ErrorCode_IO, "WriteArrayValue: Failed to write array size.");
+		return ReturnedError;
 	}
 
 	for (unsigned int i = 0; i < array.Size; i++)
 	{
-		if (WriteSingleValue(file, array.Array[i], type) != ErrorCode_Success) // Not optimal solution.
+		ReturnedError = WriteSingleValue(file, array.Array[i], type); // Not optimal solution for writing in terms of performance.
+		if (ReturnedError.Code != ErrorCode_Success) 
 		{
-			return Error_GetLastErrorCode();
+			return ReturnedError;
 		} 
 	}
 
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
-static ErrorCode WriteEntry(FILE* file, GHDFEntry* entry)
+static Error WriteEntry(FILE* file, GHDFEntry* entry)
 {
-	if (Write7BitEncodedInt(file, entry->ID) != ErrorCode_Success)
+	Error ReturnedError = Write7BitEncodedInt(file, entry->ID);
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
-		return Error_SetError(ErrorCode_IO, "WriteEntry: Failed to write entry's ID.");
+		return ReturnedError;
 	}
-	if (File_WriteByte(file, (int)entry->ValueType) != ErrorCode_Success)
+	ReturnedError = File_WriteByte(file, (int)entry->ValueType);
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
-		return Error_SetError(ErrorCode_IO, "WriteEntry: Failed to write entry's type.");
+		return ReturnedError;
 	}
 
 	if (entry->ValueType & GHDF_TYPE_ARRAY_BIT)
 	{
 		return WriteArrayValue(file, entry->Value.ValueArray, entry->ValueType);
 	}
-	else
-	{
-		return WriteSingleValue(file, entry->Value.SingleValue, entry->ValueType);
-	}
+	return WriteSingleValue(file, entry->Value.SingleValue, entry->ValueType);
 }
 
 
 
 /* Reading. */
-static ErrorCode ReadCompound(FILE* file, GHDFCompound* compound);
+static Error ReadCompound(FILE* file, GHDFCompound* compound);
 
-static ErrorCode ReadMetadata(FILE* file)
+static Error ReadMetadata(FILE* file)
 {
 	unsigned char Signature[] = { GHDF_SIGNATURE_BYTES };
 	unsigned char ReadSignature[sizeof(Signature)];
 
 	if (File_Read(file, (char*)ReadSignature, sizeof(ReadSignature)) < sizeof(ReadSignature))
 	{
-		return Error_SetError(ErrorCode_InvalidGHDFFile, "Failed to verify GHDF meta-data: Signature too short.");
+		return Error_CreateError(ErrorCode_InvalidGHDFFile, "Failed to verify GHDF meta-data: Signature too short.");
 	}
 
 	for (int i = 0; i < sizeof(Signature); i++)
 	{
 		if (Signature[i] != ReadSignature[i])
 		{
-			return Error_SetError(ErrorCode_InvalidGHDFFile, "Failed to verify GHDF meta-data: Wrong signature.");
+			return Error_CreateError(ErrorCode_InvalidGHDFFile, "Failed to verify GHDF meta-data: Wrong signature.");
 		}
 	}
 
 	int Version;
 	if (File_Read(file, (char*)(&Version), sizeof(GHDF_SIZE_INT)) != GHDF_SIZE_INT)
 	{
-		return Error_SetError(ErrorCode_InvalidGHDFFile, "Failed to verify GHDF meta-data: Version not an integer.");
+		return Error_CreateError(ErrorCode_InvalidGHDFFile, "Failed to verify GHDF meta-data: Version not an integer.");
 	}
 
-	return Version == GHDF_FORMAT_VERSION ? ErrorCode_Success 
-		: Error_SetError(ErrorCode_InvalidGHDFFile, "Failed to verify GHDF meta-data: Unsupported format version.");;
+	return Version == GHDF_FORMAT_VERSION ? Error_CreateSuccess()
+		: Error_CreateError(ErrorCode_InvalidGHDFFile, "Failed to verify GHDF meta-data: Unsupported format version.");;
 }
 
-static ErrorCode Read7BitEncodedInt(FILE* file, int* result)
+static Error Read7BitEncodedInt(FILE* file, int* result)
 {
 	int Value = 0;
 	int LastByte;
@@ -280,11 +285,12 @@ static ErrorCode Read7BitEncodedInt(FILE* file, int* result)
 
 	do
 	{
-		LastByte = File_ReadByte(file);
+		Error ReturnedError;
+		LastByte = File_ReadByte(file, &ReturnedError);
 
-		if (Error_GetLastErrorCode() != ErrorCode_Success)
+		if (ReturnedError.Code != ErrorCode_Success)
 		{
-			return Error_GetLastErrorCode();
+			return ReturnedError;
 		}
 
 		Value |= (LastByte & ENCODED_INT_MASK) << (ENCODED_INT_BIT_COUNT_PER_BYTE * ShiftCount);
@@ -292,10 +298,10 @@ static ErrorCode Read7BitEncodedInt(FILE* file, int* result)
 	} while (LastByte & ENCODED_INT_INDICATOR_BIT);
 
 	*result = Value;
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
-static ErrorCode ReadSingleValue(FILE* file, GHDFType type, GHDFPrimitive* value)
+static Error ReadSingleValue(FILE* file, GHDFType type, GHDFPrimitive* value)
 {
 	GHDFPrimitive Value;
 
@@ -307,15 +313,16 @@ static ErrorCode ReadSingleValue(FILE* file, GHDFType type, GHDFPrimitive* value
 	else if (type == GHDFType_String)
 	{
 		unsigned int StringLength;
-		if (Read7BitEncodedInt(file, (int*)(&StringLength)) != ErrorCode_Success)
+		Error ReturnedError = Read7BitEncodedInt(file, (int*)(&StringLength));
+		if (ReturnedError.Code != ErrorCode_Success)
 		{
-			return Error_GetLastErrorCode();
+			return ReturnedError;
 		}
 		Value.String = (char*)Memory_SafeMalloc((sizeof(char) * StringLength) + 1);
 		if (File_Read(file, Value.String, StringLength) != StringLength)
 		{
 			Memory_Free(Value.String);
-			return Error_SetError(ErrorCode_IO, "ReadSingleValue: Failed to read string.");
+			return Error_CreateError(ErrorCode_IO, "ReadSingleValue: Failed to read string.");
 		}
 		Value.String[StringLength] = '\0';
 	}
@@ -324,121 +331,133 @@ static ErrorCode ReadSingleValue(FILE* file, GHDFType type, GHDFPrimitive* value
 		size_t TypeSize = TryGetTypeSize(type);
 		if (File_Read(file, (char*)(&Value), TypeSize) != TypeSize)
 		{
-			return Error_SetError(ErrorCode_IO, "ReadSingleValue: Failed to read value.");
+			return Error_CreateError(ErrorCode_IO, "ReadSingleValue: Failed to read value.");
 		}
 	}
 
 	*value = Value;
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
-static ErrorCode ReadArrayValue(FILE* file, GHDFType type, GHDFPrimitive** arrayPtr, unsigned int* arraySizePtr)
+static Error ReadArrayValue(FILE* file, GHDFType type, GHDFPrimitive** arrayPtr, unsigned int* arraySizePtr)
 {
 	unsigned int ArraySize;
-	if (Read7BitEncodedInt(file, (int*)(&ArraySize)) != ErrorCode_Success)
+	Error ReturnedError = Read7BitEncodedInt(file, (int*)(&ArraySize));
+
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
-		return Error_SetError(ErrorCode_IO, "ReadArrayValue: Failed to read length of array");
+		return ReturnedError;
 	}
 
 	GHDFPrimitive* PrimitiveArray = (GHDFPrimitive*)Memory_SafeMalloc(sizeof(GHDFPrimitive) * ArraySize);
 	for (unsigned int i = 0; i < ArraySize; i++)
 	{
-		if (ReadSingleValue(file, type, PrimitiveArray + i) != ErrorCode_Success)
+		ReturnedError = ReadSingleValue(file, type, PrimitiveArray + i);
+		if (ReturnedError.Code != ErrorCode_Success)
 		{
-			return Error_GetLastErrorCode();
+			ReturnedError;
 		}
 	}
 
 	*arrayPtr = PrimitiveArray;
 	*arraySizePtr = ArraySize;
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
-static ErrorCode ReadEntryInfo(FILE* file, int* id, GHDFType* type)
+static Error ReadEntryInfo(FILE* file, int* id, GHDFType* type)
 {
 	int ID;
-	if (Read7BitEncodedInt(file, &ID) != ErrorCode_Success)
+
+	Error ReturnedError = Read7BitEncodedInt(file, &ID);
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
-		return Error_GetLastErrorCode();
+		return ReturnedError;
 	}
 	if (ID == 0)
 	{
-		return Error_SetError(ErrorCode_InvalidGHDFFile, "An ID of 0 is not allowed.");
+		return Error_CreateError(ErrorCode_InvalidGHDFFile, "An ID of 0 is not allowed.");
 	}
 
-	GHDFType EntryType = File_ReadByte(file);
-	if (Error_GetLastErrorCode() != ErrorCode_Success)
+	GHDFType EntryType = File_ReadByte(file, &ReturnedError);
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
-		return Error_GetLastErrorCode();
+		return ReturnedError;
 	}
 	if ((GetValueType(EntryType) <= GHDFType_None) || (GetValueType(EntryType) > GHDFType_Compound))
 	{
 		char Message[128];
 		sprintf(Message, "Invalid data type: %d", (int)GetValueType(EntryType));
-		return Error_SetError(ErrorCode_InvalidGHDFFile, Message);
+		return Error_CreateError(ErrorCode_InvalidGHDFFile, Message);
 	}
-
 	*id = ID;
 	*type = EntryType;
-	return ErrorCode_Success;
+
+	return Error_CreateSuccess();
 }
 
-static ErrorCode ReadEntryValue(FILE* file, int id, GHDFType type, GHDFCompound* compound)
+static Error ReadEntryValue(FILE* file, int id, GHDFType type, GHDFCompound* compound)
 {
+	Error ReturnedError;
+
 	if (type & GHDF_TYPE_ARRAY_BIT)
 	{
 		GHDFPrimitive* Array;
 		unsigned int ArraySize;
-		if (ReadArrayValue(file, type, &Array, &ArraySize) != ErrorCode_Success)
+		ReturnedError = ReadArrayValue(file, type, &Array, &ArraySize);
+		if (ReturnedError.Code != ErrorCode_Success)
 		{
-			return Error_GetLastErrorCode();
+			return ReturnedError;
 		}
 		GHDFCompound_AddArrayEntry(compound, type, id, Array, ArraySize);
 	}
 	else
 	{
 		GHDFPrimitive Value;
-		if (ReadSingleValue(file, type, &Value) != ErrorCode_Success)
+		ReturnedError = ReadSingleValue(file, type, &Value);
+		if (ReturnedError.Code != ErrorCode_Success)
 		{
-			return Error_GetLastErrorCode();
+			return ReturnedError;
 		}
 		GHDFCompound_AddSingleValueEntry(compound, type, id, Value);
 	}
 
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
-static ErrorCode ReadEntry(FILE* file, GHDFCompound* compound)
+static Error ReadEntry(FILE* file, GHDFCompound* compound)
 {
 	int ID;
 	GHDFType EntryType;
-	if (ReadEntryInfo(file, &ID, &EntryType) != ErrorCode_Success)
+	Error ReturnedError = ReadEntryInfo(file, &ID, &EntryType);
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
-		return Error_GetLastErrorCode();
+		return ReturnedError;
 	}
 
 	return ReadEntryValue(file, ID, EntryType, compound);
 }
 
-static ErrorCode ReadCompound(FILE* file, GHDFCompound* compound)
+static Error ReadCompound(FILE* file, GHDFCompound* compound)
 {
 	GHDFCompound_Construct(compound, COMPOUND_DEFAULT_CAPACITY);
 
 	int EntryCount;
-	if (Read7BitEncodedInt(file, &EntryCount) != ErrorCode_Success)
+	Error ReturnedError = Read7BitEncodedInt(file, &EntryCount);
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
-		return Error_GetLastErrorCode();
+		return ReturnedError;
 	}
 
 	for (int i = 0; i < EntryCount; i++)
 	{
-		if (ReadEntry(file, compound) != ErrorCode_Success)
+		ReturnedError = ReadEntry(file, compound);
+		if (ReturnedError.Code != ErrorCode_Success)
 		{
-			return Error_GetLastErrorCode();
+			return ReturnedError;
 		}
 	}
 
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
 
@@ -462,11 +481,11 @@ GHDFCompound* GHDFCompound_Construct2(unsigned int capacity)
 	return Compound;
 }
 
-ErrorCode GHDFCompound_AddSingleValueEntry(GHDFCompound* self, GHDFType type, int id, GHDFPrimitive value)
+Error GHDFCompound_AddSingleValueEntry(GHDFCompound* self, GHDFType type, int id, GHDFPrimitive value)
 {
 	if (id == 0)
 	{
-		return Error_SetError(ErrorCode_InvalidArgument, "GHDFCompound_AddSingleValueEntry: An ID of 0 is not allowed.");
+		return Error_CreateError(ErrorCode_InvalidArgument, "GHDFCompound_AddSingleValueEntry: An ID of 0 is not allowed.");
 	}
 
 	EnsureCompoundCapacity(self, self->Count + 1);
@@ -475,14 +494,14 @@ ErrorCode GHDFCompound_AddSingleValueEntry(GHDFCompound* self, GHDFType type, in
 	self->Entries[self->Count].ValueType = type;
 
 	self->Count += 1;
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
-ErrorCode GHDFCompound_AddArrayEntry(GHDFCompound* self, GHDFType type, int id, GHDFPrimitive* valueArray, unsigned int count)
+Error GHDFCompound_AddArrayEntry(GHDFCompound* self, GHDFType type, int id, GHDFPrimitive* valueArray, unsigned int count)
 {
 	if (id == 0)
 	{
-		return Error_SetError(ErrorCode_InvalidArgument, "GHDFCompound_AddArrayEntry: An ID of 0 is not allowed.");
+		return Error_CreateError(ErrorCode_InvalidArgument, "GHDFCompound_AddArrayEntry: An ID of 0 is not allowed.");
 	}
 
 	EnsureCompoundCapacity(self, self->Count + 1);
@@ -492,7 +511,7 @@ ErrorCode GHDFCompound_AddArrayEntry(GHDFCompound* self, GHDFType type, int id, 
 	self->Entries[self->Count].ValueType = (type | GHDF_TYPE_ARRAY_BIT);
 
 	self->Count += 1;
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
 void GHDFCompound_RemoveEntry(GHDFCompound* self, int id)
@@ -545,7 +564,7 @@ GHDFEntry* GHDFCompound_GetEntry(GHDFCompound* self, int id)
 	return NULL;
 }
 
-ErrorCode GHDFCompound_GetVerifiedEntry(GHDFCompound* self, int id, GHDFEntry** entry, GHDFType expectedType, const char* optionalMessage)
+Error GHDFCompound_GetVerifiedEntry(GHDFCompound* self, int id, GHDFEntry** entry, GHDFType expectedType, const char* optionalMessage)
 {
 	GHDFEntry* FoundEntry = GHDFCompound_GetEntry(self, id);
 	char Message[256];
@@ -554,20 +573,20 @@ ErrorCode GHDFCompound_GetVerifiedEntry(GHDFCompound* self, int id, GHDFEntry** 
 	{
 		snprintf(Message, sizeof(Message), "Expected GHDF entry of type %d with id %d, found no such entry. %s",
 			(int)expectedType, id, optionalMessage ? optionalMessage : "No further information");
-		return Error_SetError(ErrorCode_InvalidGHDFFile, Message);
+		return Error_CreateError(ErrorCode_InvalidGHDFFile, Message);
 	}
 	if (FoundEntry->ValueType != expectedType)
 	{
 		snprintf(Message, sizeof(Message), "Expected GHDF entry of type %d with id %d, actual type is %d. %s",
 			(int)expectedType, id, (int)FoundEntry->ValueType, optionalMessage ? optionalMessage : "No further information");
-		return Error_SetError(ErrorCode_InvalidGHDFFile, Message);
+		return Error_CreateError(ErrorCode_InvalidGHDFFile, Message);
 	}
 
 	*entry = FoundEntry;
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
-ErrorCode GHDFCompound_GetVerifiedOptionalEntry(GHDFCompound* self, int id, GHDFEntry** entry, GHDFType expectedType, const char* optionalMessage)
+Error GHDFCompound_GetVerifiedOptionalEntry(GHDFCompound* self, int id, GHDFEntry** entry, GHDFType expectedType, const char* optionalMessage)
 {
 	GHDFEntry* FoundEntry = GHDFCompound_GetEntry(self, id);
 	char Message[256];
@@ -575,17 +594,17 @@ ErrorCode GHDFCompound_GetVerifiedOptionalEntry(GHDFCompound* self, int id, GHDF
 
 	if (!FoundEntry)
 	{
-		return ErrorCode_Success;
+		return Error_CreateSuccess();
 	}
 	if (FoundEntry->ValueType != expectedType)
 	{
 		snprintf(Message, sizeof(Message), "Expected GHDF entry of type %d with id %d, actual type is %d. %s",
 			(int)expectedType, id, (int)FoundEntry->ValueType, optionalMessage ? optionalMessage : "No further information");
-		return Error_SetError(ErrorCode_InvalidGHDFFile, Message);
+		return Error_CreateError(ErrorCode_InvalidGHDFFile, Message);
 	}
 
 	*entry = FoundEntry;
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
 GHDFEntry* GHDFCompound_GetEntryOrDefault(GHDFCompound* self, int id, GHDFEntry* defaultEntry)
@@ -601,39 +620,42 @@ GHDFEntry* GHDFCompound_GetEntryOrDefault(GHDFCompound* self, int id, GHDFEntry*
 	return defaultEntry;
 }
 
-ErrorCode GHDFCompound_ReadFromFile(const char* path, GHDFCompound* emptyBaseCompound)
+Error GHDFCompound_ReadFromFile(const char* path, GHDFCompound* emptyBaseCompound)
 {
 	GHDFCompound_Construct(emptyBaseCompound, COMPOUND_DEFAULT_CAPACITY);
 
 	if (!File_Exists(path))
 	{
-		return Error_SetError(ErrorCode_IO, "GHDFCompound_ReadFromFile: Provided GHDF file doesn't exist.");
+		return Error_CreateError(ErrorCode_IO, "GHDFCompound_ReadFromFile: Provided GHDF file doesn't exist.");
 	}
 
-	FILE* File = File_Open(path, FileOpenMode_ReadBinary);
+	Error ReturnedError;
+	FILE* File = File_Open(path, FileOpenMode_ReadBinary, &ReturnedError);
 	if (!File)
 	{
-		return Error_SetError(ErrorCode_IO, "GHDFCompound_ReadFromFile: Failed to open file");
+		return ReturnedError;
 	}
 
-	if (ReadMetadata(File) != ErrorCode_Success)
+	ReturnedError = ReadMetadata(File);
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
 		File_Close(File);
-		return Error_GetLastErrorCode();
+		return ReturnedError;
 	}
 	
-	if (ReadCompound(File, emptyBaseCompound) != ErrorCode_Success)
+	ReturnedError = ReadCompound(File, emptyBaseCompound);
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
 		File_Close(File);
 		GHDFCompound_Deconstruct(emptyBaseCompound);
-		return Error_GetLastErrorCode();
+		return ReturnedError;
 	}
 
 	File_Close(File);
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
-ErrorCode GHDFCompound_WriteToFile(const char* path, GHDFCompound* compound)
+Error GHDFCompound_WriteToFile(const char* path, GHDFCompound* compound)
 {
 	const char* Path = Directory_ChangePathExtension(path, GHDF_FILE_EXTENSION);
 
@@ -643,28 +665,31 @@ ErrorCode GHDFCompound_WriteToFile(const char* path, GHDFCompound* compound)
 
 	File_Delete(Path);
 
-	FILE* File = File_Open(Path, FileOpenMode_WriteBinary);
+	Error ReturnedError;
+	FILE* File = File_Open(Path, FileOpenMode_WriteBinary, &ReturnedError);
 	Memory_Free((char*)Path);
 
 	if (!File)
 	{
-		return Error_GetLastErrorCode();
+		return ReturnedError;
 	}
 
-	if (WriteMetadata(File) != ErrorCode_Success)
+	ReturnedError = WriteMetadata(File);
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
 		File_Close(File);
-		return Error_GetLastErrorCode();
+		return ReturnedError;
 	}
 
-	if (WriteCompound(File, compound) != ErrorCode_Success)
+	ReturnedError = WriteCompound(File, compound);
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
 		File_Close(File);
-		return Error_GetLastErrorCode();
+		return ReturnedError;
 	}
 
 	File_Close(File);
-	return ErrorCode_Success;
+	return Error_CreateSuccess();
 }
 
 void GHDFCompound_Deconstruct(GHDFCompound* self)
