@@ -51,6 +51,8 @@ typedef struct CachedAccountStruct
 
 typedef struct DBAccountContextStruct
 {
+	const char* AccountMetaInfoFilePath;
+
 	unsigned long long AvailableAccountID;
 	unsigned long long AvailableImageID;
 	IDCodepointHashMap NameMap;

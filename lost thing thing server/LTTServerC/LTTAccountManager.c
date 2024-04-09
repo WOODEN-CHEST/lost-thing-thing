@@ -23,6 +23,22 @@
 #define ACCOUNT_CACHE_CAPACITY 256
 #define ACCOUNT_CACHE_UNLOADED_TIME -1
 
+#define ACCOUNT_METAINFO_FILE_NAME "account_meta" GHDF_FILE_EXTENSION
+
+
+/* Account metainfo file. */
+#define DEFAULT_AVAILABLE_ACCOUNT_ID 0;
+#define DEFAULT_AVAILABLE_POST_ID 0;
+#define DEFAULT_AVAILABLE_ACCOUNT_IMAGE_ID 1;
+#define DEFAILT_SESSION_COUNT 0
+
+#define ENTRY_ID_METAINFO_ACCOUNT_ID 1 // ulong
+#define ENTRY_ID_METAINFO_ACCOUNT_IMAGE_ID 2 // ulong
+#define ENTRY_ID_METAINFO_SESSION_ARRAY 3 // compound array with variable size, MAY NOT EXIST.
+#define ENTRY_ID_METAINFO_SESSION_PROFILE_ID 1 // ulong
+#define ENTRY_ID_METAINFO_SESSION_START_TIME 2 // long
+#define ENTRY_ID_METAINFO_SESSION_IDVALUES 3 // uint array of length SESSION_ID_LENGTH
+
 
 /* Account data. */
 #define MIN_NAME_LENGTH_CODEPOINTS 1
@@ -49,11 +65,12 @@
 #define ENTRY_ID_ACCOUNT_PROFILE_IMAGE_ID 5 // ulong
 #define ENTRY_ID_ACCOUNT_POSTS 6 // ulong array with length >= 1, MAY NOT BE PRESENT IF ACCOUNT HAS NO POSTS
 #define ENTRY_ID_ACCOUNT_CREATION_TIME 7 // long
-#define ENTRY_ID_ACCOUNT_ID 8 // ulong
+#define ENTRY_ID_METAINFO_ACCOUNT_ID 8 // ulong
 #define ENTRY_ID_ACCOUNT_IS_ADMIN 9 // bool
 
 
 // Static functions.
+/* IDs. */
 static unsigned long long GetAndUseAccountID()
 {
 	unsigned long long ID = LTTServerC_GetCurrentContext()->Resources.AccountContext.AvailableAccountID;
@@ -621,6 +638,11 @@ static void CreateSessionContext(DBAccountContext* context, SessionID* sessions,
 	}
 }
 
+static void AddSession(DBAccountContext* context, time_t sessionStartTime, unsigned long long accountID, unsigned int idValues)
+{
+
+}
+
 
 /* Account loading and saving. */
 static bool ReadAccountFromDatabase(UserAccount* account, unsigned long long id)
@@ -643,7 +665,7 @@ static bool ReadAccountFromDatabase(UserAccount* account, unsigned long long id)
 	Memory_Free((char*)FilePath);
 
 	AccountSetDefaultValues(account);
-	if (GHDFCompound_GetVerifiedEntry(&Compound, ENTRY_ID_ACCOUNT_ID, &Entry, GHDFType_ULong, "Account ID") != ErrorCode_Success)
+	if (GHDFCompound_GetVerifiedEntry(&Compound, ENTRY_ID_METAINFO_ACCOUNT_ID, &Entry, GHDFType_ULong, "Account ID") != ErrorCode_Success)
 	{
 		goto ReadFailCase;
 	}
@@ -774,7 +796,7 @@ static ErrorCode WriteAccountToDatabase(UserAccount* account)
 	SingleValue.Long = account->CreationTime;
 	GHDFCompound_AddSingleValueEntry(&Compound, GHDFType_Long, ENTRY_ID_ACCOUNT_CREATION_TIME, SingleValue);
 	SingleValue.ULong = account->ID;
-	GHDFCompound_AddSingleValueEntry(&Compound, GHDFType_ULong, ENTRY_ID_ACCOUNT_ID, SingleValue);
+	GHDFCompound_AddSingleValueEntry(&Compound, GHDFType_ULong, ENTRY_ID_METAINFO_ACCOUNT_ID, SingleValue);
 	SingleValue.Bool = account->IsAdmin;
 	GHDFCompound_AddSingleValueEntry(&Compound, GHDFType_Bool, ENTRY_ID_ACCOUNT_IS_ADMIN, SingleValue);
 
@@ -991,6 +1013,69 @@ static void RemoveAccountFromCacheByID(unsigned long long id)
 			return;
 		}
 	}
+}
+
+
+/* Context. */
+static ErrorCode OnMetaInfoLoadFail(GHDFCompound* compound)
+{
+	GHDFCompound_Deconstruct(compound);
+	return Error_GetLastErrorCode();
+}
+
+static void LoadDefaultMetaInfo(DBAccountContext* context)
+{
+	context->AvailableAccountID = DEFAULT_AVAILABLE_ACCOUNT_ID;
+	context->AvailableImageID = DEFAULT_AVAILABLE_ACCOUNT_IMAGE_ID;
+
+	context->_sessionListCapacity = GENERIC_LIST_CAPACITY;
+	context->ActiveSessions = (SessionID*)Memory_SafeMalloc(sizeof(SessionID) * context->_sessionListCapacity);
+	context->SessionCount = 0;
+}
+
+static ErrorCode LoadMetaInfo(DBAccountContext* context)
+{
+	LoadDefaultMetaInfo(context);
+
+	GHDFCompound Compound;
+	const char* FilePath = Directory_CombinePaths(context->AccountMetaInfoFilePath, ACCOUNT_METAINFO_FILE_NAME);
+	if (GHDFCompound_ReadFromFile(FilePath, &Compound) != ErrorCode_Success)
+	{
+		Memory_Free(FilePath);
+		return Error_GetLastErrorCode();
+	}
+	Memory_Free(FilePath);
+
+	GHDFEntry* Entry;
+	if (GHDFCompound_GetVerifiedEntry(&Compound, ENTRY_ID_METAINFO_ACCOUNT_ID, &Entry, GHDFType_ULong, "Meta-info account id.")
+		!= ErrorCode_Success);
+	{
+		return OnMetaInfoLoadFail(&Compound);
+	}
+	context->AvailableAccountID = Entry->Value.SingleValue.ULong;
+
+	if (GHDFCompound_GetVerifiedEntry(&Compound, ENTRY_ID_METAINFO_ACCOUNT_IMAGE_ID, &Entry, GHDFType_ULong, "Meta-info account image id.")
+		!= ErrorCode_Success);
+	{
+		return OnMetaInfoLoadFail(&Compound);
+	}
+	context->AvailableImageID = Entry->Value.SingleValue.ULong;
+
+	if (GHDFCompound_GetVerifiedOptionalEntry(&Compound, ENTRY_ID_METAINFO_ACCOUNT_IMAGE_ID, &Entry, GHDFType_ULong, 
+		"Meta-info account image id.") != ErrorCode_Success);
+	{
+		return OnMetaInfoLoadFail(&Compound);
+	}
+	if (Entry)
+	{
+		for (unsigned int i = 0; i < Entry->Value.ValueArray.Size; i++)
+		{
+			Session
+		}
+	}
+
+	GHDFCompound_Deconstruct(&Compound);
+	return ErrorCode_Success;
 }
 
 

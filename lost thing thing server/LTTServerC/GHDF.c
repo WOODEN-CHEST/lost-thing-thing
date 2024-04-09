@@ -567,6 +567,27 @@ ErrorCode GHDFCompound_GetVerifiedEntry(GHDFCompound* self, int id, GHDFEntry** 
 	return ErrorCode_Success;
 }
 
+ErrorCode GHDFCompound_GetVerifiedOptionalEntry(GHDFCompound* self, int id, GHDFEntry** entry, GHDFType expectedType, const char* optionalMessage)
+{
+	GHDFEntry* FoundEntry = GHDFCompound_GetEntry(self, id);
+	char Message[256];
+	*entry = NULL;
+
+	if (!FoundEntry)
+	{
+		return ErrorCode_Success;
+	}
+	if (FoundEntry->ValueType != expectedType)
+	{
+		snprintf(Message, sizeof(Message), "Expected GHDF entry of type %d with id %d, actual type is %d. %s",
+			(int)expectedType, id, (int)FoundEntry->ValueType, optionalMessage ? optionalMessage : "No further information");
+		return Error_SetError(ErrorCode_InvalidGHDFFile, Message);
+	}
+
+	*entry = FoundEntry;
+	return ErrorCode_Success;
+}
+
 GHDFEntry* GHDFCompound_GetEntryOrDefault(GHDFCompound* self, int id, GHDFEntry* defaultEntry)
 {
 	for (unsigned int i = 0; i < self->Count; i++)
