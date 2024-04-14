@@ -14,7 +14,7 @@
 
 
 // Macros.
-#define REQUEST_MESSAGE_BUFFER_LENGTH 2000000
+#define REQUEST_MESSAGE_BUFFER_LENGTH 6000000
 
 #define TARGET_WSA_VERSION_MAJOR 2
 #define TARGET_WSA_VERSION_MINOR 2
@@ -31,7 +31,7 @@
 #define HTTP_SEPARATOR ' '
 
 #define IsWhitespace(character) ((0 <= character) && (character <= 32))
-#define IsEndOfMessageLine(character) ((character == '\0') || (character == '\n')) // Note: They usually end in \r\n
+#define IsEndOfMessageLine(character) ((character == '\0') || (character == '\n')) // Note: They end in \r\n
 #define IsNewline(character) ((character == '\n') || (character == '\r'))
 #define IsDigit(character) (('0' <= character) && (character <= '9'))
 #define TrySkipOverCharacter(message) if (*message != '\0') message++
@@ -395,8 +395,13 @@ static const char* ReadHttpHeader(const char* message, HttpClientRequest* finalR
 
 
 /* Requests. */
-static void ParseHttpRequestMessage(const char* message, HttpClientRequest* finalRequest)
+static Error ParseHttpRequestMessage(const char* message, HttpClientRequest* finalRequest)
 {
+	if (!String_IsValidUTF8String(message))
+	{
+		return Error_CreateError(ErrorCode_InvalidRequest, "HTTP request was not a valid UTF-8 string.");
+	}
+
 	message = ReadHttpRequestLine(message, finalRequest);
 
 	do
@@ -407,6 +412,7 @@ static void ParseHttpRequestMessage(const char* message, HttpClientRequest* fina
 	message = SkipUntilNextLine(message);
 
 	String_CopyTo(message, finalRequest->Body);
+	return Error_CreateSuccess();
 }
 
 static HttpResponseCode ResourceResponseToHttpResponseCode(ResourceResult result)
@@ -427,13 +433,13 @@ static HttpResponseCode ResourceResponseToHttpResponseCode(ResourceResult result
 
 		case ResourceResult_ShutDownServer:
 			return HttpResponseCode_OK;
-	
+
 		default:
 			return HttpResponseCode_ImATeapot;
 	}
 }
 
-static SpecialAction ExecuteValidHttpRequest(HttpClientRequest* request, HttpResponse* response)
+static SpecialAction ExecuteValidHttpRequest(ServerContext* context, HttpClientRequest* request, HttpResponse* response)
 {
 	ResourceResult Result = ResourceResult_Invalid;
 	ServerResourceRequest ResourceRequestData =
@@ -447,11 +453,11 @@ static SpecialAction ExecuteValidHttpRequest(HttpClientRequest* request, HttpRes
 
 	if (request->Method == HttpMethod_GET)
 	{
-		Result = ResourceManager_Get(&ResourceRequestData);
+		Result = ResourceManager_Get(context, &ResourceRequestData);
 	}
 	else if (request->Method == HttpMethod_POST)
 	{
-		Result = ResourceManager_Post(&ResourceRequestData);
+		Result = ResourceManager_Post(context, &ResourceRequestData);
 	}
 
 	response->Code = ResourceResponseToHttpResponseCode(Result);
@@ -486,7 +492,8 @@ static void HandleSpecialAction(SOCKET clientSocket, SpecialAction action, Serve
 	}
 }
 
-static Error ProcessHttpRequest(SOCKET clientSocket, 
+static Error ProcessHttpRequest(ServerContext* context,
+	SOCKET clientSocket,
 	char* unparsedRequestMessage,
 	HttpClientRequest* requestToBuild,
 	HttpResponse* responseToBuild,
@@ -494,7 +501,10 @@ static Error ProcessHttpRequest(SOCKET clientSocket,
 {
 	// Parse request.
 	ClearHttpRequestStruct(requestToBuild);
-	ParseHttpRequestMessage(unparsedRequestMessage, requestToBuild);
+	Error ReturnedError = ParseHttpRequestMessage(unparsedRequestMessage, requestToBuild))
+	{
+		return ReturnedError;
+	}
 
 	// Verify it.
 	ClearHttpResponse(responseToBuild);
@@ -507,7 +517,7 @@ static Error ProcessHttpRequest(SOCKET clientSocket,
 	}
 	else
 	{
-		RequestedAction = ExecuteValidHttpRequest(requestToBuild, responseToBuild);
+		RequestedAction = ExecuteValidHttpRequest(context, requestToBuild, responseToBuild);
 	}
 
 	// Respond.
@@ -528,7 +538,8 @@ static Error ProcessHttpRequest(SOCKET clientSocket,
 }
 
 /* Client listener. */
-static Error AcceptSingleClient(SOCKET serverSocket,
+static Error AcceptSingleClient(ServerContext* context, 
+	SOCKET serverSocket,
 	char* unparsedRequestMessage,
 	HttpClientRequest* requestToBuild, 
 	HttpResponse* responseToBuild,
@@ -554,7 +565,7 @@ static Error AcceptSingleClient(SOCKET serverSocket,
 	unparsedRequestMessage[ReceivedLength] = '\0';
 
 	// Process.
-	ReturnedError = ProcessHttpRequest(ClientSocket, unparsedRequestMessage, requestToBuild, responseToBuild, runtimeData);
+	ReturnedError = ProcessHttpRequest(context, ClientSocket, unparsedRequestMessage, requestToBuild, responseToBuild, runtimeData);
 	if (ReturnedError.Code != ErrorCode_Success)
 	{
 		return ReturnedError;
@@ -589,10 +600,11 @@ static void AcceptClients(ServerContext* context, SOCKET serverSocket)
 	Logger_LogInfo(context->Logger, "Started accepting clients.");
 	while (!RuntimeData.IsStopRequested)
 	{
-		Error ReturnedError = AcceptSingleClient(serverSocket, UnparsedRequestBuffer, &Request, &Response, &RuntimeData);
+		Error ReturnedError = AcceptSingleClient(context, serverSocket, UnparsedRequestBuffer, &Request, &Response, &RuntimeData);
 		if (ReturnedError.Code != ErrorCode_Success)
 		{
-			Logger_LogError(context->Logger, Error_GetLastErrorMessage());
+			Logger_LogError(context->Logger, ReturnedError.Message);
+			Error_Deconstruct(&ReturnedError);
 		}
 	}
 	Logger_LogInfo(context->Logger, "Stopped accepting clients.");

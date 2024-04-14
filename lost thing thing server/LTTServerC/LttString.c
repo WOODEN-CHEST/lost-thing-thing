@@ -10,10 +10,37 @@
 
 // Macros.
 #define STRING_BUILDER_CAPACITY_GROWTH 4
-#define STRING_ARRAY_CAPACITY_GROWTH 2
+
+#define STRING_LIST_CAPACITY 4
+#define STRING_LIST_CAPACITY_GROWTH 2
+
+
+// Types.
+typedef struct StringListStruct
+{
+	char** Strings;
+	size_t Count;
+	size_t _capacity;
+} StringList;
 
 
 // Static functions.
+static void StringListEnsureCapacity(StringList* stringList, size_t capacity)
+{
+	if (stringList->_capacity >= capacity)
+	{
+		return;
+	}
+
+	while (stringList->_capacity < capacity)
+	{
+		stringList->_capacity *= STRING_LIST_CAPACITY_GROWTH;
+	}
+	stringList->Strings = (char**)Memory_SafeRealloc(stringList->Strings, sizeof(char*) * stringList->_capacity);
+}
+
+
+// Functions.
 /* String */
 size_t String_LengthCodepointsUTF8(const char* string)
 {
@@ -47,13 +74,7 @@ _Bool String_IsValidUTF8String(const char* string)
 
 size_t String_LengthBytes(const char* string)
 {
-	size_t Length = 0;
-	while (string[Length] != '\0')
-	{
-		Length++;
-	}
-
-	return Length;
+	return strlen(string);
 }
 
 char* String_CreateCopy(const char* stringToCopy)
@@ -357,6 +378,47 @@ char* String_Replace(const char* string, const char* oldSequence, const char* ne
 	}
 
 	return Builder.Data;
+}
+
+char** String_Split(char* string, const char* delimeter, size_t* stringCount)
+{
+	StringList List =
+	{
+		.Count = 0,
+		._capacity = STRING_LIST_CAPACITY,
+		.Strings = (char**)Memory_SafeMalloc(sizeof(char*) * STRING_LIST_CAPACITY)
+	};
+
+	if ((string[0] == '\0') || (delimeter[0] == '\0'))
+	{
+		List.Strings[0] = string;
+		*stringCount = 0;
+		return List.Strings;
+	}
+
+	size_t TokenStartIndex = 0;
+	for (size_t SourceIndex = 0, DelIndex = 0; string[SourceIndex] != '\0'; SourceIndex++)
+	{
+		DelIndex = string[SourceIndex] == delimeter[DelIndex] ? DelIndex + 1 : 0;
+		if (delimeter[DelIndex] != '\0')
+		{
+			continue;
+		}
+
+		StringListEnsureCapacity(&List, List.Count + 1);
+		List.Strings[List.Count] = string + TokenStartIndex;
+		List.Count++;
+		string[SourceIndex - (DelIndex - 1)] = '\0';
+		TokenStartIndex = SourceIndex + 1;
+		DelIndex = 0;
+	}
+
+	StringListEnsureCapacity(&List, List.Count + 1);
+	List.Strings[List.Count] = string + TokenStartIndex;
+	List.Count++;
+
+	*stringCount = List.Count;
+	return List.Strings;
 }
 
 _Bool String_IsFuzzyMatched(const char* stringToSearchIn, const char* stringToMatch, _Bool ignoreWhitespace)

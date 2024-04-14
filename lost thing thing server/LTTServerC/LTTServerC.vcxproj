@@ -151,6 +151,7 @@
     <ClCompile Include="GHDF.c" />
     <ClCompile Include="IDCodepointHashMap.c" />
     <ClCompile Include="IDCodepointHashMap.h" />
+    <ClCompile Include="Image.c" />
     <ClCompile Include="LTTAccountManager.c" />
     <ClCompile Include="LTTChar.c" />
     <ClCompile Include="LttErrors.c" />
@@ -159,6 +160,8 @@
     <ClCompile Include="Logger.c" />
     <ClCompile Include="LTTHTML.c" />
     <ClCompile Include="LTTJSON.c" />
+    <ClCompile Include="LTTPostManager.c" />
+    <ClCompile Include="LTTPostManager.h" />
     <ClCompile Include="LTTServerC.c" />
     <ClCompile Include="LTTServerResourceManager.c" />
     <ClCompile Include="LTTSMTP.c" />
@@ -170,6 +173,7 @@
     <ClInclude Include="ConfigFile.h" />
     <ClInclude Include="Directory.h" />
     <ClInclude Include="GHDF.h" />
+    <ClInclude Include="Image.h" />
     <ClInclude Include="LTTChar.h" />
     <ClInclude Include="LttErrors.h" />
     <ClInclude Include="File.h" />

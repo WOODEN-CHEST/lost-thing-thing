@@ -10,32 +10,38 @@
 #include <limits.h>
 #include "Logger.h"
 #include "ConfigFile.h"
+#include "LTTServerResourceManager.h"
 
 
 // Macros.
+/* Directories. */
 #define DIR_NAME_ACCOUNTS "accounts"
-
-#define GENERIC_LIST_CAPACITY 8
-#define GENERIC_LIST_GROWTH 2
-
-#define MAX_ACCOUNT_VERIFICATION_TIME 60 * 5
-#define MAX_VERIFICATION_ATTEMPTS 3
-
-#define ACCOUNT_CACHE_CAPACITY 256
-#define ACCOUNT_CACHE_UNLOADED_TIME -1
 
 #define ACCOUNT_METAINFO_FILE_NAME "account_meta" GHDF_FILE_EXTENSION
 
+#define ENTRY_FOLDER_NAME_DIVIDER 1000
+#define ACCOUNT_ENTRIES_DIR_NAME "entries"
+#define IMAGE_ENTRIES_DIR_NAME "images"
+
+/* List. */
+#define GENERIC_LIST_CAPACITY 8
+#define GENERIC_LIST_GROWTH 2
+
+/* Unverified accounts. */
+#define MAX_ACCOUNT_VERIFICATION_TIME 60 * 5
+#define MAX_VERIFICATION_ATTEMPTS 3
+
+/* Account cache/ */
+#define ACCOUNT_CACHE_CAPACITY 256
+#define ACCOUNT_CACHE_UNLOADED_TIME -1
+
 
 /* Account meta-info file. */
-#define DEFAULT_AVAILABLE_ACCOUNT_ID 0;
-#define DEFAULT_AVAILABLE_POST_ID 0;
-#define DEFAULT_AVAILABLE_ACCOUNT_IMAGE_ID 1;
+#define DEFAULT_AVAILABLE_ACCOUNT_ID 1
 #define DEFAILT_SESSION_COUNT 0
 
 #define ENTRY_ID_METAINFO_AVAILABLE_ID 1 // ulong
-#define ENTRY_ID_METAINFO_AVAILABLE_IMAGE_ID 2 // ulong
-#define ENTRY_ID_METAINFO_SESSION_ARRAY 3 // compound array with variable size, MAY NOT EXIST.
+#define ENTRY_ID_METAINFO_SESSION_ARRAY 2 // compound array with variable size, MAY NOT EXIST.
 #define ENTRY_ID_METAINFO_SESSION_ACCOUNT_ID 1 // ulong
 #define ENTRY_ID_METAINFO_SESSION_START_TIME 2 // long
 #define ENTRY_ID_METAINFO_SESSION_IDVALUES 3 // uint array of length SESSION_ID_LENGTH
@@ -55,7 +61,8 @@
 #define EMAIL_SPECIAL_CHAR_DASH '-'
 #define EMAIL_SPECIAL_CHAR_AT '@'
 
-#define NO_ACCOUNT_IMAGE_ID 0
+#define PROFILE_IMAGE_MAX_SIZE 512
+#define PROFILE_IMAGE_COLOR_CHANNEL_COUNT 3
 
 
 /* Account struct. */
@@ -63,11 +70,29 @@
 #define ENTRY_ID_ACCOUNT_SURNAME 2 // String
 #define ENTRY_ID_ACCOUNT_EMAIL 3 // String
 #define ENTRY_ID_ACCOUNT_PASSWORD 4 // ulong array with length PASSWORD_HASH_LENGTH
-#define ENTRY_ID_ACCOUNT_PROFILE_IMAGE_ID 5 // ulong
-#define ENTRY_ID_ACCOUNT_POSTS 6 // ulong array with length >= 1, MAY NOT BE PRESENT IF ACCOUNT HAS NO POSTS
-#define ENTRY_ID_ACCOUNT_CREATION_TIME 7 // long
-#define ENTRY_ID_ACCOUNT_ID 8 // ulong
-#define ENTRY_ID_ACCOUNT_IS_ADMIN 9 // bool
+#define ENTRY_ID_ACCOUNT_POSTS 5 // ulong array with length >= 1, MAY NOT BE PRESENT IF ACCOUNT HAS NO POSTS
+#define ENTRY_ID_ACCOUNT_CREATION_TIME 6 // long
+#define ENTRY_ID_ACCOUNT_ID 7 // ulong
+#define ENTRY_ID_ACCOUNT_IS_ADMIN 8 // bool
+
+
+// Types.
+typedef struct CachedAccountStruct
+{
+	time_t LastAccessTime;
+	UserAccount Account;
+} CachedAccount;
+
+typedef struct UnverifiedUserAccountStruct
+{
+	int VerificationCode;
+	int VerificationAttempts;
+	time_t VerificationStartTime;
+	const char* Name;
+	const char* Surname;
+	const char* Email;
+	const char* Password;
+} UnverifiedUserAccount;
 
 
 // Static functions.
@@ -82,6 +107,30 @@ static unsigned long long GetAndUseAccountID(DBAccountContext* context)
 static unsigned long long GetAccountID(DBAccountContext* context)
 {
 	 return context->AvailableAccountID;
+}
+
+static const char* GetPathToIDFile(DBAccountContext* context, unsigned long long id, const char* dirName, const char* extension)
+{
+	StringBuilder Builder;
+	StringBuilder_Construct(&Builder, DEFAULT_STRING_BUILDER_CAPACITY);
+
+	StringBuilder_Append(&Builder, context->AccountRootPath);
+
+	StringBuilder_AppendChar(&Builder, PATH_SEPARATOR);
+	StringBuilder_Append(&Builder, dirName);
+
+	StringBuilder_AppendChar(&Builder, PATH_SEPARATOR);
+	char NumberString[32];
+	sprintf(NumberString, "%llu", id / ENTRY_FOLDER_NAME_DIVIDER);
+	StringBuilder_Append(&Builder, NumberString);
+	StringBuilder_AppendChar(&Builder, 'k');
+
+	StringBuilder_AppendChar(&Builder, PATH_SEPARATOR);
+	sprintf(NumberString, "%llu", id);
+	StringBuilder_Append(&Builder, NumberString);
+	StringBuilder_Append(&Builder, extension);
+
+	return Builder.Data;
 }
 
 
@@ -241,10 +290,10 @@ static void GeneratePasswordHash(unsigned long long* longArray, const char* pass
 {
 	unsigned long long PasswordLength = (unsigned long long)String_LengthBytes(password);
 
-	for (int i = 0; i < PASSWORD_HASH_LENGTH; i++)
+	for (unsigned long long i = 0; i < PASSWORD_HASH_LENGTH; i++)
 	{
 		unsigned long long HashNumber = 9;
-		for (int j = 0; j < PasswordLength; j++)
+		for (unsigned long long j = 0; j < PasswordLength; j++)
 		{
 			HashNumber += (unsigned long long)password[j] * (i + 57 + i + password[j]);
 			double DoubleNumber = (double)HashNumber;
@@ -277,7 +326,7 @@ static void GeneratePasswordHash(unsigned long long* longArray, const char* pass
 /* Account. */
 static void AccountSetDefaultValues(UserAccount* account)
 {
-	Memory_Set((unsigned char*)account, sizeof(UserAccount), 0);
+	Memory_Set((char*)account, sizeof(UserAccount), 0);
 }
 
 static void AccountDeconstruct(UserAccount* account)
@@ -297,6 +346,10 @@ static void AccountDeconstruct(UserAccount* account)
 	if (account->Posts)
 	{
 		Memory_Free((char*)account->Posts);
+	}
+	if (account->ProfileImageData)
+	{
+		Memory_Free(account->ProfileImageData);
 	}
 }
 
@@ -321,8 +374,8 @@ static Error AccountCreateNew(DBAccountContext* context,
 	account->CreationTime = CurrentTime;
 	account->PostCount = 0;
 	account->Posts = NULL;
-	account->ProfileImageID = NO_ACCOUNT_IMAGE_ID;
 	account->IsAdmin = false;
+	account->ProfileImageData = NULL;
 
 	return Error_CreateSuccess();
 }
@@ -417,6 +470,7 @@ static UnverifiedUserAccount* GetUnverifiedAccountByEmail(DBAccountContext* cont
 
 static void RemoveUnverifiedAccountByIndex(DBAccountContext* context, size_t index)
 {
+	UnverifiedAccountDeconstruct(context->UnverifiedAccounts + index);
 	for (size_t i = index + 1; i < context->UnverifiedAccountCount; i++)
 	{
 		context->UnverifiedAccounts[i - 1] = context->UnverifiedAccounts[i];
@@ -577,6 +631,7 @@ static void RefreshSessions(DBAccountContext* context)
 	}
 }
 
+
 /* Account loading and saving. */
 static Error ReadAccountFromCompoundFailCleanup(UserAccount* account, Error errorToReturn)
 {
@@ -590,7 +645,7 @@ static Error ReadAccountFromCompound(UserAccount* account, unsigned long long ac
 	AccountSetDefaultValues(account);
 
 	// ID.
-	Error ReturnedError = GHDFCompound_GetVerifiedEntry(&compound, ENTRY_ID_ACCOUNT_ID, &Entry, GHDFType_ULong, "Account ID");
+	Error ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_ACCOUNT_ID, &Entry, GHDFType_ULong, "Account ID");
 	if (ReturnedError.Code != ErrorCode_Success)
 	{
 		return ReadAccountFromCompoundFailCleanup(account, ReturnedError);
@@ -605,7 +660,7 @@ static Error ReadAccountFromCompound(UserAccount* account, unsigned long long ac
 	account->ID = accountID;
 
 	// Name.
-	ReturnedError = GHDFCompound_GetVerifiedEntry(&compound, ENTRY_ID_ACCOUNT_NAME, &Entry, GHDFType_String, "Account Name");
+	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_ACCOUNT_NAME, &Entry, GHDFType_String, "Account Name");
 	if (ReturnedError.Code != ErrorCode_Success)
 	{
 		return ReadAccountFromCompoundFailCleanup(account, ReturnedError);
@@ -613,7 +668,7 @@ static Error ReadAccountFromCompound(UserAccount* account, unsigned long long ac
 	account->Name = String_CreateCopy(Entry->Value.SingleValue.String);
 
 	// Surname
-	ReturnedError = GHDFCompound_GetVerifiedEntry(&compound, ENTRY_ID_ACCOUNT_SURNAME, &Entry, GHDFType_String, "Account Surname");
+	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_ACCOUNT_SURNAME, &Entry, GHDFType_String, "Account Surname");
 	if (ReturnedError.Code != ErrorCode_Success)
 	{
 		return ReadAccountFromCompoundFailCleanup(account, ReturnedError);
@@ -621,7 +676,7 @@ static Error ReadAccountFromCompound(UserAccount* account, unsigned long long ac
 	account->Surname = String_CreateCopy(Entry->Value.SingleValue.String);
 
 	// Email.
-	ReturnedError = GHDFCompound_GetVerifiedEntry(&compound, ENTRY_ID_ACCOUNT_EMAIL, &Entry, GHDFType_String, "Account Email");
+	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_ACCOUNT_EMAIL, &Entry, GHDFType_String, "Account Email");
 	if (ReturnedError.Code != ErrorCode_Success)
 	{
 		return ReadAccountFromCompoundFailCleanup(account, ReturnedError);
@@ -629,7 +684,7 @@ static Error ReadAccountFromCompound(UserAccount* account, unsigned long long ac
 	account->Email = String_CreateCopy(Entry->Value.SingleValue.String);
 
 	// Password hash
-	ReturnedError = GHDFCompound_GetVerifiedEntry(&compound, ENTRY_ID_ACCOUNT_PASSWORD, &Entry,
+	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_ACCOUNT_PASSWORD, &Entry,
 		GHDFType_ULong | GHDF_TYPE_ARRAY_BIT, "Account Password Hash");
 	if (ReturnedError.Code != ErrorCode_Success)
 	{
@@ -644,16 +699,9 @@ static Error ReadAccountFromCompound(UserAccount* account, unsigned long long ac
 		account->PasswordHash[i] = Entry->Value.ValueArray.Array[i].Long;
 	}
 
-	// Profile image id.
-	ReturnedError = GHDFCompound_GetVerifiedEntry(&compound, ENTRY_ID_ACCOUNT_PROFILE_IMAGE_ID, &Entry, GHDFType_ULong, "Account Image ID");
-	if (ReturnedError.Code != ErrorCode_Success)
-	{
-		return ReadAccountFromCompoundFailCleanup(account, ReturnedError);
-	}
-	account->ProfileImageID = Entry->Value.SingleValue.ULong;
 
 	// Posts.
-	ReturnedError = GHDFCompound_GetVerifiedOptionalEntry(&compound, ENTRY_ID_ACCOUNT_POSTS, &Entry,
+	ReturnedError = GHDFCompound_GetVerifiedOptionalEntry(compound, ENTRY_ID_ACCOUNT_POSTS, &Entry,
 		GHDFType_ULong | GHDF_TYPE_ARRAY_BIT, "Account Post Array");
 	if (ReturnedError.Code != ErrorCode_Success)
 	{
@@ -671,7 +719,7 @@ static Error ReadAccountFromCompound(UserAccount* account, unsigned long long ac
 	}
 
 	// Creation time.
-	ReturnedError = GHDFCompound_GetVerifiedEntry(&compound, ENTRY_ID_ACCOUNT_CREATION_TIME, &Entry, GHDFType_Long, "Account Creation Time");
+	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_ACCOUNT_CREATION_TIME, &Entry, GHDFType_Long, "Account Creation Time");
 	if (ReturnedError.Code != ErrorCode_Success)
 	{
 		return ReadAccountFromCompoundFailCleanup(account, ReturnedError);
@@ -679,7 +727,7 @@ static Error ReadAccountFromCompound(UserAccount* account, unsigned long long ac
 	account->CreationTime = Entry->Value.SingleValue.Long;
 
 	// IsAdmin field.
-	ReturnedError = GHDFCompound_GetVerifiedEntry(&compound, ENTRY_ID_ACCOUNT_IS_ADMIN, &Entry, GHDFType_Bool, "Account IsAdmin");
+	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_ACCOUNT_IS_ADMIN, &Entry, GHDFType_Bool, "Account IsAdmin");
 	if (ReturnedError.Code != ErrorCode_Success)
 	{
 		return ReadAccountFromCompoundFailCleanup(account, ReturnedError);
@@ -689,9 +737,33 @@ static Error ReadAccountFromCompound(UserAccount* account, unsigned long long ac
 	return Error_CreateSuccess();
 }
 
-static bool ReadAccountFromDatabase(ServerContext* context, UserAccount* account, unsigned long long id, Error* error)
+static Error ReadAccountImageFromDatabase(DBAccountContext* context, UserAccount* account)
 {
-	const char* FilePath = ResourceManager_GetPathToIDFile(id, DIR_NAME_ACCOUNTS);
+	const char* FilePath = GetPathToIDFile(context, account->ID, IMAGE_ENTRIES_DIR_NAME, FILE_EXTENSION_PNG);
+	if (!File_Exists(FilePath))
+	{
+		Memory_Free((char*)FilePath);
+		FilePath = GetPathToIDFile(context, 0, IMAGE_ENTRIES_DIR_NAME, FILE_EXTENSION_PNG);
+	}
+
+	Error ReturnedError;
+	FILE* File = File_Open(FilePath, FileOpenMode_ReadBinary, &ReturnedError);
+	Memory_Free((char*)FilePath);
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+
+	size_t DataLength;
+	account->ProfileImageData = File_ReadAllData(File, &DataLength, &ReturnedError);
+	File_Close(File);
+	return ReturnedError;
+}
+
+static bool ReadAccountFromDatabase(DBAccountContext* context, UserAccount* account, unsigned long long id, Error* error)
+{
+	*error = Error_CreateSuccess();
+	const char* FilePath = GetPathToIDFile(context, id, ACCOUNT_ENTRIES_DIR_NAME, GHDF_FILE_EXTENSION);
 	if (!File_Exists(FilePath))
 	{
 		Memory_Free((char*)FilePath);
@@ -714,13 +786,32 @@ static bool ReadAccountFromDatabase(ServerContext* context, UserAccount* account
 		*error = ReturnedError;
 		return false;
 	}
-	GHDFCompound_Deconstruct(&Compound);
+	
+	ReturnedError = ReadAccountImageFromDatabase(context, account);
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		*error = ReturnedError;
+		return false;
+	}
 
 	*error = Error_CreateSuccess();
 	return true;
 }
 
-static Error WriteAccountToDatabase(ServerContext* context, UserAccount* account)
+static Error WriteImageToDatabase(DBAccountContext* context, Image* image, unsigned long long id)
+{
+	const char* FileName = GetPathToIDFile(context, id, IMAGE_ENTRIES_DIR_NAME, FILE_EXTENSION_PNG);
+	int Result = stbi_write_png(FileName, image->SizeX, image->SizeY, STBI_rgb, image->Data, 0);
+	Memory_Free((char*)FileName);
+
+	if (!Result)
+	{
+		return Error_CreateError(ErrorCode_IO, "Failed to write uploaded image to database.");
+	}
+	return Error_CreateSuccess();
+}
+
+static Error WriteAccountToDatabase(DBAccountContext* context, UserAccount* account)
 {
 	GHDFCompound Compound;
 	GHDFCompound_Construct(&Compound, COMPOUND_DEFAULT_CAPACITY);
@@ -740,9 +831,6 @@ static Error WriteAccountToDatabase(ServerContext* context, UserAccount* account
 	}
 	GHDFCompound_AddArrayEntry(&Compound, GHDFType_ULong, ENTRY_ID_ACCOUNT_PASSWORD, PrimitiveArray, PASSWORD_HASH_LENGTH);
 
-	SingleValue.ULong = account->ProfileImageID;
-	GHDFCompound_AddSingleValueEntry(&Compound, GHDFType_ULong, ENTRY_ID_ACCOUNT_PROFILE_IMAGE_ID, SingleValue);
-
 	if (account->PostCount > 0)
 	{
 		PrimitiveArray = (GHDFPrimitive*)Memory_SafeMalloc(sizeof(GHDFPrimitive) * account->PostCount);
@@ -760,7 +848,7 @@ static Error WriteAccountToDatabase(ServerContext* context, UserAccount* account
 	SingleValue.Bool = account->IsAdmin;
 	GHDFCompound_AddSingleValueEntry(&Compound, GHDFType_Bool, ENTRY_ID_ACCOUNT_IS_ADMIN, SingleValue);
 
-	const char* AccountPath = ResourceManager_GetPathToIDFile(account->ID, DIR_NAME_ACCOUNTS);
+	const char* AccountPath = GetPathToIDFile(context, account->ID, ACCOUNT_ENTRIES_DIR_NAME, GHDF_FILE_EXTENSION);
 	Error ReturnedError = GHDFCompound_WriteToFile(AccountPath, &Compound);
 	Memory_Free((char*)AccountPath);
 	GHDFCompound_Deconstruct(&Compound);
@@ -769,7 +857,7 @@ static Error WriteAccountToDatabase(ServerContext* context, UserAccount* account
 
 static void DeleteAccountFromDatabase(DBAccountContext* context, unsigned long long id)
 {
-	const char* Path = ResourceManager_GetPathToIDFile(context->AccountRootPath, id);
+	const char* Path = GetPathToIDFile(context, id, ACCOUNT_ENTRIES_DIR_NAME, GHDF_FILE_EXTENSION);
 	File_Delete(Path);
 	Memory_Free((char*)Path);
 }
@@ -788,7 +876,7 @@ static Error GenerateMetaInfoForAccounts(DBAccountContext* context, size_t* read
 	unsigned long long MaxIDExclusive = context->AvailableAccountID;
 	size_t ReadAccounts = 0;
 	*readAccountCount = 0;
-	for (unsigned long long ID = 0; ID < MaxIDExclusive; ID++)
+	for (unsigned long long ID = DEFAULT_AVAILABLE_ACCOUNT_ID; ID < MaxIDExclusive; ID++)
 	{
 		UserAccount Account;
 		Error ReturnedError;
@@ -835,6 +923,16 @@ static UserAccount* TryGetAccountFromCache(DBAccountContext* context, unsigned l
 	return NULL;
 }
 
+static void ClearCacheSpotByIndex(DBAccountContext* context, size_t index)
+{
+	CachedAccount* AccountCached = context->AccountCache + index;
+	if (AccountCached->LastAccessTime != ACCOUNT_CACHE_UNLOADED_TIME)
+	{
+		WriteAccountToDatabase(context, &AccountCached->Account);
+		AccountDeconstruct(&AccountCached->Account);
+	}
+}
+
 static CachedAccount* GetCacheSpotForAccount(DBAccountContext* context)
 {
 	time_t LowestLoadTime = LLONG_MAX;
@@ -849,12 +947,7 @@ static CachedAccount* GetCacheSpotForAccount(DBAccountContext* context)
 		}
 	}
 
-	if (context->AccountCache[LowestLoadTimeIndex].LastAccessTime != ACCOUNT_CACHE_UNLOADED_TIME)
-	{
-		WriteAccountToDatabase(context, &context->AccountCache[LowestLoadTimeIndex].Account);
-		AccountDeconstruct(&context->AccountCache[LowestLoadTimeIndex].Account);
-	}
-
+	ClearCacheSpotByIndex(context, LowestLoadTimeIndex);
 	return context->AccountCache + LowestLoadTimeIndex;
 }
 
@@ -888,9 +981,9 @@ static void RemoveAccountFromCacheByID(DBAccountContext* context, unsigned long 
 {
 	for (int i = 0; i < ACCOUNT_CACHE_CAPACITY; i++)
 	{
-		if (context->AccountCache[i].Account.ID == id)
+		if ((context->AccountCache[i].Account.ID == id))
 		{
-			context->AccountCache[i].LastAccessTime = ACCOUNT_CACHE_UNLOADED_TIME;
+			ClearCacheSpotByIndex(context, i);
 			return;
 		}
 	}
@@ -984,9 +1077,10 @@ static size_t FindNextAvailableAccountID(DBAccountContext* context)
 	bool FileExists;
 	do
 	{
-		const char* FilePath = ResourceManager_GetPathToIDFile(context->AccountRootPath, GetAccountID(context));
+		const char* FilePath = GetPathToIDFile(context, GetAccountID(context),
+			ACCOUNT_ENTRIES_DIR_NAME, GHDF_FILE_EXTENSION);
 		FileExists = File_Exists(FilePath);
-		Memory_Free(FilePath);
+		Memory_Free((char*)FilePath);
 
 		if (FileExists)
 		{
@@ -998,15 +1092,29 @@ static size_t FindNextAvailableAccountID(DBAccountContext* context)
 	return SkippedAccounts;
 }
 
+/* Image handling. */
+static void ResizeImage(Image* image, int maxSizeOnAxis)
+{
+	float Scale = (float)maxSizeOnAxis / Math_Max(image->SizeX, image->SizeY);
+	int TargetXSize = (int)(image->SizeX * Scale);
+	int TargetYSize = (int)(image->SizeY * Scale);
+
+	const char* ResizedImageData = Memory_SafeMalloc(TargetXSize * TargetYSize * STBI_rgb);
+	stbir_resize(image->Data, image->SizeX, image->SizeY, 0, (void*)ResizedImageData, TargetXSize, TargetYSize,
+		0, STBIR_RGB, STBIR_TYPE_UINT8, STBIR_EDGE_CLAMP, STBIR_FILTER_DEFAULT);
+	Memory_Free(image->Data);
+	image->Data = ResizedImageData;
+
+	image->SizeX = TargetXSize;
+	image->SizeY = TargetYSize;
+	image->ColorChannels = STBI_rgb;
+}
+
 
 /* Constructor helper functions. */
 static void LoadDefaultMetaInfo(DBAccountContext* context)
 {
 	context->AvailableAccountID = DEFAULT_AVAILABLE_ACCOUNT_ID;
-	context->AvailableImageID = DEFAULT_AVAILABLE_ACCOUNT_IMAGE_ID;
-
-	context->_sessionListCapacity = GENERIC_LIST_CAPACITY;
-	context->ActiveSessions = (SessionID*)Memory_SafeMalloc(sizeof(SessionID) * context->_sessionListCapacity);
 	context->SessionCount = 0;
 }
 
@@ -1062,23 +1170,15 @@ static Error ReadMetaInfoFromCompound(DBAccountContext* context, GHDFCompound* c
 	// Account ID.
 	Error ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_METAINFO_AVAILABLE_ID, &Entry, GHDFType_ULong,
 		"Meta-info account id.");
-	if (ReturnedError.Code != ErrorCode_Success);
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
 		return ReturnedError;
 	}
 	context->AvailableAccountID = Entry->Value.SingleValue.ULong;
 
-	// Profile image ID.
-	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_METAINFO_AVAILABLE_IMAGE_ID, &Entry, GHDFType_ULong,
-		"Meta-info account image id.");
-	if (ReturnedError.Code != ErrorCode_Success);
-	{
-		return ReturnedError;
-	}
-	context->AvailableImageID = Entry->Value.SingleValue.ULong;
 
 	// Sessions.
-	ReturnedError = GHDFCompound_GetVerifiedOptionalEntry(compound, ENTRY_ID_METAINFO_AVAILABLE_IMAGE_ID, &Entry, GHDFType_ULong,
+	ReturnedError = GHDFCompound_GetVerifiedOptionalEntry(compound, ENTRY_ID_METAINFO_SESSION_ARRAY, &Entry, GHDFType_ULong,
 		"Meta-info account image id.");
 	if (ReturnedError.Code != ErrorCode_Success)
 	{
@@ -1097,6 +1197,8 @@ static Error ReadMetaInfoFromCompound(DBAccountContext* context, GHDFCompound* c
 			return ReturnedError;
 		}
 	}
+
+	return Error_CreateSuccess();
 }
 
 static Error LoadMetaInfo(DBAccountContext* context)
@@ -1105,8 +1207,14 @@ static Error LoadMetaInfo(DBAccountContext* context)
 
 	GHDFCompound Compound;
 	const char* FilePath = Directory_CombinePaths(context->AccountRootPath, ACCOUNT_METAINFO_FILE_NAME);
+	if (!File_Exists(FilePath))
+	{
+		Memory_Free((char*)FilePath);
+		return Error_CreateSuccess();
+	}
+
 	Error ReturnedError = GHDFCompound_ReadFromFile(FilePath, &Compound);
-	Memory_Free(FilePath);
+	Memory_Free((char*)FilePath);
 	if (ReturnedError.Code != ErrorCode_Success)
 	{
 		return ReturnedError;
@@ -1119,11 +1227,12 @@ static Error LoadMetaInfo(DBAccountContext* context)
 
 static void SaveSessionsToCompound(DBAccountContext* context, GHDFCompound* compound)
 {
-	GHDFCompound* CompoundArray = (GHDFCompound*)Memory_SafeMalloc(sizeof(GHDFCompound) * context->SessionCount);
+	GHDFPrimitive* PrimitiveArray = (GHDFPrimitive*)Memory_SafeMalloc(sizeof(GHDFPrimitive) * context->SessionCount);
 
 	for (size_t CompIndex = 0; CompIndex < context->SessionCount; CompIndex++)
 	{
-		GHDFCompound* TargetCompound = CompoundArray + CompIndex;
+		GHDFCompound* TargetCompound = (GHDFCompound*)Memory_SafeMalloc(sizeof(GHDFCompound));
+		PrimitiveArray[CompIndex].Compound = TargetCompound;
 		GHDFCompound_Construct(TargetCompound, COMPOUND_DEFAULT_CAPACITY);
 		GHDFPrimitive SingleValue;
 
@@ -1139,6 +1248,9 @@ static void SaveSessionsToCompound(DBAccountContext* context, GHDFCompound* comp
 		}
 		GHDFCompound_AddArrayEntry(TargetCompound, GHDFType_UInt, ENTRY_ID_METAINFO_SESSION_IDVALUES, SessionIDValues, SESSION_ID_LENGTH);
 	}
+
+	GHDFCompound_AddArrayEntry(compound, GHDFType_Compound, ENTRY_ID_METAINFO_SESSION_ARRAY,
+		PrimitiveArray, (unsigned int)context->SessionCount);
 }
 
 static Error SaveMetaInfo(DBAccountContext* context)
@@ -1160,7 +1272,7 @@ static Error SaveMetaInfo(DBAccountContext* context)
 
 	const char* FilePath = Directory_CombinePaths(context->AccountRootPath, ACCOUNT_METAINFO_FILE_NAME);
 	Error ReturnedError = GHDFCompound_WriteToFile(FilePath, &Compound);
-	Memory_Free(FilePath);
+	Memory_Free((char*)FilePath);
 	GHDFCompound_Deconstruct(&Compound);
 
 	return ReturnedError;
@@ -1168,38 +1280,51 @@ static Error SaveMetaInfo(DBAccountContext* context)
 
 
 // Functions.
-Error AccountManager_Construct(DBAccountContext* context, Logger* logger, const char* databaseRootPath)
+Error AccountManager_Construct(ServerContext* serverContext)
 {
-	LoadMetaInfo(context);
-	IDCodepointHashMap_Construct(&context->NameMap);
-	IDCodepointHashMap_Construct(&context->EmailMap);
+	serverContext->AccountContext->AccountRootPath = Directory_CombinePaths(serverContext->Resources->DatabaseRootPath, DIR_NAME_ACCOUNTS);
 
-	context->UnverifiedAccounts = (UnverifiedUserAccount*)Memory_SafeMalloc(sizeof(UnverifiedUserAccount) * GENERIC_LIST_CAPACITY);
-	context->UnverifiedAccountCount = 0;
-	context->_unverifiedAccountCapacity = GENERIC_LIST_CAPACITY;
+	serverContext->AccountContext->_sessionListCapacity = GENERIC_LIST_CAPACITY;
+	serverContext->AccountContext->ActiveSessions = 
+		(SessionID*)Memory_SafeMalloc(sizeof(SessionID) * serverContext->AccountContext->_sessionListCapacity);
+	serverContext->AccountContext->SessionCount = 0;
+
+	Error ReturnedError = LoadMetaInfo(serverContext->AccountContext);
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+	IDCodepointHashMap_Construct(&serverContext->AccountContext->NameMap);
+	IDCodepointHashMap_Construct(&serverContext->AccountContext->EmailMap);
+
+	serverContext->AccountContext->UnverifiedAccounts = 
+		(UnverifiedUserAccount*)Memory_SafeMalloc(sizeof(UnverifiedUserAccount) * GENERIC_LIST_CAPACITY);
+	serverContext->AccountContext->UnverifiedAccountCount = 0;
+	serverContext->AccountContext->_unverifiedAccountCapacity = GENERIC_LIST_CAPACITY;
 
 	size_t ReadAccountCount;
-	Error ReturnedError = GenerateMetaInfoForAccounts(context, &ReadAccountCount);
+	ReturnedError = GenerateMetaInfoForAccounts(serverContext->AccountContext, &ReadAccountCount);
 	if (ReturnedError.Code != ErrorCode_Success)
 	{
 		return ReturnedError;
 	}
 	char Message[128];
 	snprintf(Message, sizeof(Message), "Read %llu accounts while creating ID hashes.", ReadAccountCount);
-	Logger_LogInfo(logger, Message);
+	Logger_LogInfo(serverContext->Logger, Message);
 
-	context->AccountCache = (CachedAccount*)Memory_SafeMalloc(sizeof(CachedAccount) * ACCOUNT_CACHE_CAPACITY);
+	serverContext->AccountContext->AccountCache = (CachedAccount*)Memory_SafeMalloc(sizeof(CachedAccount) * ACCOUNT_CACHE_CAPACITY);
 	for (int i = 0; i < ACCOUNT_CACHE_CAPACITY; i++)
 	{
-		context->AccountCache[i].LastAccessTime = ACCOUNT_CACHE_UNLOADED_TIME;
-		AccountSetDefaultValues(&context->AccountCache[i].Account);
+		serverContext->AccountContext->AccountCache[i].LastAccessTime = ACCOUNT_CACHE_UNLOADED_TIME;
+		AccountSetDefaultValues(&serverContext->AccountContext->AccountCache[i].Account);
 	}
 
-	return Error_CreateSuccess();
+	return ReturnedError;
 }
 
 void AccountManager_Deconstruct(DBAccountContext* context)
 {
+	SaveMetaInfo(context);
 	SaveAllCachedAccountsToDatabase(context);
 	IDCodepointHashMap_Deconstruct(&context->NameMap);
 	IDCodepointHashMap_Deconstruct(&context->EmailMap);
@@ -1208,6 +1333,8 @@ void AccountManager_Deconstruct(DBAccountContext* context)
 	Memory_Free(context->AccountCache);
 }
 
+
+/* Accounts. */
 UserAccount* AccountManager_TryCreateAccount(ServerContext* context,
 	const char* name,
 	const char* surname,
@@ -1223,7 +1350,8 @@ UserAccount* AccountManager_TryCreateAccount(ServerContext* context,
 		return NULL;
 	}
 
-	const char* AccountFilePath = ResourceManager_GetPathToIDFile(GetAccountID(context->AccountContext), DIR_NAME_ACCOUNTS);
+	const char* AccountFilePath = GetPathToIDFile(
+		context->AccountContext, GetAccountID(context->AccountContext), ACCOUNT_ENTRIES_DIR_NAME, GHDF_FILE_EXTENSION);
 	if (File_Exists(AccountFilePath))
 	{
 		Memory_Free((char*)AccountFilePath);
@@ -1279,12 +1407,12 @@ bool AccountManager_TryCreateUnverifiedAccount(ServerContext* context,
 	return true;
 }
 
-bool AccountManager_TryVerifyAccount(ServerContext* context, const char* email, int code, Error* error)
+bool AccountManager_TryVerifyAccount(ServerContext* serverContext, const char* email, int code, Error* error)
 {
-	RefreshUnverifiedAccounts(context->AccountContext);
+	RefreshUnverifiedAccounts(serverContext->AccountContext);
 	*error = Error_CreateSuccess();
 
-	UnverifiedUserAccount* UnverifiedAccount = GetUnverifiedAccountByEmail(context->AccountContext, email);
+	UnverifiedUserAccount* UnverifiedAccount = GetUnverifiedAccountByEmail(serverContext->AccountContext, email);
 	if (!UnverifiedAccount)
 	{
 		return false;
@@ -1295,35 +1423,35 @@ bool AccountManager_TryVerifyAccount(ServerContext* context, const char* email, 
 		return false;
 	}
 
-	if (!AccountManager_TryCreateAccount(context->AccountContext, UnverifiedAccount->Name, UnverifiedAccount->Surname,
+	if (!AccountManager_TryCreateAccount(serverContext, UnverifiedAccount->Name, UnverifiedAccount->Surname,
 		UnverifiedAccount->Email, UnverifiedAccount->Password, error))
 	{
 		return false;
 	}
 
-	RemoveUnverifiedAccountByEmail(context, email);
+	RemoveUnverifiedAccountByEmail(serverContext->AccountContext, email);
 	return true;
 }
 
-Error AccountManager_VerifyAccount(ServerContext* context, const char* email)
+Error AccountManager_VerifyAccount(ServerContext* serverContext, const char* email)
 {
-	RefreshUnverifiedAccounts(context->AccountContext);
+	RefreshUnverifiedAccounts(serverContext->AccountContext);
 
-	UnverifiedUserAccount* UnverifiedAccount = GetUnverifiedAccountByEmail(context->AccountContext, email);
+	UnverifiedUserAccount* UnverifiedAccount = GetUnverifiedAccountByEmail(serverContext->AccountContext, email);
 	if (!UnverifiedAccount)
 	{
 		return Error_CreateSuccess();
 	}
 
 	Error ReturnedError;
-	AccountManager_TryCreateAccount(context, UnverifiedAccount->Name, UnverifiedAccount->Surname,
+	AccountManager_TryCreateAccount(serverContext, UnverifiedAccount->Name, UnverifiedAccount->Surname,
 		UnverifiedAccount->Surname, UnverifiedAccount->Password, &ReturnedError);
 	if (ReturnedError.Code != ErrorCode_Success)
 	{
 		return ReturnedError;
 	}
 
-	RemoveUnverifiedAccountByEmail(context->AccountContext, email);
+	RemoveUnverifiedAccountByEmail(serverContext->AccountContext, email);
 	return Error_CreateSuccess();
 }
 
@@ -1383,27 +1511,27 @@ UserAccount* AccountManager_GetAccountByEmail(DBAccountContext* context, const c
 	return FoundAccount;
 }
 
-void AccountManager_DeleteAccount(ServerContext* context, UserAccount* account)
+void AccountManager_DeleteAccount(ServerContext* serverContext, UserAccount* account)
 {
 	char Message[256];
 	snprintf(Message, sizeof(Message), "Deleting account with ID %llu and email %s", account->ID, account->Email);
-	Logger_LogInfo(context->Logger, Message);
+	Logger_LogInfo(serverContext->Logger, Message);
 
-	RemoveSessionByID(context->AccountContext, account->ID);
-	ClearMetaInfoForAccount(context->AccountContext, account);
-	RemoveAccountFromCacheByID(context->AccountContext, account->ID);
-	DeleteAccountFromDatabase(context->AccountContext, account->ID);
-	AccountDeconstruct(context->AccountContext);
+	RemoveSessionByID(serverContext->AccountContext, account->ID);
+	ClearMetaInfoForAccount(serverContext->AccountContext, account);
+	RemoveAccountFromCacheByID(serverContext->AccountContext, account->ID);
+	DeleteAccountFromDatabase(serverContext->AccountContext, account->ID);
+	AccountDeconstruct(account);
 }
 
-Error AccountManager_DeleteAllAccounts(ServerContext* context)
+Error AccountManager_DeleteAllAccounts(ServerContext* serverContext)
 {
-	Logger_LogWarning(context->Logger, "DELETING ALL ACCOUNTS");
+	Logger_LogWarning(serverContext->Logger, "DELETING ALL ACCOUNTS");
 
-	for (unsigned long long i = 0; i < GetAccountID(context->AccountContext); i++)
+	for (unsigned long long i = 0; i < GetAccountID(serverContext->AccountContext); i++)
 	{
 		Error ReturnedError;
-		UserAccount* Account = AccountManager_GetAccountByID(context->AccountContext, i, &ReturnedError);
+		UserAccount* Account = AccountManager_GetAccountByID(serverContext->AccountContext, i, &ReturnedError);
 		if (ReturnedError.Code != ErrorCode_Success)
 		{
 			return ReturnedError;
@@ -1414,12 +1542,14 @@ Error AccountManager_DeleteAllAccounts(ServerContext* context)
 			continue;
 		}
 
-		AccountManager_DeleteAccount(context->AccountContext, Account, context->Logger);
+		AccountManager_DeleteAccount(serverContext, Account);
 	}
 
 	return Error_CreateSuccess();
 }
 
+
+/* Sessions. */
 bool AccountManager_IsSessionAdmin(DBAccountContext* context, unsigned int* sessionIdValues, Error* error)
 {
 	for (size_t i = 0; i < context->SessionCount; i++)
@@ -1447,5 +1577,54 @@ SessionID* AccountManager_TryCreateSession(DBAccountContext* context, UserAccoun
 
 SessionID* AccountManager_CreateSession(DBAccountContext* context, UserAccount* account)
 {
-	CreateSession(context, account);
+	return CreateSession(context, account);
+}
+
+
+/* Profile image. */
+Error AccountManager_GetProfileImage(DBAccountContext* context, unsigned long long id, Image* image)
+{
+	const char* FilePath = GetPathToIDFile(context, id, IMAGE_ENTRIES_DIR_NAME, FILE_EXTENSION_PNG);
+	image->Data = stbi_load(FilePath, &image->SizeX, &image->SizeY, &image->ColorChannels, STBI_rgb);
+	if (!image->Data)
+	{
+		return Error_CreateError(ErrorCode_IO, "Failed to load account image");
+	}
+	return Error_CreateSuccess();
+}
+
+Error AccountManager_SetProfileImage(DBAccountContext* context, UserAccount* account, unsigned char* uploadedImageData, size_t dataLength)
+{
+	Image UploadedImage;
+	UploadedImage.Data = stbi_load_from_memory(uploadedImageData, (int)dataLength, &UploadedImage.SizeX,
+		&UploadedImage.SizeY, &UploadedImage.ColorChannels, STBI_rgb);
+	if (!UploadedImage.Data)
+	{
+		return Error_CreateError(ErrorCode_InvalidArgument, "Provided image's data to set for profile is invalid and couldn't be loaded.");
+	}
+
+	ResizeImage(&UploadedImage, PROFILE_IMAGE_MAX_SIZE);
+
+	Error ReturnedError = WriteImageToDatabase(context, &UploadedImage, account->ID);
+	Memory_Free((char*)UploadedImage.Data);
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+
+	Memory_Free(account->ProfileImageData);
+	return ReadAccountImageFromDatabase(context, account);
+}
+
+void AccountManager_DeleteAllProfileImages(ServerContext* serverContext)
+{
+	Logger_LogWarning(serverContext->Logger, "DELETING ALL PROFILE IMAGES.");
+
+	for (unsigned long long id = 0; id < serverContext->AccountContext->AvailableAccountID; id++)
+	{
+		const char* FilePath = GetPathToIDFile(serverContext->AccountContext,
+			id, IMAGE_ENTRIES_DIR_NAME, FILE_EXTENSION_PNG);
+		File_Delete(FilePath);
+		Memory_Free((char*)FilePath);
+	}
 }

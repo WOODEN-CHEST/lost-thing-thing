@@ -4,6 +4,7 @@
 #include "LTTServerC.h"
 #include <time.h>
 #include "IDCodepointHashMap.h"
+#include "Image.h"
 
 
 // Macros.
@@ -15,27 +16,20 @@
 typedef struct UserAccountStruct
 {
 	unsigned long long ID;
+
 	const char* Name;
 	const char* Surname;
 	const char* Email;
 	unsigned long long PasswordHash[16];
 	long long CreationTime;
-	unsigned long long ProfileImageID;
+
+	const char* ProfileImageData;
+
 	unsigned long long* Posts;
 	unsigned int PostCount;
-	_Bool IsAdmin;
-} UserAccount;
 
-typedef struct UnverifiedUserAccount
-{
-	int VerificationCode;
-	int VerificationAttempts;
-	time_t VerificationStartTime;
-	const char* Name;
-	const char* Surname;
-	const char* Email;
-	const char* Password;
-} UnverifiedUserAccount;
+	bool IsAdmin;
+} UserAccount;
 
 typedef struct SessionIDStruct
 {
@@ -44,18 +38,12 @@ typedef struct SessionIDStruct
 	unsigned int IDValues[SESSION_ID_LENGTH];
 } SessionID;
 
-typedef struct CachedAccountStruct
-{
-	time_t LastAccessTime;
-	UserAccount Account;
-} CachedAccount;
 
 typedef struct DBAccountContextStruct
 {
 	const char* AccountRootPath;
 
 	unsigned long long AvailableAccountID;
-	unsigned long long AvailableImageID;
 	IDCodepointHashMap NameMap;
 	IDCodepointHashMap EmailMap;
 
@@ -63,20 +51,22 @@ typedef struct DBAccountContextStruct
 	size_t SessionCount;
 	size_t _sessionListCapacity;
 
-	UnverifiedUserAccount* UnverifiedAccounts;
+	struct UnverifiedUserAccountStruct* UnverifiedAccounts;
 	size_t UnverifiedAccountCount;
 	size_t _unverifiedAccountCapacity;
 
-	CachedAccount* AccountCache;
+	struct CachedAccountStruct* AccountCache;
 } DBAccountContext;
 
 
 
 // Functions.
-Error AccountManager_Construct(DBAccountContext* context, Logger* logger, const char* databaseRootPath);
+Error AccountManager_Construct(ServerContext* serverContext);
 
 void AccountManager_Deconstruct(DBAccountContext* context);
 
+
+/* Account/ */
 UserAccount* AccountManager_TryCreateAccount(ServerContext* context,
 	const char* name,
 	const char* surname,
@@ -91,9 +81,9 @@ bool AccountManager_TryCreateUnverifiedAccount(ServerContext* context,
 	const char* password,
 	Error* error);
 
-Error AccountManager_VerifyAccount(ServerContext* context, const char* email);
+Error AccountManager_VerifyAccount(ServerContext* serverContext, const char* email);
 
-bool AccountManager_TryVerifyAccount(ServerContext* context, const char* email, int code, Error* error);
+bool AccountManager_TryVerifyAccount(ServerContext* serverContext, const char* email, int code, Error* error);
 
 UserAccount* AccountManager_GetAccountByID(DBAccountContext* context, unsigned long long id, Error* error);
 
@@ -101,12 +91,21 @@ UserAccount** AccountManager_GetAccountsByName(DBAccountContext* context, const 
 
 UserAccount* AccountManager_GetAccountByEmail(DBAccountContext* context, const char* email, Error* error);
 
-void AccountManager_DeleteAccount(ServerContext* context, UserAccount* account);
+void AccountManager_DeleteAccount(ServerContext* serverContext, UserAccount* account);
 
-Error AccountManager_DeleteAllAccounts(ServerContext* context);
+Error AccountManager_DeleteAllAccounts(ServerContext* serverContext);
 
+
+/* Sessions. */
 bool AccountManager_IsSessionAdmin(DBAccountContext* context, unsigned int* sessionIdValues, Error* error);
 
 SessionID* AccountManager_TryCreateSession(DBAccountContext* context, UserAccount* account, const char* password);
 
 SessionID* AccountManager_CreateSession(DBAccountContext* context, UserAccount* account);
+
+/* Profile image. */
+Error AccountManager_GetProfileImage(DBAccountContext* context, unsigned long long id, Image* image);
+
+Error AccountManager_SetProfileImage(DBAccountContext* context, UserAccount* account, unsigned char* uploadedImageData, size_t dataLength);
+
+void AccountManager_DeleteAllProfileImages(ServerContext* context);

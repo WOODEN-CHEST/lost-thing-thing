@@ -170,10 +170,12 @@ Error Logger_Construct(Logger* logger, const char* rootDirectoryPath)
 
 	// Create current log  file.
 	File_Delete(LogFilePath);
-	logger->LogFile = File_Open(LogFilePath, FileOpenMode_Write);
+	Error ReturnedError;
+	logger->LogFile = File_Open(LogFilePath, FileOpenMode_Write, &ReturnedError);
 
-	if (logger->LogFile == NULL)
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
+		Error_Deconstruct(&ReturnedError);
 		return Error_CreateError(ErrorCode_IO, "Failed to create log file.");
 	}
 

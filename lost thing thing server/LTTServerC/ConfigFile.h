@@ -1,6 +1,7 @@
 #pragma once
 #include <stddef.h>
 #include "LttErrors.h"
+#include "LTTServerC.h"
 
 
 // Macros.
@@ -19,6 +20,6 @@ typedef struct ServerConfigStruct
 
 
 // Functions.
-Error ServerConfig_Read(ServerConfig* config, Logger* logger, const char* configPath);
+Error ServerConfig_Read(ServerContext* serverContext, const char* configPath);
 
 void ServerConfig_Deconstruct(ServerConfig* config);

@@ -24,20 +24,20 @@
     <Filter Include="Source Files\HttpListener">
       <UniqueIdentifier>{5a6b1d8c-6056-4aa5-b9de-5e4695cf964c}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\String">
-      <UniqueIdentifier>{1f1f2198-75a8-48cb-adb6-e61504e4e779}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\IO\Logger">
       <UniqueIdentifier>{ca543281-98ad-4a03-ae1c-9fb08298a8ce}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Source Files\HTML">
-      <UniqueIdentifier>{7d421201-f029-421f-af53-754e47c38cd7}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files\JSON">
       <UniqueIdentifier>{62973ba3-fd05-4ece-8ca7-c4c7460d4171}</UniqueIdentifier>
     </Filter>
     <Filter Include="Source Files\HttpListener\Database">
       <UniqueIdentifier>{4d62ae3a-f3c8-4438-a537-2058ce82b989}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\String">
+      <UniqueIdentifier>{1f1f2198-75a8-48cb-adb6-e61504e4e779}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Source Files\HttpListener\HTML">
+      <UniqueIdentifier>{7d421201-f029-421f-af53-754e47c38cd7}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -69,7 +69,7 @@
       <Filter>Source Files\IO\Logger</Filter>
     </ClCompile>
     <ClCompile Include="LTTHTML.c">
-      <Filter>Source Files\HTML</Filter>
+      <Filter>Source Files\HttpListener\HTML</Filter>
     </ClCompile>
     <ClCompile Include="LTTChar.c">
       <Filter>Source Files\String</Filter>
@@ -96,6 +96,15 @@
       <Filter>Source Files\HttpListener\Database</Filter>
     </ClCompile>
     <ClCompile Include="LTTAccountManager.c">
+      <Filter>Source Files\HttpListener\Database</Filter>
+    </ClCompile>
+    <ClCompile Include="Image.c">
+      <Filter>Source Files\IO</Filter>
+    </ClCompile>
+    <ClCompile Include="LTTPostManager.h">
+      <Filter>Source Files\HttpListener\Database</Filter>
+    </ClCompile>
+    <ClCompile Include="LTTPostManager.c">
       <Filter>Source Files\HttpListener\Database</Filter>
     </ClCompile>
   </ItemGroup>
@@ -125,7 +134,7 @@
       <Filter>Source Files\IO\Logger</Filter>
     </ClInclude>
     <ClInclude Include="LTTHTML.h">
-      <Filter>Source Files\HTML</Filter>
+      <Filter>Source Files\HttpListener\HTML</Filter>
     </ClInclude>
     <ClInclude Include="ConfigFile.h">
       <Filter>Source Files\IO</Filter>
@@ -150,6 +159,9 @@
     </ClInclude>
     <ClInclude Include="LTTAccountManager.h">
       <Filter>Source Files\HttpListener\Database</Filter>
+    </ClInclude>
+    <ClInclude Include="Image.h">
+      <Filter>Source Files\IO</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

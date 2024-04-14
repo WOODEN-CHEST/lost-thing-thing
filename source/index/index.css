@@ -1,0 +1,26 @@
+/* Primary colors: rgb(0, 0, 0), rgb(78, 62, 156), rgb(209, 71`, 207) */
+
+html body {
+    margin: 0;
+    background-image: linear-gradient(0deg, rgb(36, 32, 54), rgb(66, 56, 116));
+    width: 100vw;
+    height: 150vh;
+}
+
+div.WidePanel {
+    width: 100%;
+    position: absolute;
+    display:flex;
+}
+
+#TopPanel {
+    height: 10vh;
+    background-color: rgb(124, 73, 123);
+
+    top: 0%;
+
+    border: 0vh;
+    border-bottom: 0.5vh;
+    border-color: black;
+    border-style: solid;
+}

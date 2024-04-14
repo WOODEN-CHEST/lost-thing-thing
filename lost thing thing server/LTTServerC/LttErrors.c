@@ -111,7 +111,7 @@ void Error_Deconstruct(Error* error)
 {
 	if (error->Message)
 	{
-		free(error->Message);
+		free((char*)error->Message);
 	}
 }
 

@@ -40,7 +40,7 @@ void Memory_Copy(const char* source, char* destination, size_t size)
 	memcpy(destination, source, size);
 }
 
-void Memory_Set(char* memoryToSet, size_t memorySize, unsigned char value)
+void Memory_Set(char* memoryToSet, size_t memorySize, char value)
 {
 	memset(memoryToSet, value, memorySize);
 }

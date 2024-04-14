@@ -19,9 +19,6 @@ typedef struct ServerResourceContextStruct
 {
 	const char* SourceRootPath;
 	const char* DatabaseRootPath;
-
-	unsigned long long AvailablePostID;
-	IDCodepointHashMap PostTitleMap;
 	
 } ServerResourceContext;
 
@@ -40,8 +37,6 @@ void ResourceManager_Construct(ServerResourceContext* context, const char* dataR
 
 void ResourceManager_Deconstruct(ServerResourceContext* context);
 
-ResourceResult ResourceManager_Get(ServerContext* context, ServerResourceRequest* request);
+ResourceResult ResourceManager_Get(ServerContext* serverContext, ServerResourceRequest* request);
 
-ResourceResult ResourceManager_Post(ServerContext* context, ServerResourceRequest* request);
-
-const char* ResourceManager_GetPathToIDFile(const char* rootPath, unsigned long long id);
+ResourceResult ResourceManager_Post(ServerContext* serverContext, ServerResourceRequest* request);

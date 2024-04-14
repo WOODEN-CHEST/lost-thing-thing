@@ -161,35 +161,35 @@ static void ServerConfigConstruct(ServerConfig* config)
 
 
 // Functions.
-Error ServerConfig_Read(ServerConfig* config, Logger* logger, const char* configPath)
+Error ServerConfig_Read(ServerContext* serverContext, const char* configPath)
 {
-	ServerConfigConstruct(config);
+	ServerConfigConstruct(serverContext->Configuration);
 
-	FILE* File = File_Open(configPath, FileOpenMode_Read);
+	FILE* File = File_Open(configPath, FileOpenMode_Read, NULL);
 	if (!File)
 	{
-		LoadDefaultConfig(config);
-		Logger_LogWarning(logger, "No config file found, loading default config.");
+		LoadDefaultConfig(serverContext->Configuration);
+		Logger_LogWarning(serverContext->Logger, "No config file found, loading default config.");
 		return Error_CreateSuccess();
 	}
 
-	const char* FileData = File_ReadAllText(File);
+	const char* FileData = File_ReadAllText(File, NULL);
 	File_Close(File);
 
 	if (!FileData)
 	{
-		Logger_LogWarning(logger, "Config file found, but failed to read it's contents. Loading default config.");
-		LoadDefaultConfig(config);
+		Logger_LogWarning(serverContext->Logger, "Config file found, but failed to read it's contents. Loading default config.");
+		LoadDefaultConfig(serverContext->Configuration);
 		return Error_CreateSuccess();
 	}
 
-	Error ReturnedError = ParseConfiguration(config, logger, FileData);
+	Error ReturnedError = ParseConfiguration(serverContext->Configuration, serverContext->Logger, FileData);
 	if (ReturnedError.Code != ErrorCode_Success)
 	{
-		Logger_LogWarning(logger, ReturnedError.Message);
-		ServerConfig_Deconstruct(config); // Get rid of any data left while trying to parse config.
-		ServerConfigConstruct(config); // Prepare for default config.
-		LoadDefaultConfig(config);
+		Logger_LogWarning(serverContext->Logger, ReturnedError.Message);
+		ServerConfig_Deconstruct(serverContext->Configuration); // Get rid of any data left while trying to parse config.
+		ServerConfigConstruct(serverContext->Configuration); // Prepare for default config.
+		LoadDefaultConfig(serverContext->Configuration);
 	}
 
 	return Error_CreateSuccess();

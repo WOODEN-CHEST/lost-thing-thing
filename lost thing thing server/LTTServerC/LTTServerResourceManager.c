@@ -16,8 +16,6 @@
 #define DIR_NAME_SOURCE "source"
 #define DIR_NAME_POSTS "posts"
 
-#define USER_ID_FOLDER_NAME_DIVIDER 10000
-
 
 // Types.
 typedef struct HTMLSource
@@ -40,28 +38,8 @@ typedef struct JavascriptSourceFileStruct
 	const char* Data;
 } JavascriptSourceFile;
 
-// Static functions.
+
 // Functions.
-const char* ResourceManager_GetPathToIDFile(const char* rootPath, unsigned long long id)
-{
-	StringBuilder Builder;
-	StringBuilder_Construct(&Builder, DEFAULT_STRING_BUILDER_CAPACITY);
-
-	StringBuilder_Append(&Builder, rootPath);
-
-	StringBuilder_AppendChar(&Builder, PATH_SEPARATOR);
-	char NumberString[32];
-	sprintf(NumberString, "%llu", id / USER_ID_FOLDER_NAME_DIVIDER);
-	StringBuilder_Append(&Builder, NumberString);
-
-	StringBuilder_AppendChar(&Builder, PATH_SEPARATOR);
-	sprintf(NumberString, "%llu", id);
-	StringBuilder_Append(&Builder, NumberString);
-	StringBuilder_Append(&Builder, GHDF_FILE_EXTENSION);
-
-	return Builder.Data;
-}
-
 void ResourceManager_Construct(ServerResourceContext* context, const char* dataRootPath)
 {
 	context->DatabaseRootPath = Directory_CombinePaths(dataRootPath, DIR_NAME_DATABASE);
@@ -69,13 +47,10 @@ void ResourceManager_Construct(ServerResourceContext* context, const char* dataR
 
 	Directory_CreateAll(context->DatabaseRootPath);
 	Directory_CreateAll(context->SourceRootPath);
-
-	return Error_CreateSuccess();
 }
 
 void ResourceManager_Deconstruct(ServerResourceContext* context)
 {
-	SaveGlobalServerData(context);
 	Memory_Free((char*)context->DatabaseRootPath);
 	Memory_Free((char*)context->SourceRootPath);
 }

@@ -3,11 +3,11 @@
 #include <math.h>
 
 // Macros.
-#define Math_Max(a, b) (a > b ? a : b)
+#define Math_Max(a, b) ((a) > (b) ? (a) : (b))
 
-#define Math_Min(a, b) (a < b ? a : b)
+#define Math_Min(a, b) ((a) < (b) ? (a) : (b))
 
-#define Math_Clamp(value, minValue, maxValue) (value < minValue ? minValue : (value > maxValue ? maxValue : value))
+#define Math_Clamp(value, minValue, maxValue) ((value) < (minValue) ? (minValue) : ((value) > (maxValue) ? (maxValue) : (value)))
 
 
 // Functions.

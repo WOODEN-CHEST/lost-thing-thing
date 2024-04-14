@@ -89,8 +89,8 @@ char* Directory_CombinePaths(const char* path1, const char* path2)
 
 char* Directory_GetName(const char* path)
 {
-	int LastSeparatorIndex = 0;
-	int Length = 0;
+	size_t LastSeparatorIndex = 0;
+	size_t Length = 0;
 	for (; path[Length] != '\0'; Length++)
 	{
 		if (Directory_IsPathSeparator(path[Length]))
