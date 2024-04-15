@@ -63,7 +63,7 @@ typedef struct DBAccountContextStruct
 // Functions.
 Error AccountManager_Construct(ServerContext* serverContext);
 
-void AccountManager_Deconstruct(DBAccountContext* context);
+Error AccountManager_Deconstruct(DBAccountContext* context);
 
 
 /* Account/ */
@@ -91,7 +91,7 @@ UserAccount** AccountManager_GetAccountsByName(DBAccountContext* context, const 
 
 UserAccount* AccountManager_GetAccountByEmail(DBAccountContext* context, const char* email, Error* error);
 
-void AccountManager_DeleteAccount(ServerContext* serverContext, UserAccount* account);
+Error AccountManager_DeleteAccount(ServerContext* serverContext, UserAccount* account);
 
 Error AccountManager_DeleteAllAccounts(ServerContext* serverContext);
 

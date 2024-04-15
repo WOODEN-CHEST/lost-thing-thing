@@ -41,16 +41,33 @@
 #define POST_MAX_THUMBNAIL_SIZE 256
 #define POST_MAX_TITLE_LENGTH_CODEPOINTS 512
 #define POST_MAX_DESCRIPTION_LENGTH_CODEPOINTS 8192
+#define POST_MAX_COMMENT_LENGTH_CODEPOINTS 8192
+#define POST_UNCLAIMED_ID 0
+
+#define DEFAULT_COMMENT_ID 1
+#define COMMENT_NO_PARENT_COMMENT_ID 0
 
 
 /* Post compound. */
-#define ENTRY_ID_POST_ID // ULong
-#define ENTRY_ID_POST_TITLE // String
-#define ENTRY_ID_POST_DESCRIPTION // String
-#define ENTRY_ID_POST_TAGS // Int
-#define ENTRY_ID_POST_CLAIMER_ID // ULong
-#define ENTRY_ID_POST_REQUESTER_IDS // ULong array
-#define ENTRY_ID_POST_REQUESTER_IDS // ULong array
+#define ENTRY_ID_POST_ID 1 // ULong
+#define ENTRY_ID_POST_TITLE 2 // String
+#define ENTRY_ID_POST_DESCRIPTION 3 // String
+#define ENTRY_ID_POST_TAGS 4 // Int
+#define ENTRY_ID_POST_CLAIMER_ID 5 // ULong
+#define ENTRY_ID_POST_REQUESTER_IDS 6 // ULong array, MAY NOT EXIST
+#define ENTRY_ID_POST_COMMENT_ARRAY 7 // Compound array, MAY NOT EXIST
+#define ENTRY_ID_POST_AUTHOR_ID 8 // ULong
+#define ENTRY_ID_POST_CREATION_TIME 9 // Long
+#define ENTRY_ID_POST_IMAGE_COUNT 10 // ulong
+
+#define ENTRY_ID_COMMENT_ID 1 // ULong
+#define ENTRY_ID_COMMENT_POST_ID 2 // ULong
+#define ENTRY_ID_COMMENT_AUTHOR_ID 3 // ULong
+#define ENTRY_ID_COMMENT_PARENT_COMMENT_ID 4 // Long
+#define ENTRY_ID_COMMENT_CONTENTS 5 // String
+#define ENTRY_ID_COMMENT_CREATION_TIME 6 // Long
+#define ENTRY_ID_COMMENT_LAST_EDIT_TIME 7 // Long
+
 
 
 // Types.
@@ -147,17 +164,17 @@ static bool IsValidTextChar(const char* character)
 		|| (*character == '\n') | (*character == '\t');
 }
 
-static bool VerifyText(const char* title, size_t maxLengthCodepoints)
+static bool VerifyText(const char* text, size_t maxLengthCodepoints)
 {
-	size_t CodepointLength = String_LengthCodepointsUTF8(title);
+	size_t CodepointLength = String_LengthCodepointsUTF8(text);
 	if (CodepointLength > maxLengthCodepoints)
 	{
 		return false;
 	}
 
-	for (size_t i = 0; title[i] != '\0'; i += Char_GetByteCount(title + i))
+	for (size_t i = 0; text[i] != '\0'; i += Char_GetByteCount(text + i))
 	{
-		if (!IsValidTextChar(title + i))
+		if (!IsValidTextChar(text + i))
 		{
 			return false;
 		}
@@ -175,6 +192,18 @@ static bool VerifyPostDescription(const char* description)
 {
 	return VerifyText(description, POST_MAX_DESCRIPTION_LENGTH_CODEPOINTS);
 }
+
+static bool VerifyComment(const char* comment)
+{
+	return VerifyText(comment, POST_MAX_COMMENT_LENGTH_CODEPOINTS);
+}
+
+/* Comment. */
+static void CommentDeconstruct(PostComment* comment)
+{
+	Memory_Free((char*)comment->Contents);
+}
+
 
 /* Post. */
 static void PostDeconstruct(Post* post)
@@ -195,6 +224,10 @@ static void PostDeconstruct(Post* post)
 	{
 		Memory_Free(post->RequesterIDs);
 	}
+	if (post->Comments)
+	{
+		Memory_Free(post->Comments);
+	}
 }
 
 static void PostSetDefaultValues(Post* post)
@@ -209,12 +242,39 @@ static void PostEnsureRequesterCapacity(Post* post, size_t capacity)
 		return;
 	}
 
+	if (post->_requesterCapacity == 0)
+	{
+		post->_requesterCapacity = GENERIC_LIST_CAPACITY;
+		post->RequesterIDs = (unsigned long long*)Memory_SafeMalloc(sizeof(unsigned long long) * post->_requesterCapacity);
+	}
+
 	while (post->_requesterCapacity < capacity)
 	{
 		post->_requesterCapacity *= GENERIC_LIST_GROWTH;
 	}
 	post->RequesterIDs = (unsigned long long*)Memory_SafeRealloc(post->RequesterIDs,
 		sizeof(unsigned long long) * post->_requesterCapacity);
+}
+
+static void PostEnsureCommentCapacity(Post* post, size_t capacity)
+{
+	if (post->_commentCapacity >= capacity)
+	{
+		return;
+	}
+
+	if (post->_commentCapacity == 0)
+	{
+		post->_commentCapacity = GENERIC_LIST_CAPACITY;
+		post->Comments = (PostComment*)Memory_SafeMalloc(sizeof(PostComment) * post->_commentCapacity);
+	}
+
+	while (post->_commentCapacity < capacity)
+	{
+		post->_commentCapacity *= GENERIC_LIST_GROWTH;
+	}
+	post->Comments = (PostComment*)Memory_SafeRealloc(post->Comments,
+		sizeof(PostComment) * post->_commentCapacity);
 }
 
 static void PostCreateNew(DBPostContext* context,
@@ -225,20 +285,77 @@ static void PostCreateNew(DBPostContext* context,
 	PostTagBitFlags tags,
 	size_t imageCount)
 {
+	PostSetDefaultValues(post);
+
 	post->ID = GetAndUsePostID(context);
 	post->Title = String_CreateCopy(title);
 	post->Description = String_CreateCopy(description);
 	post->AuthorID = authorID;
 	post->Tags = tags;
 	post->ImageCount = imageCount;
-	post->ThumbnailData = NULL;
-
-	post->ClaimerID = 0;
-	post->RequesterCount = 0;
-	post->_requesterCapacity = GENERIC_LIST_CAPACITY;
-	post->RequesterIDs = (unsigned long long*)Memory_SafeMalloc(sizeof(unsigned long long) * post->_requesterCapacity);
 }
 
+static unsigned long long PostGetAvailableCommentID(Post* post)
+{
+	unsigned long long HighestID = DEFAULT_COMMENT_ID;
+	for (size_t i = 0; i < post->CommentCount; i++)
+	{
+		if (post->Comments[i].ID > HighestID)
+		{
+			HighestID = post->Comments[i].ID;
+		}
+	}
+	return HighestID + 1;
+}
+
+static PostComment* GetPostCommentByID(Post* post, unsigned long long id)
+{
+	for (size_t i = 0; i < post->CommentCount; i++)
+	{
+		if (post->Comments[i].ID == id)
+		{
+			return post->Comments + i;
+		}
+	}
+	return NULL;
+}
+
+static void RemovePostCommentByIndex(Post* post, size_t index)
+{
+	if (post->CommentCount == 0)
+	{
+		return;
+	}
+
+	CommentDeconstruct(post->Comments + index);
+
+	for (size_t i = index + 1; i < post->CommentCount; i++)
+	{
+		post->Comments[i - 1] = post->Comments[i];
+	}
+	post->CommentCount--;
+}
+
+static void RemovePostCommentByID(Post* post, unsigned long long id)
+{
+	for (size_t i = 0; i < post->CommentCount; i++)
+	{
+		if (post->Comments[i].ID == id)
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+static void ClearPostComments(Post* post)
+{
+	for (size_t i = 0; i < post->CommentCount; i++)
+	{
+		CommentDeconstruct(post->Comments + i);
+	}
+	post->CommentCount = 0;
+}
 
 /* Unfinished post. */
 static void EnsureUnfinishedPostListCapacity(DBPostContext* context, size_t capacity)
@@ -277,10 +394,19 @@ static void UnfinishedPostDeconstruct(UnfinishedPost* post)
 {
 	Memory_Free(post->Title);
 	Memory_Free(post->Description);
+	for (size_t i = 0; i < post->ImageCount; i++)
+	{
+		Memory_Free(post->Images[i].Data);
+	}
 }
 
 static void RemoveUnfinishedPostByIndex(DBPostContext* context, size_t index)
 {
+	if (context->UnfinishedPostCount == 0)
+	{
+		return;
+	}
+
 	UnfinishedPostDeconstruct(context->UnfinishedPosts + index);
 
 	for (size_t i = index + 1; i < context->UnfinishedPostCount; i++)
@@ -338,7 +464,27 @@ static void InitializePostCache(DBPostContext* context)
 	}
 }
 
-static CachedPost* GetCacheSlotForPost(DBPostContext* context)
+static Error ClearCacheSpotByIndex(DBPostContext* context, int index, bool savePost)
+{
+	CachedPost* PostCached = context->CachedPosts + index;
+	if (PostCached->LastAccessTime != CACHED_POST_UNLOADED_TIME && savePost)
+	{
+		if (savePost)
+		{
+			Error ReturnedError = WritePostToDatabase(context, &PostCached->TargetPost);
+			if (ReturnedError.Code != ErrorCode_Success)
+			{
+				return ReturnedError;
+			}
+		}
+		PostDeconstruct(&PostCached->TargetPost);
+		PostCached->LastAccessTime = CACHED_POST_UNLOADED_TIME;
+	}
+
+	return Error_CreateSuccess();
+}
+
+static CachedPost* GetCacheSpotForPost(DBPostContext* context, Error* error, bool savePost)
 {
 	time_t LowestTime = LLONG_MAX;
 	int LowestTimeIndex = 0;
@@ -352,10 +498,28 @@ static CachedPost* GetCacheSlotForPost(DBPostContext* context)
 		}
 	}
 
+	*error = ClearCacheSpotByIndex(context, LowestTimeIndex, savePost);
 	return context->CachedPosts + LowestTimeIndex;
 }
 
-static Post* GetPostFromCacheByID(DBPostContext* context, unsigned long long id)
+static CachedPost* LoadPostIntoCache(DBPostContext* context, unsigned long long postID, Error* error)
+{
+	CachedPost* PostCached = GetCacheSpotForPost(context, error, true);
+	if (error->Code != ErrorCode_Success)
+	{
+		return NULL;
+	}
+
+	PostCached->LastAccessTime = time(NULL);
+	if (!ReadPostFromDatabase(context, &PostCached->TargetPost, postID, error))
+	{
+		return NULL;
+	}
+
+	return &PostCached->TargetPost;
+}
+
+static Post* TryGetPostFromCache(DBPostContext* context, unsigned long long id)
 {
 	for (int i = 0; i < CACHED_POST_COUNT; i++)
 	{
@@ -367,11 +531,35 @@ static Post* GetPostFromCacheByID(DBPostContext* context, unsigned long long id)
 	}
 }
 
+static Error SaveAllCachedPostsToDatabase(DBPostContext* context)
+{
+	for (int i = 0; i < CACHED_POST_COUNT; i++)
+	{
+		if (context->CachedPosts[i].LastAccessTime != UNFINISHED_POST_LIFETIME)
+		{
+			WritePostToDatabase(context, &context->CachedPosts[i].TargetPost);
+		}
+	}
+}
+
+static Error RemovePostFromCacheByID(DBPostContext* context, unsigned long long id, bool savePost)
+{
+	for (int i = 0; i < CACHED_POST_COUNT; i++)
+	{
+		if (context->CachedPosts[i].TargetPost.ID == id)
+		{
+			return ClearCacheSpotByIndex(context, i, savePost);
+		}
+	}
+
+	return Error_CreateSuccess();
+}
+
 
 /* ID Hashmap. */
 static void GenerateMetaInfoFroSinglePost(DBPostContext* context, Post* post)
 {
-	
+	IDCodepointHashMap_AddID(&context->TitleMap, post->Title, post->ID);
 }
 
 static void GenerateMetaInfoForPosts(DBPostContext* context)
@@ -382,61 +570,436 @@ static void GenerateMetaInfoForPosts(DBPostContext* context)
 	}
 }
 
-
 static void ClearMetaInfoForSinglePost(DBPostContext* context, Post* post)
 {
-
+	IDCodepointHashMap_RemoveID(&context->TitleMap, post->Title, post->ID);
 }
 
 
 /* Loading and saving posts. */
-static Error WritePostToDatabase(DBPostContext* context, Post* post)
+static void WriteSingleCommentToCompound(PostComment* comment, GHDFCompound* compound)
 {
+	GHDFPrimitive Value;
 
+	Value.ULong = comment->ID;
+	GHDFCompound_AddSingleValueEntry(compound, GHDFType_ULong, ENTRY_ID_COMMENT_ID, Value);
+	Value.ULong = comment->PostID;
+	GHDFCompound_AddSingleValueEntry(compound, GHDFType_ULong, ENTRY_ID_COMMENT_POST_ID, Value);
+	Value.ULong = comment->AuthorID;
+	GHDFCompound_AddSingleValueEntry(compound, GHDFType_ULong, ENTRY_ID_COMMENT_AUTHOR_ID, Value);
+	Value.ULong = comment->ParentCommentID;
+	GHDFCompound_AddSingleValueEntry(compound, GHDFType_ULong, ENTRY_ID_COMMENT_PARENT_COMMENT_ID, Value);
+	Value.String = String_CreateCopy(comment->Contents);
+	GHDFCompound_AddSingleValueEntry(compound, GHDFType_String, ENTRY_ID_COMMENT_CONTENTS, Value);
+	Value.Long = comment->CreationTime;
+	GHDFCompound_AddSingleValueEntry(compound, GHDFType_Long, ENTRY_ID_COMMENT_CREATION_TIME, Value);
+	Value.Long = comment->LastEditTime;
+	GHDFCompound_AddSingleValueEntry(compound, GHDFType_Long, ENTRY_ID_COMMENT_LAST_EDIT_TIME, Value);
 }
 
-static Error CreatePostThumbnailInDatabase(DBPostContext* context, UnfinishedPostImage* image)
+static void WriteCommentsToCompound(Post* post, GHDFCompound* baseCompound)
+{
+	if (post->CommentCount == 0)
+	{
+		return;
+	}
+
+	GHDFPrimitive* CompoundArray = (GHDFPrimitive*)Memory_SafeMalloc(sizeof(GHDFPrimitive) * post->CommentCount);
+	for (size_t i = 0; i < post->CommentCount; i++)
+	{
+		GHDFCompound* CommentCompound = (GHDFCompound*)Memory_SafeMalloc(sizeof(GHDFCompound));
+		CompoundArray[i].Compound = CommentCompound;
+		WriteSingleCommentToCompound(post->Comments + i, CommentCompound);
+	}
+
+	GHDFCompound_AddArrayEntry(baseCompound, GHDFType_Compound, ENTRY_ID_POST_COMMENT_ARRAY, CompoundArray, post->CommentCount);
+}
+
+static void WriteRequestersToCompound(Post* post, GHDFCompound* compound)
+{
+	if (post->RequesterCount == 0)
+	{
+		return;
+	}
+
+	GHDFPrimitive* ValueArray = (GHDFPrimitive*)Memory_SafeMalloc(sizeof(GHDFPrimitive) * post->RequesterCount);
+	for (unsigned int i = 0; i < (unsigned int)post->RequesterCount; i++)
+	{
+		ValueArray[i].ULong = post->RequesterIDs[i];
+	}
+
+	GHDFCompound_AddArrayEntry(compound, GHDFType_ULong, ENTRY_ID_POST_REQUESTER_IDS, ValueArray, post->RequesterCount);
+}
+
+static void WritePostToCompound(Post* post, GHDFCompound* compound)
+{
+	GHDFPrimitive Value;
+	Value.ULong = post->ID;
+	GHDFCompound_AddSingleValueEntry(compound, GHDFType_ULong, ENTRY_ID_POST_ID, Value);
+	Value.ULong = post->AuthorID;
+	GHDFCompound_AddSingleValueEntry(compound, GHDFType_ULong, ENTRY_ID_POST_AUTHOR_ID, Value);
+	Value.String = String_CreateCopy(post->Title);
+	GHDFCompound_AddSingleValueEntry(compound, GHDFType_String, ENTRY_ID_POST_TITLE, Value);
+	Value.String = String_CreateCopy(post->Description);
+	GHDFCompound_AddSingleValueEntry(compound, GHDFType_ULong, ENTRY_ID_POST_DESCRIPTION, Value);
+	Value.Long = post->CreationTime;
+	GHDFCompound_AddSingleValueEntry(compound, GHDFType_Long, ENTRY_ID_POST_CREATION_TIME, Value);
+	Value.Int = post->Tags;
+	GHDFCompound_AddSingleValueEntry(compound, GHDFType_Int, ENTRY_ID_POST_TAGS, Value);
+	Value.ULong = post->ImageCount;
+	GHDFCompound_AddSingleValueEntry(compound, GHDFType_ULong, ENTRY_ID_POST_IMAGE_COUNT, Value);
+	Value.ULong = post->ClaimerID;
+	GHDFCompound_AddSingleValueEntry(compound, GHDFType_ULong, ENTRY_ID_POST_CLAIMER_ID, Value);
+
+	WriteRequestersToCompound(post, compound);
+	WriteCommentsToCompound(post, compound);
+}
+
+static Error WritePostToDatabase(DBPostContext* context, Post* post)
+{
+	GHDFCompound Compound;
+	GHDFCompound_Construct(&Compound, COMPOUND_DEFAULT_CAPACITY);
+	WritePostToCompound(post, &Compound);
+
+	const char* FilePath = GetPathToIDFile(context, post->ID, GHDF_FILE_EXTENSION);
+	const char* DirectoryPath = Directory_GetParentDirectory(FilePath);
+	Directory_CreateAll(DirectoryPath);
+	Memory_Free((char*)DirectoryPath);
+
+	Error ReturnedError = GHDFCompound_WriteToFile(FilePath, &Compound);
+	Memory_Free(FilePath);
+	GHDFCompound_Deconstruct(&Compound);
+	return ReturnedError;
+}
+
+static Error CreatePostThumbnailInDatabase(DBPostContext* context, UnfinishedPostImage* image, unsigned long long postID)
 {
 	Image ReadImage;
 	ReadImage.Data = stbi_load_from_memory(image->Data, image->Length, &ReadImage.SizeX,
 		&ReadImage.SizeY, &ReadImage.ColorChannels, STBI_rgb);
+
 	if (!ReadImage.Data)
 	{
 		return Error_CreateError(ErrorCode_InvalidRequest, "Failed to create post thumbnail, couldn't read image.");
 	}
 
-	char* ResizedImageData = (char*)Memory_SafeMalloc(POST_MAX_THUMBNAIL_SIZE * POST_MAX)
-	stbir_resize()
+	Image_ScaleImageToFit(&ReadImage, POST_MAX_THUMBNAIL_SIZE);
 
+
+	const char* FilePath = GetPathToThumbnail(context, postID);
+	int Result = stbi_write_png(FilePath, ReadImage.SizeX, ReadImage.SizeY, STBI_rgb, ReadImage.Data, 0);
+
+	Memory_Free((char*)FilePath);
+	Memory_Free(ReadImage.Data);
+
+	if (!Result)
+	{
+		return Error_CreateError(ErrorCode_IO, "Failed to write thumbnail to database.");
+	}
+
+	return Error_CreateSuccess();
 }
 
-static Error SaveSinglePostImage(DBPostContext* context, unsigned long long postID, UnfinishedPostImage* image)
+static Error SaveSinglePostImageToDatabase(DBPostContext* context, unsigned long long postID, UnfinishedPostImage* image)
 {
-	
+	Image ReadImage;
+	ReadImage.Data = stbi_load_from_memory(image->Data, image->Length, &ReadImage.SizeX,
+		&ReadImage.SizeY, &ReadImage.ColorChannels, STBI_rgb);
+
+	if (!ReadImage.Data)
+	{
+		return Error_CreateError(ErrorCode_InvalidRequest, "Failed to create post image, couldn't read image.");
+	}
+
+	if ((ReadImage.SizeX > POST_MAX_IMAGE_SIZE) || (ReadImage.SizeY > POST_MAX_IMAGE_SIZE))
+	{
+		Image_ScaleImageToFit(&ReadImage, POST_MAX_THUMBNAIL_SIZE);
+	}
+
+	const char* FilePath = GetPathToIDFile(context, postID, FILE_EXTENSION_PNG);
+	int Result = stbi_write_png(FilePath, ReadImage.SizeX, ReadImage.SizeY, STBI_rgb, ReadImage.Data, 0);
+
+	Memory_Free((char*)FilePath);
+	Memory_Free(ReadImage.Data);
+
+	if (!Result)
+	{
+		return Error_CreateError(ErrorCode_IO, "Failed to write image to database.");
+	}
+
+	return Error_CreateSuccess();
 }
 
 static Error CreatePostImagesInDatabase(DBPostContext* context, unsigned long long postID, UnfinishedPostImage* images, size_t imageCount)
 {
 	if (imageCount == 0)
 	{
-		return;
+		return Error_CreateSuccess();
 	}
 
-	Error ReturnedError = CreatePostThumbnailInDatabase(context, images);
+	Error ReturnedError = CreatePostThumbnailInDatabase(context, images, postID);
 	if (ReturnedError.Code != ErrorCode_Success)
 	{
 		return ReturnedError;
 	}
 
-	for (size_t i = 1; i < imageCount; i++)
+	for (size_t i = 0; i < imageCount; i++)
 	{
-
+		ReturnedError = SaveSinglePostImageToDatabase(context, postID, images + i);
+		if (ReturnedError.Code != ErrorCode_Success)
+		{
+			return ReturnedError;
+		}
 	}
+
+	return Error_CreateSuccess();
 }
 
-static Error ReadPostFromDatabase(DBPostContext* context, Post* post)
+static Error ReadSingleCommentFromCompound(PostComment* comment, GHDFCompound* compound)
 {
+	GHDFEntry* Entry;
 
+	Error ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_COMMENT_ID, &Entry, GHDFType_ULong, "Comment ID");
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+	comment->ID = Entry->Value.SingleValue.ULong;
+
+	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_COMMENT_AUTHOR_ID, &Entry, GHDFType_ULong, "Comment Author ID");
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+	comment->AuthorID = Entry->Value.SingleValue.ULong;
+
+	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_COMMENT_POST_ID, &Entry, GHDFType_ULong, "Comment Post ID");
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+	comment->PostID = Entry->Value.SingleValue.ULong;
+
+	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_COMMENT_CREATION_TIME, &Entry,
+		GHDFType_Long, "Comment Creation Time");
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+	comment->CreationTime = Entry->Value.SingleValue.Long;
+
+	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_COMMENT_LAST_EDIT_TIME, &Entry,
+		GHDFType_Long, "Comment Last Edit Time");
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+	comment->LastEditTime = Entry->Value.SingleValue.Long;
+
+	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_COMMENT_PARENT_COMMENT_ID, &Entry,
+		GHDFType_ULong, "Comment Parent Comment ID");
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+	comment->ParentCommentID = Entry->Value.SingleValue.ULong;
+
+	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_COMMENT_CONTENTS, &Entry,
+		GHDFType_String, "Comment Contents");
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+	comment->Contents = String_CreateCopy(Entry->Value.SingleValue.String);
+}
+
+static Error ReadCommentsFromCompound(Post* post, GHDFCompound* compound)
+{
+	GHDFEntry* Entry;
+	Error ReturnedError = GHDFCompound_GetVerifiedOptionalEntry(compound, ENTRY_ID_POST_COMMENT_ARRAY, &Entry,
+		GHDFType_Compound | GHDF_TYPE_ARRAY_BIT, "Post Comments");
+	if (!Entry)
+	{
+		return Error_CreateSuccess();
+	}
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+
+	PostEnsureCommentCapacity(post, Entry->Value.ValueArray.Size);
+	post->CommentCount = Entry->Value.ValueArray.Size;
+	for (unsigned int i = 0; i < post->CommentCount; i++)
+	{
+		Error ReturnedError = ReadSingleCommentFromCompound(post->Comments + i, Entry->Value.ValueArray.Array[i].Compound);
+		if (ReturnedError.Code != ErrorCode_Success)
+		{
+			return ReturnedError;
+		}
+	}
+
+	return Error_CreateSuccess();
+}
+
+static Error ReadRequestersFromCompound(Post* post, GHDFCompound* compound)
+{
+	GHDFEntry* Entry;
+	Error ReturnedError = GHDFCompound_GetVerifiedOptionalEntry(compound, ENTRY_ID_POST_REQUESTER_IDS, &Entry,
+		GHDFType_ULong | GHDF_TYPE_ARRAY_BIT, "Post Requesters");
+	if (!Entry)
+	{
+		return Error_CreateSuccess();
+	}
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+
+	PostEnsureRequesterCapacity(post, Entry->Value.ValueArray.Size);
+	post->RequesterCount = Entry->Value.ValueArray.Size;
+	for (unsigned int i = 0; i < post->RequesterCount; i++)
+	{
+		post->RequesterIDs[i] = Entry->Value.ValueArray.Array[i].ULong;
+	}
+
+	return Error_CreateSuccess();
+}
+
+static Error ReadPostFromCompound(Post* post, GHDFCompound* compound)
+{
+	GHDFEntry* Entry;
+
+	Error ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_POST_ID, &Entry, GHDFType_ULong, "Post ID");
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+	post->ID = Entry->Value.SingleValue.ULong;
+
+	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_POST_AUTHOR_ID, &Entry, GHDFType_ULong, "Post Author ID");
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+	post->AuthorID = Entry->Value.SingleValue.ULong;
+
+	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_POST_TITLE, &Entry, GHDFType_String, "Post Title");
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+	post->Title = String_CreateCopy(Entry->Value.SingleValue.String);
+
+	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_POST_DESCRIPTION, &Entry, GHDFType_String, "Post Description");
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+	post->Description = String_CreateCopy(Entry->Value.SingleValue.String);
+
+	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_POST_IMAGE_COUNT, &Entry, GHDFType_ULong, "Post Image Count");
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+	post->ImageCount =Entry->Value.SingleValue.ULong;
+
+	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_POST_TAGS, &Entry, GHDFType_Int, "Post Tags");
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+	post->Tags = Entry->Value.SingleValue.Int;
+
+	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_POST_CLAIMER_ID, &Entry, GHDFType_ULong, "Post Claimer ID");
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+	post->ClaimerID = Entry->Value.SingleValue.ULong;
+
+	ReturnedError = ReadRequestersFromCompound(post, compound);
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+
+	ReturnedError = ReadCommentsFromCompound(post, compound);
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+
+	return Error_CreateSuccess();
+}
+
+static Error ReadPostThumbnailData(DBPostContext* context, Post* post)
+{
+	post->ThumbnailData = NULL;
+	const char* ThumbnailPath = PathToThumbnail(context, post->ID);
+	if (!File_Exists(ThumbnailPath))
+	{
+		Memory_Free((char*)ThumbnailPath);
+		return Error_CreateSuccess();
+	}
+
+	Error ReturnedError;
+	FILE* File = File_Open(ThumbnailPath, FileOpenMode_ReadBinary, &ReturnedError);
+	Memory_Free((char*)ThumbnailPath);
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+	post->ThumbnailData = File_ReadAllData(File, &post->ThumbnailDataLength, &ReturnedError);
+	File_Close(File);
+	return ReturnedError;
+}
+
+static bool ReadPostFromDatabase(DBPostContext* context, Post* post, unsigned long long id, Error* error)
+{
+	*error = Error_CreateSuccess();
+	const char* FilePath = GetPathToIDFile(context, id, GHDF_FILE_EXTENSION);
+	if (!File_Exists(FilePath))
+	{
+		Memory_Free((char*)FilePath);
+		return false;
+	}
+
+	GHDFCompound Compound;
+	*error = GHDFCompound_ReadFromFile(FilePath, &Compound);
+	Memory_Free((char*)FilePath);
+	if (error->Code != ErrorCode_Success)
+	{
+		return false;
+	}
+
+	PostSetDefaultValues(post);
+	*error = ReadPostFromCompound(post, &Compound);
+	GHDFCompound_Deconstruct(&Compound);
+	if (error->Code != ErrorCode_Success)
+	{
+		PostDeconstruct(post);
+		return false;
+	}
+
+	*error = ReadPostThumbnailData(context, post);
+	if (error->Code != ErrorCode_Success)
+	{
+		PostDeconstruct(post);
+		return false;
+	}
+	
+	return true;
+}
+
+static void DeletePostFromDatabase(DBPostContext* context, Post* post)
+{
+	StringBuilder PathBuilder;
+	StringBuilder_Construct(&PathBuilder, DEFAULT_STRING_BUILDER_CAPACITY);
+	BuildPathToPostDirectory(context->PostRootPath, &PathBuilder, post->ID);
+
+	Directory_Delete(PathBuilder.Data);
+	StringBuilder_Deconstruct(&PathBuilder);
 }
 
 
@@ -483,7 +1046,24 @@ static Error LoadMetainfo(DBPostContext* context)
 	return ReturnedError;
 }
 
+static Error SaveMetaInfo(DBPostContext* context)
+{
+	GHDFCompound Compound;
+	GHDFCompound_Construct(&Compound, COMPOUND_DEFAULT_CAPACITY);
+	GHDFPrimitive Value;
 
+	Value.ULong = context->AvailablePostID;
+	GHDFCompound_AddSingleValueEntry(&Compound, GHDFType_ULong, ENTRY_ID_METAINFO_AVAIlABLE_POST_ID, Value);
+
+	Directory_CreateAll(context->PostRootPath);
+	const char* FilePath = Directory_CombinePaths(context->PostRootPath, POST_METAINFO_FILENAME);
+	Error ReturnedError = GHDFCompound_WriteToFile(FilePath, &Compound);
+
+	Memory_Free((char*)FilePath);
+	GHDFCompound_Deconstruct(&Compound);
+
+	return ReturnedError;
+}
 
 
 // Functions.
@@ -506,9 +1086,26 @@ Error PostManager_Construct(ServerContext* serverContext)
 	GenerateMetaInfoForPosts(Context);
 }
 
-void PostManager_Deconstruct(DBPostContext* context)
+Error PostManager_Deconstruct(DBPostContext* context)
 {
+	Error ReturnedError = SaveAllCachedPostsToDatabase(context);
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
 
+	ReturnedError = SaveMetaInfo(context);
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+
+	Memory_Free(context->PostRootPath);
+	IDCodepointHashMap_Deconstruct(&context->TitleMap);
+	Memory_Free(context->CachedPosts);
+	Memory_Free(context->UnfinishedPosts);
+
+	return Error_CreateSuccess();
 }
 
 
@@ -517,16 +1114,15 @@ bool PostManager_BeginPostCreation(DBPostContext* context,
 	UserAccount* author,
 	const char* title,
 	const char* description,
-	PostTagBitFlags tags,
-	Error* error)
+	PostTagBitFlags tags)
 {
-	*error = Error_CreateSuccess();
 	if (!VerifyPostTitle(title) || !VerifyPostDescription(description))
 	{
 		return false;
 	}
 
 	AddUnfinishedPost(context, author->ID, title, description, tags);
+	return false;
 }
 
 Error PostManager_UploadPostImage(DBPostContext* context, unsigned long long authorID, const char* imageData, size_t imageDataLength)
@@ -560,37 +1156,71 @@ Post* PostManager_FinishPostCreation(DBPostContext* context, unsigned long long 
 	PostCreateNew(&CreatedPost, UnfPost->Title, UnfPost->Description, UnfPost->AuthorID,
 		UnfPost->Tags, UnfPost->Images, UnfPost->ImageCount);
 
-	*error = CreatePostImagesInDatabase(context, &UnfPost->Images, UnfPost->ImageCount);
+	*error = WritePostToDatabase(context, &CreatedPost);
 	if (error->Code != ErrorCode_Success)
 	{
+		PostDeconstruct(&CreatedPost);
 		return NULL;
 	}
 
+	*error = CreatePostImagesInDatabase(context, CreatedPost.ID, &UnfPost->Images, UnfPost->ImageCount);
+	if (error->Code != ErrorCode_Success)
+	{
+		PostDeconstruct(&CreatedPost);
+		return NULL;
+	}
+
+	GenerateMetaInfoFroSinglePost(context, &CreatedPost);
+
+	unsigned long long PostID = CreatedPost.ID;
+	PostDeconstruct(&CreatedPost);
 	RemoveUnfinishedPostByAuthorID(context, authorID);
-	*error = Error_CreateSuccess();
+	return PostManager_GetPostByID(context, PostID, error);
 }
 
-Error PostManager_CancelPostCreation(DBPostContext* context, unsigned long long authorID)
+void PostManager_CancelPostCreation(DBPostContext* context, unsigned long long authorID)
 {
-
+	UnfinishedPostsRefresh(context);
+	RemoveUnfinishedPostByAuthorID(context, authorID);
 }
 
 
 /* Deleting posts. */
-Error PostManager_DeletePost(DBPostContext context, Post* post)
+Error PostManager_DeletePost(ServerContext* serverContext, Post* post)
 {
+	char Message[128];
+	snprintf(Message, sizeof(Message), "Deleting post with ID %llu (author id %llu)", post->ID, post->AuthorID);
+	Logger_LogInfo(serverContext->Logger, Message);
 
+	DeletePostFromDatabase(serverContext, post);
+	RemovePostFromCacheByID(serverContext->PostContext, post->ID, false);
+	ClearMetaInfoForSinglePost(serverContext->PostContext, post);
 }
 
 Error PostManager_DeleteAllPosts(ServerContext* serverContext)
 {
+	for (unsigned long id = 0; id < serverContext->PostContext->AvailablePostID; id++)
+	{
+		Error ReturnedError;
+		Post* ReturnedPost = PostManager_GetPostByID(serverContext->PostContext, id, &ReturnedError);
+		if (ReturnedError.Code != ErrorCode_Success)
+		{
+			return ReturnedError;
+		}
 
+
+	}
 }
 
 
 /* Retrieving data. */
 Post* PostManager_GetPostByID(DBPostContext* context, unsigned long long id, Error* error)
 {
+	Post* CreatedPost = TryGetPostFromCache(context, id);
+	if (CreatedPost)
+	{
+		return CreatedPost;
+	}
 
 }
 
@@ -600,6 +1230,50 @@ Post** PostManager_GetPostsByTitle(DBPostContext* context, const char* title, si
 }
 
 char* PostManager_GetImageFromPost(DBPostContext* context, Post* post, int imageIndex)
+{
+
+}
+
+bool PostManager_AddComment(DBPostContext* context,
+	Post* post,
+	unsigned long long commentAuthorID,
+	unsigned long long parentCommentID,
+	const char* commentContents)
+{
+	if (!VerifyComment(commentContents))
+	{
+		return false;
+	}
+
+	PostEnsureCommentCapacity(post, post->CommentCount + 1);
+	PostComment* Comment = post->Comments + post->CommentCount;
+	post->CommentCount += 1;
+
+	Comment->AuthorID = commentAuthorID;
+	Comment->CreationTime = time(NULL);
+	Comment->LastEditTime = Comment->CreationTime;
+	Comment->ID = PostGetAvailableCommentID(post);
+	Comment->ParentCommentID = IsPostCommentExistByID(post, parentCommentID) ? parentCommentID : COMMENT_NO_PARENT_COMMENT_ID;
+	Comment->Contents = String_CreateCopy(commentContents);
+	return true;
+}
+
+bool PostManager_RemoveComment(DBPostContext* context, Post* post, unsigned long long commentID)
+{
+
+}
+
+bool PostManager_AddRequesterID(Post* post, unsigned long long requesterID)
+{
+
+}
+
+bool PostManager_RemoveRequesterID(Post* post, unsigned long long requesterID)
+{
+
+}
+
+bool PostManager_RemoveAllRequesterIDs(Post* post, unsigned long long requesterID)
 {
 
 }

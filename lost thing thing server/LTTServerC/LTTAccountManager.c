@@ -470,6 +470,11 @@ static UnverifiedUserAccount* GetUnverifiedAccountByEmail(DBAccountContext* cont
 
 static void RemoveUnverifiedAccountByIndex(DBAccountContext* context, size_t index)
 {
+	if (context->UnverifiedAccountCount == 0)
+	{
+		return;
+	}
+
 	UnverifiedAccountDeconstruct(context->UnverifiedAccounts + index);
 	for (size_t i = index + 1; i < context->UnverifiedAccountCount; i++)
 	{
@@ -597,6 +602,11 @@ static SessionID* CreateSession(DBAccountContext* context, UserAccount* account)
 
 static void RemoveSessionByIndex(DBAccountContext* context, size_t index)
 {
+	if (context->SessionCount == 0)
+	{
+		return;
+	}
+
 	for (size_t i = index + 1; i < context->SessionCount; i++)
 	{
 		context->ActiveSessions[i - 1] = context->ActiveSessions[i];
@@ -908,6 +918,15 @@ static void ClearMetaInfoForAccount(DBAccountContext* context, UserAccount* acco
 
 
 /* Account cache. */
+static void InitializeAccountCache(DBAccountContext* context)
+{
+	context->AccountCache = (CachedAccount*)Memory_SafeMalloc(sizeof(CachedAccount) * ACCOUNT_CACHE_CAPACITY);
+	for (int i = 0; i < ACCOUNT_CACHE_CAPACITY; i++)
+	{
+		context->AccountCache[i].LastAccessTime = ACCOUNT_CACHE_UNLOADED_TIME;
+	}
+}
+
 static UserAccount* TryGetAccountFromCache(DBAccountContext* context, unsigned long long id)
 {
 	for (int i = 0; i < ACCOUNT_CACHE_CAPACITY; i++)
@@ -923,17 +942,27 @@ static UserAccount* TryGetAccountFromCache(DBAccountContext* context, unsigned l
 	return NULL;
 }
 
-static void ClearCacheSpotByIndex(DBAccountContext* context, size_t index)
+static Error ClearCacheSpotByIndex(DBAccountContext* context, size_t index, bool saveAccount)
 {
 	CachedAccount* AccountCached = context->AccountCache + index;
 	if (AccountCached->LastAccessTime != ACCOUNT_CACHE_UNLOADED_TIME)
 	{
-		WriteAccountToDatabase(context, &AccountCached->Account);
+		if (saveAccount)
+		{
+			Error ReturnedError = WriteAccountToDatabase(context, &AccountCached->Account);
+			if (ReturnedError.Code != ErrorCode_Success)
+			{
+				return ReturnedError;
+			}
+		}
 		AccountDeconstruct(&AccountCached->Account);
+		AccountCached->LastAccessTime = ACCOUNT_CACHE_UNLOADED_TIME;
 	}
+	
+	return Error_CreateSuccess();
 }
 
-static CachedAccount* GetCacheSpotForAccount(DBAccountContext* context)
+static CachedAccount* GetCacheSpotForAccount(DBAccountContext* context, Error* error)
 {
 	time_t LowestLoadTime = LLONG_MAX;
 	int LowestLoadTimeIndex = 0;
@@ -947,13 +976,17 @@ static CachedAccount* GetCacheSpotForAccount(DBAccountContext* context)
 		}
 	}
 
-	ClearCacheSpotByIndex(context, LowestLoadTimeIndex);
+	*error = ClearCacheSpotByIndex(context, LowestLoadTimeIndex, true);
 	return context->AccountCache + LowestLoadTimeIndex;
 }
 
 static CachedAccount* LoadAccountIntoCache(DBAccountContext* context, unsigned long long id, Error* error)
 {
-	CachedAccount* AccountSpot = GetCacheSpotForAccount(context);
+	CachedAccount* AccountSpot = GetCacheSpotForAccount(context, error);
+	if (error->Code != ErrorCode_Success)
+	{
+		return NULL;
+	}
 
 	if (!ReadAccountFromDatabase(context , &AccountSpot->Account, id, error))
 	{
@@ -966,27 +999,36 @@ static CachedAccount* LoadAccountIntoCache(DBAccountContext* context, unsigned l
 	return AccountSpot;
 }
 
-static void SaveAllCachedAccountsToDatabase(DBAccountContext* context)
+static Error SaveAllCachedAccountsToDatabase(DBAccountContext* context)
 {
 	for (int i = 0; i < ACCOUNT_CACHE_CAPACITY; i++)
 	{
-		if (context->AccountCache[i].LastAccessTime != ACCOUNT_CACHE_UNLOADED_TIME)
+		if (context->AccountCache[i].LastAccessTime == ACCOUNT_CACHE_UNLOADED_TIME)
 		{
-			WriteAccountToDatabase(context, &context->AccountCache[i].Account);
+			continue;
+		}
+
+		Error ReturnedError = WriteAccountToDatabase(context, &context->AccountCache[i].Account);
+		if (ReturnedError.Code != ErrorCode_Success)
+		{
+			return ReturnedError;
 		}
 	}
+
+	return Error_CreateSuccess();
 }
 
-static void RemoveAccountFromCacheByID(DBAccountContext* context, unsigned long long id)
+static Error RemoveAccountFromCacheByID(DBAccountContext* context, unsigned long long id, bool saveAccount)
 {
 	for (int i = 0; i < ACCOUNT_CACHE_CAPACITY; i++)
 	{
 		if ((context->AccountCache[i].Account.ID == id))
 		{
-			ClearCacheSpotByIndex(context, i);
-			return;
+			return ClearCacheSpotByIndex(context, i, saveAccount);
 		}
 	}
+
+	return Error_CreateSuccess();
 }
 
 
@@ -1090,24 +1132,6 @@ static size_t FindNextAvailableAccountID(DBAccountContext* context)
 
 	} while (FileExists);
 	return SkippedAccounts;
-}
-
-/* Image handling. */
-static void ResizeImage(Image* image, int maxSizeOnAxis)
-{
-	float Scale = (float)maxSizeOnAxis / Math_Max(image->SizeX, image->SizeY);
-	int TargetXSize = (int)(image->SizeX * Scale);
-	int TargetYSize = (int)(image->SizeY * Scale);
-
-	const char* ResizedImageData = Memory_SafeMalloc(TargetXSize * TargetYSize * STBI_rgb);
-	stbir_resize(image->Data, image->SizeX, image->SizeY, 0, (void*)ResizedImageData, TargetXSize, TargetYSize,
-		0, STBIR_RGB, STBIR_TYPE_UINT8, STBIR_EDGE_CLAMP, STBIR_FILTER_DEFAULT);
-	Memory_Free(image->Data);
-	image->Data = ResizedImageData;
-
-	image->SizeX = TargetXSize;
-	image->SizeY = TargetYSize;
-	image->ColorChannels = STBI_rgb;
 }
 
 
@@ -1312,25 +1336,30 @@ Error AccountManager_Construct(ServerContext* serverContext)
 	snprintf(Message, sizeof(Message), "Read %llu accounts while creating ID hashes.", ReadAccountCount);
 	Logger_LogInfo(serverContext->Logger, Message);
 
-	serverContext->AccountContext->AccountCache = (CachedAccount*)Memory_SafeMalloc(sizeof(CachedAccount) * ACCOUNT_CACHE_CAPACITY);
-	for (int i = 0; i < ACCOUNT_CACHE_CAPACITY; i++)
-	{
-		serverContext->AccountContext->AccountCache[i].LastAccessTime = ACCOUNT_CACHE_UNLOADED_TIME;
-		AccountSetDefaultValues(&serverContext->AccountContext->AccountCache[i].Account);
-	}
+	InitializeAccountCache(serverContext->AccountContext);
 
 	return ReturnedError;
 }
 
-void AccountManager_Deconstruct(DBAccountContext* context)
+Error AccountManager_Deconstruct(DBAccountContext* context)
 {
-	SaveMetaInfo(context);
-	SaveAllCachedAccountsToDatabase(context);
+	Error ReturnedError = SaveMetaInfo(context);
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+	ReturnedError = SaveAllCachedAccountsToDatabase(context);
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
 	IDCodepointHashMap_Deconstruct(&context->NameMap);
 	IDCodepointHashMap_Deconstruct(&context->EmailMap);
 	Memory_Free(context->ActiveSessions);
 	Memory_Free(context->UnverifiedAccounts);
 	Memory_Free(context->AccountCache);
+
+	return Error_CreateSuccess();
 }
 
 
@@ -1457,6 +1486,7 @@ Error AccountManager_VerifyAccount(ServerContext* serverContext, const char* ema
 
 UserAccount* AccountManager_GetAccountByID(DBAccountContext* context, unsigned long long id, Error* error)
 {
+	*error = Error_CreateSuccess();
 	UserAccount* Account = TryGetAccountFromCache(context, id);
 
 	if (Account)
@@ -1511,7 +1541,7 @@ UserAccount* AccountManager_GetAccountByEmail(DBAccountContext* context, const c
 	return FoundAccount;
 }
 
-void AccountManager_DeleteAccount(ServerContext* serverContext, UserAccount* account)
+Error AccountManager_DeleteAccount(ServerContext* serverContext, UserAccount* account)
 {
 	char Message[256];
 	snprintf(Message, sizeof(Message), "Deleting account with ID %llu and email %s", account->ID, account->Email);
@@ -1519,9 +1549,14 @@ void AccountManager_DeleteAccount(ServerContext* serverContext, UserAccount* acc
 
 	RemoveSessionByID(serverContext->AccountContext, account->ID);
 	ClearMetaInfoForAccount(serverContext->AccountContext, account);
-	RemoveAccountFromCacheByID(serverContext->AccountContext, account->ID);
+	Error ReturnedError = RemoveAccountFromCacheByID(serverContext->AccountContext, account->ID, false);
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
 	DeleteAccountFromDatabase(serverContext->AccountContext, account->ID);
 	AccountDeconstruct(account);
+	return Error_CreateSuccess();
 }
 
 Error AccountManager_DeleteAllAccounts(ServerContext* serverContext)
@@ -1603,7 +1638,7 @@ Error AccountManager_SetProfileImage(DBAccountContext* context, UserAccount* acc
 		return Error_CreateError(ErrorCode_InvalidArgument, "Provided image's data to set for profile is invalid and couldn't be loaded.");
 	}
 
-	ResizeImage(&UploadedImage, PROFILE_IMAGE_MAX_SIZE);
+	Image_ScaleImageToFit(&UploadedImage, PROFILE_IMAGE_MAX_SIZE);
 
 	Error ReturnedError = WriteImageToDatabase(context, &UploadedImage, account->ID);
 	Memory_Free((char*)UploadedImage.Data);

@@ -1,0 +1,43 @@
+// Ids.
+GetAndUseID()
+
+GetId()
+
+
+// X.
+XSetDefaultValues()
+
+XCreateNew()
+
+XDeconstruct()
+
+
+// Cache.
+IntitializeXCache()
+
+TryGetXFromCache()
+
+ClearCacheSpotByIndex(bool saveX)
+
+GetCacheSpotForX()
+
+LoadXIntoCache()
+
+SaveAllCachedXToDatabase()
+
+RemoveXFromCacheByID(bool saveX)
+
+
+
+// Meta-info
+GenerateMetInfoForSingleX()
+
+GenerateMetaInfoForXs()
+
+ClearMetaInfoForSingelX()
+
+
+// Database
+ReadXFromDatabase()
+
+WriteXToDatabase()

@@ -164,4 +164,9 @@
       <Filter>Source Files\IO</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="DatabaseCommonFunctions.txt">
+      <Filter>Source Files\HttpListener\Database</Filter>
+    </Text>
+  </ItemGroup>
 </Project>

@@ -12,3 +12,5 @@ typedef struct ImageStruct
 	int ColorChannels;
 	const unsigned char* Data;
 } Image;
+
+void Image_ScaleImageToFit(Image* image, int maxSizeOnAxis);
