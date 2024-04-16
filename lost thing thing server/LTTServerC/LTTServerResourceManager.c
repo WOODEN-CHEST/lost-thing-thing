@@ -421,6 +421,26 @@ static ResourceResult LoginAccount(ServerContext* context, ParsedArguments* argu
 	return ResourceResult_Successful;
 }
 
+static UserAccount* GetAccountFromRequest(ServerContext* context, ServerResourceRequest* request, Error* error)
+{
+	*error = Error_CreateSuccess();
+	const char* SessionValueString = GetCookieValueByName(request->CookieArray, request->CookieCount, COOKIE_NAME_SESSION);
+	if (!SessionValueString)
+	{
+		return NULL;
+	}
+	
+	unsigned int* SessionInRequest = ParseSession(SessionValueString);
+	if (!SessionInRequest)
+	{
+		return ResourceResult_Invalid;
+	}
+
+	UserAccount* TargetAccount = AccountManager_GetAccountBySession(context->AccountContext, SessionInRequest, error);
+	Memory_Free(SessionInRequest);
+	return TargetAccount;
+}
+
 static ResourceResult DeleteAccount(ServerContext* context, ServerResourceRequest* request, ParsedArguments* arguments, Error* error)
 {
 	UserAccount* TargetAccount = GetAccountFromRequest(context, request, error);
@@ -440,26 +460,6 @@ static ResourceResult DeleteAccount(ServerContext* context, ServerResourceReques
 
 	*error = AccountManager_DeleteAccount(context, TargetAccount);
 	error->Code == ErrorCode_Success ? ResourceResult_Successful : ResourceResult_Invalid;
-}
-
-static UserAccount* GetAccountFromRequest(ServerContext* context, ServerResourceRequest* request, Error* error)
-{
-	*error = Error_CreateSuccess();
-	const char* SessionValueString = GetCookieValueByName(request->CookieArray, request->CookieCount, COOKIE_NAME_SESSION);
-	if (!SessionValueString)
-	{
-		return NULL;
-	}
-	
-	unsigned int* SessionInRequest = ParseSession(SessionValueString);
-	if (!SessionInRequest)
-	{
-		return ResourceResult_Invalid;
-	}
-
-	UserAccount* TargetAccount = AccountManager_GetAccountBySession(context->AccountContext, SessionInRequest, error);
-	Memory_Free(SessionInRequest);
-	return TargetAccount;
 }
 
 static ResourceResult GetAccounts(ServerContext* context, ServerResourceRequest* request, ParsedArguments* arguments, Error* error)
@@ -510,7 +510,7 @@ static ResourceResult EditAccount(ServerContext* context, ServerResourceRequest*
 	{
 		return ResourceResult_Invalid;
 	}
-	const char* Surname = GetArgumentValueBySurname(arguments, "surname");
+	const char* Surname = GetArgumentValueByName(arguments, "surname");
 	if (!Surname)
 	{
 		return ResourceResult_Invalid;
@@ -840,18 +840,45 @@ static ResourceResult ExecutePostAccountAction(ServerContext* context,
 	}
 	else if (String_Equals(paths[0], "edit"))
 	{
+		EditAccount(context, request, arguments, error);
 	}
 	else if (String_Equals(paths[0], "delete"))
 	{
-
+		DeleteAccount(context, request, arguments, error);
 	}
 	return ResourceResult_Invalid;
-	
+}
+
+static ResourceResult ExecutePostPostCreateAction(ServerContext* context,
+	ServerResourceRequest* request,
+	ParsedArguments* arguments,
+	char** paths,
+	size_t pathCount,
+	Error* error)
+{
+	*error = Error_CreateSuccess();
+	if (pathCount != 1)
+	{
+		return ResourceResult_Invalid;
+	}
+
+	if (String_Equals(paths[0], "create"))
+	{
+		CreatePost(context, request, arguments, error);
+	}
+	else if (String_Equals(paths[0], "image"))
+	{
+		UploadPostImage(context, request, arguments, error);
+	}
+	else if (String_Equals(paths[0], "finish"))
+	{
+		FinishPostCreation(context, request, error);
+	}
 
 	return ResourceResult_Invalid;
 }
 
-static void ExecutePostPostCreateAction(ServerContext* context,
+static ResourceResult ExecutePostPostGetAction(ServerContext* context,
 	ServerResourceRequest* request,
 	ParsedArguments* arguments,
 	char** paths,
@@ -861,17 +888,7 @@ static void ExecutePostPostCreateAction(ServerContext* context,
 
 }
 
-static void ExecutePostPostGetAction(ServerContext* context,
-	ServerResourceRequest* request,
-	ParsedArguments* arguments,
-	char** paths,
-	size_t pathCount,
-	Error* error)
-{
-
-}
-
-static void ExecutePostPostCommentAction(ServerContext* context,
+static ResourceResult ExecutePostPostCommentAction(ServerContext* context,
 	ServerResourceRequest* request,
 	ParsedArguments* arguments,
 	char** paths,
@@ -880,18 +897,7 @@ static void ExecutePostPostCommentAction(ServerContext* context,
 {
 	*error = Error_CreateSuccess();
 
-	if (String_Equals(paths[0], "create"))
-	{
-		
-	}
-	else if (String_Equals(paths[0], "delete"))
-	{
-		
-	}
-	else if (String_Equals(paths[0], "edit"))
-	{
-
-	}
+	
 
 	return ResourceResult_Invalid;
 }
@@ -909,15 +915,15 @@ static ResourceResult ExecutePostPostAction(ServerContext* context,
 		return ResourceResult_Invalid;
 	}
 
-	if ((pathCount == 1) && String_Equals(paths[0], "delete"))
+	if (String_Equals(paths[0], "create"))
 	{
-		
+		ExecutePostPostCreateAction(context, request, arguments, paths + 1, pathCount - 1, error);
 	}
-	else if (String_Equals(paths[0], "create"))
+	else if (String_Equals(paths[0], "delete"))
 	{
-
+		DeletePost(context, request, arguments, error);
 	}
-	else if (String_Equals(paths[0], "comment"))
+	else if (String_Equals(paths[0], "edit"))
 	{
 
 	}
@@ -994,7 +1000,7 @@ ResourceResult ResourceManager_Post(ServerContext* context, ServerResourceReques
 	}
 	else if ((PathCount == 2) && String_Equals(Paths[0], "special"))
 	{
-		ExecuteSpecialAction(context, request, &Arguments, Paths[1], &ReturnedError);
+		Result = ExecuteSpecialAction(context, request, &Arguments, Paths[1], &ReturnedError);
 	}
 	else
 	{

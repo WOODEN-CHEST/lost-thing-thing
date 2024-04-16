@@ -101,7 +101,7 @@ bool AccountManager_IsPasswordCorrect(UserAccount* account, const char* password
 
 bool AccountManager_SetName(UserAccount* account, const char* name);
 
-bool AccountManager_SurnameName(UserAccount* account, const char* surname);
+bool AccountManager_SetSurname(UserAccount* account, const char* surname);
 
 
 /* Sessions. */

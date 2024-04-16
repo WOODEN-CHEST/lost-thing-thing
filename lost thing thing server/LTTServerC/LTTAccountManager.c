@@ -1620,7 +1620,7 @@ bool AccountManager_SetName(UserAccount* account, const char* name)
 	return true;
 }
 
-bool AccountManager_SurnameName(UserAccount* account, const char* surname)
+bool AccountManager_SetSurname(UserAccount* account, const char* surname)
 {
 	if (!VerifyName(surname))
 	{

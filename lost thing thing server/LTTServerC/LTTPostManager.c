@@ -1275,6 +1275,7 @@ Error PostManager_UploadPostImage(DBPostContext* context, unsigned long long aut
 	Post->Images[Post->ImageCount].Data = (char*)Memory_SafeMalloc(imageDataLength);
 	Memory_Copy(imageData, (char*)Post->Images[Post->ImageCount].Data, imageDataLength);
 	Post->Images[Post->ImageCount].Length = imageDataLength; 
+	Post->ImageCount++;
 
 	return Error_CreateSuccess();
 }
