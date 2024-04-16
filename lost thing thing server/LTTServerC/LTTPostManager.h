@@ -99,22 +99,25 @@ Error PostManager_DeleteAllPosts(ServerContext* serverContext);
 /* Retrieving data. */
 Post* PostManager_GetPostByID(DBPostContext* context, unsigned long long id, Error* error);
 
-Post** PostManager_GetPostsByTitle(DBPostContext* context, const char* title, size_t* postCount);
+Post** PostManager_GetPostsByTitle(DBPostContext* context, const char* title, size_t* postCount, Error* error);
 
-char* PostManager_GetImageFromPost(DBPostContext* context, Post* post, int imageIndex);
+char* PostManager_GetImageFromPost(DBPostContext* context, Post* post, int imageIndex, size_t* dataLength, Error* error);
 
 
 /* Managing posts. */
-bool PostManager_AddComment(DBPostContext* context, 
-	Post* post,
+bool PostManager_AddComment(Post* post,
 	unsigned long long commentAuthorID,
 	unsigned long long parentCommentID,
 	const char* commentContents);
 
-bool PostManager_RemoveComment(DBPostContext* context, Post* post, unsigned long long commentID);
+PostComment* PostManager_GetComment(Post* post, unsigned long long commentID);
+
+bool PostManager_RemoveComment(Post* post, unsigned long long commentID);
 
 bool PostManager_AddRequesterID(Post* post, unsigned long long requesterID);
 
+bool PostManager_HasRequesterID(Post* post, unsigned long long id);
+
 bool PostManager_RemoveRequesterID(Post* post, unsigned long long requesterID);
 
-bool PostManager_RemoveAllRequesterIDs(Post* post, unsigned long long requesterID);
+void PostManager_RemoveAllRequesterIDs(Post* post);

@@ -10,6 +10,7 @@
 #include "LTTString.h"
 #include "LTTChar.h"
 #include <limits.h>
+#include "LTTServerResourceManager.h"
 
 // Macros.
 #define CACHED_POST_COUNT 128
@@ -144,6 +145,21 @@ static const char* GetPathToIDFile(DBPostContext* context, unsigned long long id
 	return Builder.Data;
 }
 
+static const char* GetPathToPostImageFile(DBPostContext* context, unsigned long long id, int imageIndex)
+{
+	StringBuilder Builder;
+	StringBuilder_Construct(&Builder, DEFAULT_STRING_BUILDER_CAPACITY);
+	BuildPathToPostDirectory(context, &Builder, id);
+
+	char NumberString[32];
+	snprintf(NumberString, sizeof(NumberString), "%d", imageIndex);
+	StringBuilder_AppendChar(&Builder, PATH_SEPARATOR);
+	StringBuilder_Append(&Builder, NumberString);
+	StringBuilder_Append(&Builder, FILE_EXTENSION_PNG);
+
+	return Builder.Data;
+}
+
 static const char* GetPathToThumbnail(DBPostContext* context, unsigned long long id)
 {
 	StringBuilder Builder;
@@ -198,6 +214,7 @@ static bool VerifyComment(const char* comment)
 	return VerifyText(comment, POST_MAX_COMMENT_LENGTH_CODEPOINTS);
 }
 
+
 /* Comment. */
 static void CommentDeconstruct(PostComment* comment)
 {
@@ -210,15 +227,15 @@ static void PostDeconstruct(Post* post)
 {
 	if (post->Title)
 	{
-		Memory_Free(post->Title);
+		Memory_Free((char*)post->Title);
 	}
 	if (post->Description)
 	{
-		Memory_Free(post->Description);
+		Memory_Free((char*)post->Description);
 	}
 	if (post->ThumbnailData)
 	{
-		Memory_Free(post->ThumbnailData);
+		Memory_Free((char*)post->ThumbnailData);
 	}
 	if (post->RequesterIDs)
 	{
@@ -226,6 +243,10 @@ static void PostDeconstruct(Post* post)
 	}
 	if (post->Comments)
 	{
+		for (size_t i = 0; i < post->CommentCount; i++)
+		{
+			Memory_Free((char*)post->Comments[i].Contents);
+		}
 		Memory_Free(post->Comments);
 	}
 }
@@ -254,6 +275,66 @@ static void PostEnsureRequesterCapacity(Post* post, size_t capacity)
 	}
 	post->RequesterIDs = (unsigned long long*)Memory_SafeRealloc(post->RequesterIDs,
 		sizeof(unsigned long long) * post->_requesterCapacity);
+}
+
+static bool PostHasRequesterID(Post* post, unsigned long long id)
+{
+	for (size_t i = 0; i < post->RequesterCount; i++)
+	{
+		if (post->RequesterIDs[i] == id)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
+static bool PostAddRequesterID(Post* post, unsigned long long id)
+{
+	if (PostHasRequesterID(post, id))
+	{
+		return false;
+	}
+
+	PostEnsureRequesterCapacity(post, post->RequesterCount + 1);
+	post->RequesterIDs[post->RequesterCount] = id;
+	post->RequesterCount += 1;
+
+	return true;
+}
+
+static void PostRemoveRequesterIDByIndex(Post* post, size_t index)
+{
+	if (post->RequesterCount == 0)
+	{
+		return;
+	}
+
+	for (size_t i = index + 1; i < post->RequesterCount; i++)
+	{
+		post->RequesterIDs[i - 1] = post->RequesterIDs[i];
+	}
+	post->RequesterIDs -= 1;
+}
+
+static bool PostRemoveRequesterID(Post* post, unsigned long long id)
+{
+	for (size_t i = 0; i < post->RequesterCount; i++)
+	{
+		if (post->RequesterIDs[i] == id)
+		{
+			PostRemoveRequesterIDByIndex(post, i);
+			return true;
+		}
+	}
+
+	return false;
+}
+
+static void PostClearRequesterIDs(Post* post)
+{
+	post->RequesterCount = 0;
 }
 
 static void PostEnsureCommentCapacity(Post* post, size_t capacity)
@@ -297,7 +378,7 @@ static void PostCreateNew(DBPostContext* context,
 
 static unsigned long long PostGetAvailableCommentID(Post* post)
 {
-	unsigned long long HighestID = DEFAULT_COMMENT_ID;
+	unsigned long long HighestID = 0;
 	for (size_t i = 0; i < post->CommentCount; i++)
 	{
 		if (post->Comments[i].ID > HighestID)
@@ -308,7 +389,7 @@ static unsigned long long PostGetAvailableCommentID(Post* post)
 	return HighestID + 1;
 }
 
-static PostComment* GetPostCommentByID(Post* post, unsigned long long id)
+static PostComment* PostGetCommentByID(Post* post, unsigned long long id)
 {
 	for (size_t i = 0; i < post->CommentCount; i++)
 	{
@@ -336,12 +417,13 @@ static void RemovePostCommentByIndex(Post* post, size_t index)
 	post->CommentCount--;
 }
 
-static void RemovePostCommentByID(Post* post, unsigned long long id)
+static bool RemovePostCommentByID(Post* post, unsigned long long id)
 {
 	for (size_t i = 0; i < post->CommentCount; i++)
 	{
 		if (post->Comments[i].ID == id)
 		{
+			RemovePostCommentByIndex(post, i);
 			return true;
 		}
 	}
@@ -356,6 +438,7 @@ static void ClearPostComments(Post* post)
 	}
 	post->CommentCount = 0;
 }
+
 
 /* Unfinished post. */
 static void EnsureUnfinishedPostListCapacity(DBPostContext* context, size_t capacity)
@@ -388,15 +471,17 @@ static void AddUnfinishedPost(DBPostContext* context,
 	Post->Description = String_CreateCopy(description);
 	Post->Tags = tags;
 	Post->ImageCount = 0;
+
+	context->UnfinishedPostCount += 1;
 }
 
 static void UnfinishedPostDeconstruct(UnfinishedPost* post)
 {
-	Memory_Free(post->Title);
-	Memory_Free(post->Description);
+	Memory_Free((char*)post->Title);
+	Memory_Free((char*)post->Description);
 	for (size_t i = 0; i < post->ImageCount; i++)
 	{
-		Memory_Free(post->Images[i].Data);
+		Memory_Free((char*)post->Images[i].Data);
 	}
 }
 
@@ -454,128 +539,6 @@ static void UnfinishedPostsRefresh(DBPostContext* context)
 }
 
 
-/* Post cache. */
-static void InitializePostCache(DBPostContext* context)
-{
-	context->CachedPosts = (CachedPost*)Memory_SafeMalloc(sizeof(CachedPost) * CACHED_POST_COUNT);
-	for (int i = 0; i < CACHED_POST_COUNT; i++)
-	{
-		context->CachedPosts->LastAccessTime = CACHED_POST_UNLOADED_TIME;
-	}
-}
-
-static Error ClearCacheSpotByIndex(DBPostContext* context, int index, bool savePost)
-{
-	CachedPost* PostCached = context->CachedPosts + index;
-	if (PostCached->LastAccessTime != CACHED_POST_UNLOADED_TIME && savePost)
-	{
-		if (savePost)
-		{
-			Error ReturnedError = WritePostToDatabase(context, &PostCached->TargetPost);
-			if (ReturnedError.Code != ErrorCode_Success)
-			{
-				return ReturnedError;
-			}
-		}
-		PostDeconstruct(&PostCached->TargetPost);
-		PostCached->LastAccessTime = CACHED_POST_UNLOADED_TIME;
-	}
-
-	return Error_CreateSuccess();
-}
-
-static CachedPost* GetCacheSpotForPost(DBPostContext* context, Error* error, bool savePost)
-{
-	time_t LowestTime = LLONG_MAX;
-	int LowestTimeIndex = 0;
-
-	for (int i = 0; i < CACHED_POST_COUNT; i++)
-	{
-		if (context->CachedPosts[i].LastAccessTime < LowestTime)
-		{
-			LowestTime = context->CachedPosts[i].LastAccessTime;
-			LowestTimeIndex = i;
-		}
-	}
-
-	*error = ClearCacheSpotByIndex(context, LowestTimeIndex, savePost);
-	return context->CachedPosts + LowestTimeIndex;
-}
-
-static CachedPost* LoadPostIntoCache(DBPostContext* context, unsigned long long postID, Error* error)
-{
-	CachedPost* PostCached = GetCacheSpotForPost(context, error, true);
-	if (error->Code != ErrorCode_Success)
-	{
-		return NULL;
-	}
-
-	PostCached->LastAccessTime = time(NULL);
-	if (!ReadPostFromDatabase(context, &PostCached->TargetPost, postID, error))
-	{
-		return NULL;
-	}
-
-	return &PostCached->TargetPost;
-}
-
-static Post* TryGetPostFromCache(DBPostContext* context, unsigned long long id)
-{
-	for (int i = 0; i < CACHED_POST_COUNT; i++)
-	{
-		CachedPost* Post = context->CachedPosts + i;
-		if ((Post->LastAccessTime != CACHED_POST_UNLOADED_TIME) && (Post->TargetPost.ID == id))
-		{
-			return &Post->TargetPost;
-		}
-	}
-}
-
-static Error SaveAllCachedPostsToDatabase(DBPostContext* context)
-{
-	for (int i = 0; i < CACHED_POST_COUNT; i++)
-	{
-		if (context->CachedPosts[i].LastAccessTime != UNFINISHED_POST_LIFETIME)
-		{
-			WritePostToDatabase(context, &context->CachedPosts[i].TargetPost);
-		}
-	}
-}
-
-static Error RemovePostFromCacheByID(DBPostContext* context, unsigned long long id, bool savePost)
-{
-	for (int i = 0; i < CACHED_POST_COUNT; i++)
-	{
-		if (context->CachedPosts[i].TargetPost.ID == id)
-		{
-			return ClearCacheSpotByIndex(context, i, savePost);
-		}
-	}
-
-	return Error_CreateSuccess();
-}
-
-
-/* ID Hashmap. */
-static void GenerateMetaInfoFroSinglePost(DBPostContext* context, Post* post)
-{
-	IDCodepointHashMap_AddID(&context->TitleMap, post->Title, post->ID);
-}
-
-static void GenerateMetaInfoForPosts(DBPostContext* context)
-{
-	for (unsigned long long id = 0; id < context->AvailablePostID; id++)
-	{
-		GenerateMetaInfoFroSinglePost(context, id);
-	}
-}
-
-static void ClearMetaInfoForSinglePost(DBPostContext* context, Post* post)
-{
-	IDCodepointHashMap_RemoveID(&context->TitleMap, post->Title, post->ID);
-}
-
-
 /* Loading and saving posts. */
 static void WriteSingleCommentToCompound(PostComment* comment, GHDFCompound* compound)
 {
@@ -609,10 +572,12 @@ static void WriteCommentsToCompound(Post* post, GHDFCompound* baseCompound)
 	{
 		GHDFCompound* CommentCompound = (GHDFCompound*)Memory_SafeMalloc(sizeof(GHDFCompound));
 		CompoundArray[i].Compound = CommentCompound;
+		GHDFCompound_Construct(CommentCompound, COMPOUND_DEFAULT_CAPACITY);
 		WriteSingleCommentToCompound(post->Comments + i, CommentCompound);
 	}
 
-	GHDFCompound_AddArrayEntry(baseCompound, GHDFType_Compound, ENTRY_ID_POST_COMMENT_ARRAY, CompoundArray, post->CommentCount);
+	GHDFCompound_AddArrayEntry(baseCompound, GHDFType_Compound, ENTRY_ID_POST_COMMENT_ARRAY,
+		CompoundArray, (unsigned int)post->CommentCount);
 }
 
 static void WriteRequestersToCompound(Post* post, GHDFCompound* compound)
@@ -628,7 +593,8 @@ static void WriteRequestersToCompound(Post* post, GHDFCompound* compound)
 		ValueArray[i].ULong = post->RequesterIDs[i];
 	}
 
-	GHDFCompound_AddArrayEntry(compound, GHDFType_ULong, ENTRY_ID_POST_REQUESTER_IDS, ValueArray, post->RequesterCount);
+	GHDFCompound_AddArrayEntry(compound, GHDFType_ULong, ENTRY_ID_POST_REQUESTER_IDS, ValueArray,
+		(unsigned int)post->RequesterCount);
 }
 
 static void WritePostToCompound(Post* post, GHDFCompound* compound)
@@ -641,7 +607,7 @@ static void WritePostToCompound(Post* post, GHDFCompound* compound)
 	Value.String = String_CreateCopy(post->Title);
 	GHDFCompound_AddSingleValueEntry(compound, GHDFType_String, ENTRY_ID_POST_TITLE, Value);
 	Value.String = String_CreateCopy(post->Description);
-	GHDFCompound_AddSingleValueEntry(compound, GHDFType_ULong, ENTRY_ID_POST_DESCRIPTION, Value);
+	GHDFCompound_AddSingleValueEntry(compound, GHDFType_String, ENTRY_ID_POST_DESCRIPTION, Value);
 	Value.Long = post->CreationTime;
 	GHDFCompound_AddSingleValueEntry(compound, GHDFType_Long, ENTRY_ID_POST_CREATION_TIME, Value);
 	Value.Int = post->Tags;
@@ -667,7 +633,7 @@ static Error WritePostToDatabase(DBPostContext* context, Post* post)
 	Memory_Free((char*)DirectoryPath);
 
 	Error ReturnedError = GHDFCompound_WriteToFile(FilePath, &Compound);
-	Memory_Free(FilePath);
+	Memory_Free((char*)FilePath);
 	GHDFCompound_Deconstruct(&Compound);
 	return ReturnedError;
 }
@@ -675,7 +641,7 @@ static Error WritePostToDatabase(DBPostContext* context, Post* post)
 static Error CreatePostThumbnailInDatabase(DBPostContext* context, UnfinishedPostImage* image, unsigned long long postID)
 {
 	Image ReadImage;
-	ReadImage.Data = stbi_load_from_memory(image->Data, image->Length, &ReadImage.SizeX,
+	ReadImage.Data = stbi_load_from_memory((const unsigned char*)image->Data, (int)image->Length, &ReadImage.SizeX,
 		&ReadImage.SizeY, &ReadImage.ColorChannels, STBI_rgb);
 
 	if (!ReadImage.Data)
@@ -690,7 +656,7 @@ static Error CreatePostThumbnailInDatabase(DBPostContext* context, UnfinishedPos
 	int Result = stbi_write_png(FilePath, ReadImage.SizeX, ReadImage.SizeY, STBI_rgb, ReadImage.Data, 0);
 
 	Memory_Free((char*)FilePath);
-	Memory_Free(ReadImage.Data);
+	Memory_Free((char*)ReadImage.Data);
 
 	if (!Result)
 	{
@@ -700,10 +666,10 @@ static Error CreatePostThumbnailInDatabase(DBPostContext* context, UnfinishedPos
 	return Error_CreateSuccess();
 }
 
-static Error SaveSinglePostImageToDatabase(DBPostContext* context, unsigned long long postID, UnfinishedPostImage* image)
+static Error SaveSinglePostImageToDatabase(DBPostContext* context, unsigned long long postID, UnfinishedPostImage* image, int imageIndex)
 {
 	Image ReadImage;
-	ReadImage.Data = stbi_load_from_memory(image->Data, image->Length, &ReadImage.SizeX,
+	ReadImage.Data = stbi_load_from_memory((const unsigned char*)image->Data, (int)image->Length, &ReadImage.SizeX,
 		&ReadImage.SizeY, &ReadImage.ColorChannels, STBI_rgb);
 
 	if (!ReadImage.Data)
@@ -716,11 +682,11 @@ static Error SaveSinglePostImageToDatabase(DBPostContext* context, unsigned long
 		Image_ScaleImageToFit(&ReadImage, POST_MAX_THUMBNAIL_SIZE);
 	}
 
-	const char* FilePath = GetPathToIDFile(context, postID, FILE_EXTENSION_PNG);
+	const char* FilePath = GetPathToPostImageFile(context, postID, imageIndex);
 	int Result = stbi_write_png(FilePath, ReadImage.SizeX, ReadImage.SizeY, STBI_rgb, ReadImage.Data, 0);
 
 	Memory_Free((char*)FilePath);
-	Memory_Free(ReadImage.Data);
+	Memory_Free((char*)ReadImage.Data);
 
 	if (!Result)
 	{
@@ -745,7 +711,7 @@ static Error CreatePostImagesInDatabase(DBPostContext* context, unsigned long lo
 
 	for (size_t i = 0; i < imageCount; i++)
 	{
-		ReturnedError = SaveSinglePostImageToDatabase(context, postID, images + i);
+		ReturnedError = SaveSinglePostImageToDatabase(context, postID, images + i, (int)i);
 		if (ReturnedError.Code != ErrorCode_Success)
 		{
 			return ReturnedError;
@@ -811,6 +777,8 @@ static Error ReadSingleCommentFromCompound(PostComment* comment, GHDFCompound* c
 		return ReturnedError;
 	}
 	comment->Contents = String_CreateCopy(Entry->Value.SingleValue.String);
+
+	return Error_CreateSuccess();
 }
 
 static Error ReadCommentsFromCompound(Post* post, GHDFCompound* compound)
@@ -831,7 +799,7 @@ static Error ReadCommentsFromCompound(Post* post, GHDFCompound* compound)
 	post->CommentCount = Entry->Value.ValueArray.Size;
 	for (unsigned int i = 0; i < post->CommentCount; i++)
 	{
-		Error ReturnedError = ReadSingleCommentFromCompound(post->Comments + i, Entry->Value.ValueArray.Array[i].Compound);
+		ReturnedError = ReadSingleCommentFromCompound(post->Comments + i, Entry->Value.ValueArray.Array[i].Compound);
 		if (ReturnedError.Code != ErrorCode_Success)
 		{
 			return ReturnedError;
@@ -902,7 +870,7 @@ static Error ReadPostFromCompound(Post* post, GHDFCompound* compound)
 	{
 		return ReturnedError;
 	}
-	post->ImageCount =Entry->Value.SingleValue.ULong;
+	post->ImageCount = Entry->Value.SingleValue.ULong;
 
 	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_POST_TAGS, &Entry, GHDFType_Int, "Post Tags");
 	if (ReturnedError.Code != ErrorCode_Success)
@@ -936,7 +904,7 @@ static Error ReadPostFromCompound(Post* post, GHDFCompound* compound)
 static Error ReadPostThumbnailData(DBPostContext* context, Post* post)
 {
 	post->ThumbnailData = NULL;
-	const char* ThumbnailPath = PathToThumbnail(context, post->ID);
+	const char* ThumbnailPath = GetPathToThumbnail(context, post->ID);
 	if (!File_Exists(ThumbnailPath))
 	{
 		Memory_Free((char*)ThumbnailPath);
@@ -988,18 +956,168 @@ static bool ReadPostFromDatabase(DBPostContext* context, Post* post, unsigned lo
 		PostDeconstruct(post);
 		return false;
 	}
-	
+
 	return true;
 }
 
-static void DeletePostFromDatabase(DBPostContext* context, Post* post)
+static void DeletePostFromDatabase(DBPostContext* context, unsigned long long id)
 {
 	StringBuilder PathBuilder;
 	StringBuilder_Construct(&PathBuilder, DEFAULT_STRING_BUILDER_CAPACITY);
-	BuildPathToPostDirectory(context->PostRootPath, &PathBuilder, post->ID);
+	BuildPathToPostDirectory(context, &PathBuilder, id);
 
 	Directory_Delete(PathBuilder.Data);
 	StringBuilder_Deconstruct(&PathBuilder);
+}
+
+
+/* Post cache. */
+static void InitializePostCache(DBPostContext* context)
+{
+	context->CachedPosts = (CachedPost*)Memory_SafeMalloc(sizeof(CachedPost) * CACHED_POST_COUNT);
+	for (int i = 0; i < CACHED_POST_COUNT; i++)
+	{
+		context->CachedPosts[i].LastAccessTime = CACHED_POST_UNLOADED_TIME;
+	}
+}
+
+static Error ClearCacheSpotByIndex(DBPostContext* context, int index, bool savePost)
+{
+	CachedPost* PostCached = context->CachedPosts + index;
+	if (PostCached->LastAccessTime != CACHED_POST_UNLOADED_TIME && savePost)
+	{
+		if (savePost)
+		{
+			Error ReturnedError = WritePostToDatabase(context, &PostCached->TargetPost);
+			if (ReturnedError.Code != ErrorCode_Success)
+			{
+				return ReturnedError;
+			}
+		}
+		PostDeconstruct(&PostCached->TargetPost);
+		PostCached->LastAccessTime = CACHED_POST_UNLOADED_TIME;
+	}
+
+	return Error_CreateSuccess();
+}
+
+static CachedPost* GetCacheSpotForPost(DBPostContext* context, Error* error, bool savePost)
+{
+	time_t LowestTime = LLONG_MAX;
+	int LowestTimeIndex = 0;
+
+	for (int i = 0; i < CACHED_POST_COUNT; i++)
+	{
+		if (context->CachedPosts[i].LastAccessTime < LowestTime)
+		{
+			LowestTime = context->CachedPosts[i].LastAccessTime;
+			LowestTimeIndex = i;
+		}
+	}
+
+	*error = ClearCacheSpotByIndex(context, LowestTimeIndex, savePost);
+	return context->CachedPosts + LowestTimeIndex;
+}
+
+static CachedPost* LoadPostIntoCache(DBPostContext* context, unsigned long long postID, Error* error)
+{
+	CachedPost* PostCached = GetCacheSpotForPost(context, error, true);
+	if (error->Code != ErrorCode_Success)
+	{
+		return NULL;
+	}
+
+	PostCached->LastAccessTime = time(NULL);
+	if (!ReadPostFromDatabase(context, &PostCached->TargetPost, postID, error))
+	{
+		return NULL;
+	}
+
+	return PostCached;
+}
+
+static Post* TryGetPostFromCache(DBPostContext* context, unsigned long long id)
+{
+	for (int i = 0; i < CACHED_POST_COUNT; i++)
+	{
+		CachedPost* Post = context->CachedPosts + i;
+		if ((Post->TargetPost.ID == id) && (Post->LastAccessTime != CACHED_POST_UNLOADED_TIME))
+		{
+			return &Post->TargetPost;
+		}
+	}
+
+	return NULL;
+}
+
+static Error SaveAllCachedPostsToDatabase(DBPostContext* context)
+{
+	for (int i = 0; i < CACHED_POST_COUNT; i++)
+	{
+		if (context->CachedPosts[i].LastAccessTime != CACHED_POST_UNLOADED_TIME)
+		{
+			Error ReturnedError = WritePostToDatabase(context, &context->CachedPosts[i].TargetPost);
+			if (ReturnedError.Code != ErrorCode_Success)
+			{
+				return ReturnedError;
+			}
+		}
+	}
+
+	return Error_CreateSuccess();
+}
+
+static Error RemovePostFromCacheByID(DBPostContext* context, unsigned long long id, bool savePost)
+{
+	for (int i = 0; i < CACHED_POST_COUNT; i++)
+	{
+		if (context->CachedPosts[i].TargetPost.ID == id)
+		{
+			return ClearCacheSpotByIndex(context, i, savePost);
+		}
+	}
+
+	return Error_CreateSuccess();
+}
+
+
+/* ID Hashmap. */
+static void GenerateMetaInfoFroSinglePost(DBPostContext* context, Post* post)
+{
+	IDCodepointHashMap_AddID(&context->TitleMap, post->Title, post->ID);
+}
+
+static Error GenerateMetaInfoForPosts(DBPostContext* context, size_t* readPostCount)
+{
+	*readPostCount = 0;
+	size_t ReadPostCount = 0;
+
+	for (unsigned long long id = DEFAULT_AVAILABLE_POST_ID; id < context->AvailablePostID; id++)
+	{
+		Error ReturnedError;
+		
+		Post TargetPost;
+		if (!ReadPostFromDatabase(context, &TargetPost, id, &ReturnedError))
+		{
+			if (ReturnedError.Code != ErrorCode_Success)
+			{
+				return ReturnedError;
+			}
+			continue;
+		}
+		ReadPostCount++;
+		
+		GenerateMetaInfoFroSinglePost(context, &TargetPost);
+		PostDeconstruct(&TargetPost);
+	}
+
+	*readPostCount = ReadPostCount;
+	return Error_CreateSuccess();
+}
+
+static void ClearMetaInfoForSinglePost(DBPostContext* context, Post* post)
+{
+	IDCodepointHashMap_RemoveID(&context->TitleMap, post->Title, post->ID);
 }
 
 
@@ -1019,6 +1137,7 @@ static Error LoadMetainfoFromCompound(DBPostContext* context, GHDFCompound* comp
 	{
 		return ReturnedError;
 	}
+	context->AvailablePostID = Entry->Value.SingleValue.ULong;
 
 	return Error_CreateSuccess();
 }
@@ -1031,10 +1150,11 @@ static Error LoadMetainfo(DBPostContext* context)
 	if (!File_Exists(FilePath))
 	{
 		Memory_Free((char*)FilePath);
+		return Error_CreateSuccess();
 	}
 	GHDFCompound Compound;
 	Error ReturnedError = GHDFCompound_ReadFromFile(FilePath, &Compound);
-	Memory_Free(FilePath);
+	Memory_Free((char*)FilePath);
 
 	if (ReturnedError.Code != ErrorCode_Success)
 	{
@@ -1071,19 +1191,33 @@ Error PostManager_Construct(ServerContext* serverContext)
 {
 	DBPostContext* Context = serverContext->PostContext;
 
-	Context->PostRootPath = Directory_CombinePaths(serverContext->ServerRootPath, DIR_NAME_POSTS);
+	Context->PostRootPath = Directory_CombinePaths(serverContext->Resources->DatabaseRootPath, DIR_NAME_POSTS);
 
 	Context->_unfinishedPostCapacity = GENERIC_LIST_CAPACITY;
 	Context->UnfinishedPosts = (UnfinishedPost*)Memory_SafeMalloc(sizeof(UnfinishedPost) * Context->_unfinishedPostCapacity);
 	Context->UnfinishedPostCount = 0;
 
-	Context->CachedPosts = (CachedPost*)Memory_SafeMalloc(sizeof(CachedPost) * CACHED_POST_COUNT);
 	InitializePostCache(Context);
 	
-	LoadMetainfo(Context);
+	Error ReturnedError = LoadMetainfo(Context);
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
 
 	IDCodepointHashMap_Construct(&Context->TitleMap);
-	GenerateMetaInfoForPosts(Context);
+
+	size_t ReadPostCount;
+	ReturnedError = GenerateMetaInfoForPosts(Context, &ReadPostCount);
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+	char Message[128];
+	snprintf(Message, sizeof(Message), "Read %llu posts while creating ID hashes.", ReadPostCount);
+	Logger_LogInfo(serverContext->Logger, Message);
+
+	return ReturnedError;
 }
 
 Error PostManager_Deconstruct(DBPostContext* context)
@@ -1100,7 +1234,7 @@ Error PostManager_Deconstruct(DBPostContext* context)
 		return ReturnedError;
 	}
 
-	Memory_Free(context->PostRootPath);
+	Memory_Free((char*)context->PostRootPath);
 	IDCodepointHashMap_Deconstruct(&context->TitleMap);
 	Memory_Free(context->CachedPosts);
 	Memory_Free(context->UnfinishedPosts);
@@ -1122,7 +1256,7 @@ bool PostManager_BeginPostCreation(DBPostContext* context,
 	}
 
 	AddUnfinishedPost(context, author->ID, title, description, tags);
-	return false;
+	return true;
 }
 
 Error PostManager_UploadPostImage(DBPostContext* context, unsigned long long authorID, const char* imageData, size_t imageDataLength)
@@ -1133,11 +1267,14 @@ Error PostManager_UploadPostImage(DBPostContext* context, unsigned long long aut
 	{
 		return Error_CreateError(ErrorCode_InvalidRequest, "Couldn't find the requested unfinished post for image upload.");
 	}
+	if (Post->ImageCount >= POST_MAX_IMAGES)
+	{
+		return Error_CreateSuccess();
+	}
 
 	Post->Images[Post->ImageCount].Data = (char*)Memory_SafeMalloc(imageDataLength);
 	Memory_Copy(imageData, (char*)Post->Images[Post->ImageCount].Data, imageDataLength);
-	Post->Images[Post->ImageCount].Length = imageDataLength;
-	Post->ImageCount++; 
+	Post->Images[Post->ImageCount].Length = imageDataLength; 
 
 	return Error_CreateSuccess();
 }
@@ -1153,8 +1290,8 @@ Post* PostManager_FinishPostCreation(DBPostContext* context, unsigned long long 
 	}
 
 	Post CreatedPost;
-	PostCreateNew(&CreatedPost, UnfPost->Title, UnfPost->Description, UnfPost->AuthorID,
-		UnfPost->Tags, UnfPost->Images, UnfPost->ImageCount);
+	PostCreateNew(context, &CreatedPost, UnfPost->Title, UnfPost->Description, UnfPost->AuthorID,
+		UnfPost->Tags, UnfPost->ImageCount);
 
 	*error = WritePostToDatabase(context, &CreatedPost);
 	if (error->Code != ErrorCode_Success)
@@ -1163,9 +1300,10 @@ Post* PostManager_FinishPostCreation(DBPostContext* context, unsigned long long 
 		return NULL;
 	}
 
-	*error = CreatePostImagesInDatabase(context, CreatedPost.ID, &UnfPost->Images, UnfPost->ImageCount);
+	*error = CreatePostImagesInDatabase(context, CreatedPost.ID, UnfPost->Images, UnfPost->ImageCount);
 	if (error->Code != ErrorCode_Success)
 	{
+		DeletePostFromDatabase(context, CreatedPost.ID);
 		PostDeconstruct(&CreatedPost);
 		return NULL;
 	}
@@ -1192,9 +1330,15 @@ Error PostManager_DeletePost(ServerContext* serverContext, Post* post)
 	snprintf(Message, sizeof(Message), "Deleting post with ID %llu (author id %llu)", post->ID, post->AuthorID);
 	Logger_LogInfo(serverContext->Logger, Message);
 
-	DeletePostFromDatabase(serverContext, post);
-	RemovePostFromCacheByID(serverContext->PostContext, post->ID, false);
+	
+	Error ReturnedError = RemovePostFromCacheByID(serverContext->PostContext, post->ID, false);
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		return ReturnedError;
+	}
+	DeletePostFromDatabase(serverContext->PostContext, post->ID);
 	ClearMetaInfoForSinglePost(serverContext->PostContext, post);
+	return Error_CreateSuccess();
 }
 
 Error PostManager_DeleteAllPosts(ServerContext* serverContext)
@@ -1208,8 +1352,14 @@ Error PostManager_DeleteAllPosts(ServerContext* serverContext)
 			return ReturnedError;
 		}
 
-
+		ReturnedError = PostManager_DeletePost(serverContext, ReturnedPost);
+		if (ReturnedError.Code != ErrorCode_Success)
+		{
+			return ReturnedError;
+		}
 	}
+
+	return Error_CreateSuccess();
 }
 
 
@@ -1222,20 +1372,78 @@ Post* PostManager_GetPostByID(DBPostContext* context, unsigned long long id, Err
 		return CreatedPost;
 	}
 
+	CachedPost* PostCached = LoadPostIntoCache(context, id, error);
+	return PostCached ? &PostCached->TargetPost : NULL;
 }
 
-Post** PostManager_GetPostsByTitle(DBPostContext* context, const char* title, size_t* postCount)
+Post** PostManager_GetPostsByTitle(DBPostContext* context, const char* title, size_t* postCount, Error* error)
 {
+	*error = Error_CreateSuccess();
+	*postCount = 0;
+	size_t IDCount;
+	unsigned long long* IDs = IDCodepointHashMap_FindByString(&context->TitleMap, title, true, &IDCount);
 
+	if (IDCount == 0)
+	{
+		return NULL;
+	}
+
+	Post** FoundPosts = (Post**)Memory_SafeMalloc(sizeof(Post*) * IDCount);
+	size_t MatchedPostCount = 0;
+
+	for (size_t i = 0; i < IDCount; i++)
+	{
+		Post* TargetPost = PostManager_GetPostByID(context, IDs[i], error);
+		if (error->Code != ErrorCode_Success)
+		{
+			Memory_Free(FoundPosts);
+			Memory_Free(IDs);
+			return NULL;
+		}
+		if(!TargetPost)
+		{
+			continue;
+		}
+		if (String_IsFuzzyMatched(TargetPost->Title, title, true))
+		{
+			FoundPosts[MatchedPostCount] = TargetPost;
+			MatchedPostCount++;
+		}
+	}
+
+	Memory_Free(IDs);
+	if (MatchedPostCount == 0)
+	{
+		Memory_Free(FoundPosts);
+		return NULL;
+	}
+	*postCount = MatchedPostCount;
+	return FoundPosts;
 }
 
-char* PostManager_GetImageFromPost(DBPostContext* context, Post* post, int imageIndex)
+char* PostManager_GetImageFromPost(DBPostContext* context, Post* post, int imageIndex, size_t* dataLength, Error* error)
 {
+	*error = Error_CreateSuccess();
+	if (imageIndex >= post->ImageCount)
+	{
+		return NULL;
+	}
 
+	const char* ImagePath = GetPathToPostImageFile(context, post->ID, imageIndex);
+	FILE* File = File_Open(ImagePath, FileOpenMode_ReadBinary, error);
+	if (error->Code != ErrorCode_Success)
+	{
+		Memory_Free((char*)ImagePath);
+		return NULL;
+	}
+
+	char* Data = File_ReadAllData(File, dataLength, error);
+	Memory_Free((char*)ImagePath);
+	File_Close(File);
+	return Data;
 }
 
-bool PostManager_AddComment(DBPostContext* context,
-	Post* post,
+bool PostManager_AddComment(Post* post,
 	unsigned long long commentAuthorID,
 	unsigned long long parentCommentID,
 	const char* commentContents)
@@ -1247,33 +1455,45 @@ bool PostManager_AddComment(DBPostContext* context,
 
 	PostEnsureCommentCapacity(post, post->CommentCount + 1);
 	PostComment* Comment = post->Comments + post->CommentCount;
-	post->CommentCount += 1;
 
+	Comment->PostID = post->ID;
 	Comment->AuthorID = commentAuthorID;
 	Comment->CreationTime = time(NULL);
 	Comment->LastEditTime = Comment->CreationTime;
 	Comment->ID = PostGetAvailableCommentID(post);
-	Comment->ParentCommentID = IsPostCommentExistByID(post, parentCommentID) ? parentCommentID : COMMENT_NO_PARENT_COMMENT_ID;
+	Comment->ParentCommentID = PostGetCommentByID(post, parentCommentID) ? parentCommentID : COMMENT_NO_PARENT_COMMENT_ID;
 	Comment->Contents = String_CreateCopy(commentContents);
+
+	post->CommentCount += 1;
 	return true;
 }
 
-bool PostManager_RemoveComment(DBPostContext* context, Post* post, unsigned long long commentID)
+PostComment* PostManager_GetComment(Post* post, unsigned long long commentID)
 {
+	return PostGetCommentByID(post, commentID);
+}
 
+bool PostManager_RemoveComment(Post* post, unsigned long long commentID)
+{
+	return RemovePostCommentByID(post, commentID);
 }
 
 bool PostManager_AddRequesterID(Post* post, unsigned long long requesterID)
 {
+	return PostAddRequesterID(post, requesterID);
+}
 
+bool PostManager_HasRequesterID(Post* post, unsigned long long id)
+{
+	return PostHasRequesterID(post, id);
 }
 
 bool PostManager_RemoveRequesterID(Post* post, unsigned long long requesterID)
 {
-
+	return PostRemoveRequesterID(post, requesterID);
 }
 
-bool PostManager_RemoveAllRequesterIDs(Post* post, unsigned long long requesterID)
+void PostManager_RemoveAllRequesterIDs(Post* post)
 {
-
+	PostClearRequesterIDs(post);
 }

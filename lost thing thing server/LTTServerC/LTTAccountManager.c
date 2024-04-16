@@ -349,7 +349,7 @@ static void AccountDeconstruct(UserAccount* account)
 	}
 	if (account->ProfileImageData)
 	{
-		Memory_Free(account->ProfileImageData);
+		Memory_Free((char*)account->ProfileImageData);
 	}
 }
 
@@ -444,7 +444,7 @@ static void AddUnverifiedAccount(DBAccountContext* context, const char* name, co
 	UnverifiedUserAccount* Account = context->UnverifiedAccounts + context->UnverifiedAccountCount;
 
 	Account->VerificationAttempts = 0;
-	Account->VerificationCode = Math_RandomInt();
+	Account->VerificationCode = 0; //Math_RandomInt(); // <--- REPLACE IN FINAL PRODUCT WITH MATH_RANDOMINT INSTEAD OF CONSTANT 0
 	Account->VerificationStartTime = (long)time(NULL);;
 	Account->Name = String_CreateCopy(name);
 	Account->Surname = String_CreateCopy(surname);
@@ -597,6 +597,7 @@ static SessionID* CreateSession(DBAccountContext* context, UserAccount* account)
 	Session->AccountID = account->ID;
 	GenerateSessionID(Session->IDValues, account->Email);
 	Session->SessionStartTime = time(NULL);
+	context->SessionCount += 1;
 	return Session;
 }
 
@@ -1159,8 +1160,8 @@ static Error AddSessionFromCompound(DBAccountContext* context, GHDFCompound* com
 
 
 	// Account ID.
-	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_METAINFO_SESSION_START_TIME, &Entry,
-		GHDFType_ULong, "Session start time");
+	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_METAINFO_SESSION_ACCOUNT_ID, &Entry,
+		GHDFType_ULong, "Session account ID");
 	if (ReturnedError.Code != ErrorCode_Success)
 	{
 		return ReturnedError;
@@ -1168,8 +1169,8 @@ static Error AddSessionFromCompound(DBAccountContext* context, GHDFCompound* com
 	Session->AccountID = Entry->Value.SingleValue.ULong;
 
 	// Session values.
-	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_METAINFO_SESSION_START_TIME, &Entry,
-		GHDFType_UInt | GHDF_TYPE_ARRAY_BIT, "Session start time");
+	ReturnedError = GHDFCompound_GetVerifiedEntry(compound, ENTRY_ID_METAINFO_SESSION_IDVALUES, &Entry,
+		GHDFType_UInt | GHDF_TYPE_ARRAY_BIT, "Session ID values.");
 	if (ReturnedError.Code != ErrorCode_Success)
 	{
 		return ReturnedError;
@@ -1202,8 +1203,9 @@ static Error ReadMetaInfoFromCompound(DBAccountContext* context, GHDFCompound* c
 
 
 	// Sessions.
-	ReturnedError = GHDFCompound_GetVerifiedOptionalEntry(compound, ENTRY_ID_METAINFO_SESSION_ARRAY, &Entry, GHDFType_ULong,
-		"Meta-info account image id.");
+	ReturnedError = GHDFCompound_GetVerifiedOptionalEntry(compound,
+		ENTRY_ID_METAINFO_SESSION_ARRAY, &Entry, GHDFType_Compound | GHDF_TYPE_ARRAY_BIT,
+		"Meta-info account sessions.");
 	if (ReturnedError.Code != ErrorCode_Success)
 	{
 		return ReturnedError;
@@ -1262,8 +1264,8 @@ static void SaveSessionsToCompound(DBAccountContext* context, GHDFCompound* comp
 
 		SingleValue.Long = (long long)context->ActiveSessions[CompIndex].SessionStartTime;
 		GHDFCompound_AddSingleValueEntry(TargetCompound, GHDFType_Long, ENTRY_ID_METAINFO_SESSION_START_TIME, SingleValue);
-		SingleValue.ULong = (long long)context->ActiveSessions[CompIndex].AccountID;
-		GHDFCompound_AddSingleValueEntry(TargetCompound, GHDFType_Long, ENTRY_ID_METAINFO_AVAILABLE_ID, SingleValue);
+		SingleValue.ULong = (unsigned long long)context->ActiveSessions[CompIndex].AccountID;
+		GHDFCompound_AddSingleValueEntry(TargetCompound, GHDFType_ULong, ENTRY_ID_METAINFO_SESSION_ACCOUNT_ID, SingleValue);
 
 		GHDFPrimitive* SessionIDValues = (GHDFPrimitive*)Memory_SafeMalloc(sizeof(GHDFPrimitive) * SESSION_ID_LENGTH);
 		for (int IDIndex = 0; IDIndex < SESSION_ID_LENGTH; IDIndex++)
@@ -1541,6 +1543,22 @@ UserAccount* AccountManager_GetAccountByEmail(DBAccountContext* context, const c
 	return FoundAccount;
 }
 
+UserAccount* AccountManager_GetAccountBySession(DBAccountContext* context, unsigned int* sessionValues, Error* error)
+{
+	RefreshSessions(context);
+
+	for (size_t i = 0; i < context->SessionCount; i++)
+	{
+		if (IsSessionIDValuesEqual(sessionValues, context->ActiveSessions[i].IDValues))
+		{
+			return AccountManager_GetAccountByID(context, context->ActiveSessions[i].AccountID, error);
+		}
+	}
+	
+	*error = Error_CreateSuccess();
+	return NULL;
+}
+
 Error AccountManager_DeleteAccount(ServerContext* serverContext, UserAccount* account)
 {
 	char Message[256];
@@ -1581,6 +1599,37 @@ Error AccountManager_DeleteAllAccounts(ServerContext* serverContext)
 	}
 
 	return Error_CreateSuccess();
+}
+
+bool AccountManager_IsPasswordCorrect(UserAccount* account, const char* password)
+{
+	unsigned long long Hash[16];
+	GeneratePasswordHash(Hash, password);
+	return PasswordHashEquals(account->PasswordHash, Hash);
+}
+
+bool AccountManager_SetName(UserAccount* account, const char* name)
+{
+	if (!VerifyName(name))
+	{
+		return false;
+	}
+	Memory_Free((char*)account->Name);
+	account->Name = String_CreateCopy(name);
+
+	return true;
+}
+
+bool AccountManager_SurnameName(UserAccount* account, const char* surname)
+{
+	if (!VerifyName(surname))
+	{
+		return false;
+	}
+	Memory_Free((char*)account->Surname);
+	account->Surname = String_CreateCopy(surname);
+
+	return true;
 }
 
 
@@ -1647,7 +1696,7 @@ Error AccountManager_SetProfileImage(DBAccountContext* context, UserAccount* acc
 		return ReturnedError;
 	}
 
-	Memory_Free(account->ProfileImageData);
+	Memory_Free((char*)account->ProfileImageData);
 	return ReadAccountImageFromDatabase(context, account);
 }
 

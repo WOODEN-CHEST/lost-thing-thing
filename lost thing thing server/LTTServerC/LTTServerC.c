@@ -12,6 +12,8 @@
 #include "LTTServerResourceManager.h"
 #include "LTTAccountManager.h"
 #include "Logger.h"
+#include "LTTPostManager.h"
+#include "LTTSMTP.h"
 
 
 // Static variables.
@@ -45,6 +47,11 @@ static void CloseContext(ServerContext* context)
 	if (context->ServerRootPath)
 	{
 		Memory_Free((char*)context->ServerRootPath);
+	}
+	if (context->PostContext)
+	{
+		PostManager_Deconstruct(context->PostContext);
+		Memory_Free(context->PostContext);
 	}
 }
 
@@ -87,7 +94,18 @@ static Error CreateContext(ServerContext* context, const char* serverExecutableP
 		CloseContext(context);
 		return ReturnedError;
 	}
+
+	context->PostContext = (DBPostContext*)Memory_SafeMalloc(sizeof(DBPostContext));
+	ReturnedError = PostManager_Construct(context);
+	if (ReturnedError.Code != ErrorCode_Success)
+	{
+		CloseContext(context);
+		return ReturnedError;
+	}
+
 	Logger_LogInfo(context->Logger, "Constructed database context.");
+
+	
 
 	return Error_CreateSuccess();
 }
@@ -139,22 +157,13 @@ static int RunServer(const char* executablePath)
 		return EXIT_FAILURE;
 	}
 
-	size_t Size;
-	char* a = String_CreateCopy("1a23aa345aa567aa789aaa");
-	char** Strs = String_Split(a, "aa", &Size);
-	for (size_t i = 0; i < Size; i++)
+	ReturnedError = HttpListener_Listen(&Context);
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
-		printf("%s\n", Strs[i]);
+		Logger_LogCritical(Context.Logger, ReturnedError.Message);
+		Error_Deconstruct(&ReturnedError);
 	}
 
-
-	// Start server.
- 	Error Error = HttpListener_Listen(&Context);
-	if (Error.Code != ErrorCode_Success)
-	{
-		Logger_LogError(Context.Logger, Error.Message);
-		Error_Deconstruct(&Error);
-	}
 
 	// Stop server.
 	Logger_LogInfo(Context.Logger, "Server closing.");

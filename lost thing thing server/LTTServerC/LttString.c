@@ -349,6 +349,19 @@ _Bool String_EqualsCaseInsensitive(const char* string1, const char* string2)
 	return string1[Index] == string2[Index];
 }
 
+_Bool String_IsNumeric(const char* string)
+{
+	for (size_t i = 0; string[i] != '\0'; i++)
+	{
+		if (!Char_IsDigit(string + i))
+		{
+			return false;
+		}
+	}
+
+	return true;
+}
+
 char* String_Replace(const char* string, const char* oldSequence, const char* newSequence)
 {
 	if (oldSequence[0] == '\0')

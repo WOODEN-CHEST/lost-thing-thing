@@ -146,6 +146,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Base64.c" />
     <ClCompile Include="ConfigFile.c" />
     <ClCompile Include="Directory.c" />
     <ClCompile Include="GHDF.c" />
@@ -153,13 +154,13 @@
     <ClCompile Include="IDCodepointHashMap.h" />
     <ClCompile Include="Image.c" />
     <ClCompile Include="LTTAccountManager.c" />
+    <ClCompile Include="LTTBase64.h" />
     <ClCompile Include="LTTChar.c" />
     <ClCompile Include="LttErrors.c" />
     <ClCompile Include="File.c" />
     <ClCompile Include="HttpListener.c" />
     <ClCompile Include="Logger.c" />
     <ClCompile Include="LTTHTML.c" />
-    <ClCompile Include="LTTJSON.c" />
     <ClCompile Include="LTTPostManager.c" />
     <ClCompile Include="LTTPostManager.h" />
     <ClCompile Include="LTTServerC.c" />
@@ -180,7 +181,6 @@
     <ClInclude Include="HttpListener.h" />
     <ClInclude Include="Logger.h" />
     <ClInclude Include="LTTHTML.h" />
-    <ClInclude Include="LTTJSON.h" />
     <ClInclude Include="LTTServerC.h" />
     <ClInclude Include="LTTSMTP.h" />
     <ClInclude Include="LttString.h" />
@@ -190,6 +190,7 @@
     <ClInclude Include="LTTServerResourceManager.h" />
   </ItemGroup>
   <ItemGroup>
+    <Text Include="API documentation.txt" />
     <Text Include="DatabaseCommonFunctions.txt" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

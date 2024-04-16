@@ -1,0 +1,133 @@
+Must send arguments in format <argument_name>="<value>". Quotes may be escaped with \"
+Arguments must be sent in the HTTP request's body, path as the request target.
+
+
+// Account API.
+
+# Creates an account
+Path = account/signup
+Arguments:
+	"name" (string)
+	"surname" (string)
+	"email" (string)
+	"password" (string)
+
+# Verifies an account.
+Path = account/verify
+Arguments:
+	"email" (string)
+	"verfication_code"  (integer)
+
+
+# Signs in a user into an account.
+Path = account/login
+Arguments:
+	"email" (string)
+	"password" (string)
+Returns
+	Session ID values # The session ID values which must be then sent as cookies in any requests involving this account
+
+# Deletes an account. Must send the password of the account to confirm deletion.
+Path = account/delete
+Cookies:
+	The deletable account's session.
+Arguments:
+	"password" (string)
+
+# Edits an account's name and surname.
+Path = account/edit
+Cookies:
+	The editable account's session.
+Arguments:
+	"name" (string)
+	"surname" (string)
+
+# Gets an array of accounts from the database.
+Path = account/get
+Arguments:
+	EITHER
+		"id" (ulong) # The ID of the account, will return zero or 1 accounts.
+	OR
+		"name" (string) # Will fuzzy match search for accounts with this name and return all possible matches.
+
+
+// Post API.
+# Creates a post.
+Path = post/create/create
+Cookies:
+	The creator's account's session.
+Arguments:
+	"title" (string)
+	"description" (string)
+	"tags" (integer)
+
+# Uploads an image to a post which is currently being created.
+Path = post/create/image
+Cookies:
+	The creator's account's session.
+Arguments:
+	"image" (Base64 encoded png or jpg format image data)
+
+
+# Finished post creation.
+Path = post/create/finish
+Cookies:
+	The creator's account's session.
+
+# Deletes a post
+Path = post/delete
+Cookies:
+	The creator's account's session.
+Arguments:
+	"id" (ulong) # The ID of the post to delete.
+
+# Edit an existing post's title and description.
+Path = post/edit
+Cookies:
+	The creator's account's session.
+Arguments:
+	"title" (string)
+	"description" (string)
+	"tags" (integer)
+
+# Creates a comment on a post
+Path = post/comment/create
+Cookies:
+	The creator's account's session.
+Arguments:
+	"contents"
+	"post_id"
+	"parent_id"
+
+# Deletes a comment
+Path = post/comment/delete
+Cookies:
+	The creator's account's session.
+Arguments:
+	"id" (ulong) # ID of the comment to delete.
+
+# Edits a comment's contents.
+Path = post/comment/edit
+Cookies:
+	The creator's account's session.
+Arguments:
+	"contents" (string)
+
+# Gets an array of posts from the database.
+Path = post/get/posts
+Arguments:
+	EITHER
+		"id" (ulong) # The ID of the post, will return zero or 1 posts.
+	OR
+		"title" (string) # Will fuzzy match search for posts with this name and return all possible matches.
+
+Path = post/get/image
+Arguments:
+	"id" (ulong) # The ID of the post, will return zero or 1 posts.
+	"index" (int) # The index of the image.
+
+
+# Gets an array of posts from the database.
+Path = post/get/comments
+Arguments:
+	"id" (ulong) # The ID of the post, will return ->ALL<- comments in the post.

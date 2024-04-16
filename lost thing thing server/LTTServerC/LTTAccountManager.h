@@ -91,9 +91,17 @@ UserAccount** AccountManager_GetAccountsByName(DBAccountContext* context, const 
 
 UserAccount* AccountManager_GetAccountByEmail(DBAccountContext* context, const char* email, Error* error);
 
+UserAccount* AccountManager_GetAccountBySession(DBAccountContext* context, unsigned int* sessionValues, Error* error);
+
 Error AccountManager_DeleteAccount(ServerContext* serverContext, UserAccount* account);
 
 Error AccountManager_DeleteAllAccounts(ServerContext* serverContext);
+
+bool AccountManager_IsPasswordCorrect(UserAccount* account, const char* password);
+
+bool AccountManager_SetName(UserAccount* account, const char* name);
+
+bool AccountManager_SurnameName(UserAccount* account, const char* surname);
 
 
 /* Sessions. */
@@ -102,6 +110,7 @@ bool AccountManager_IsSessionAdmin(DBAccountContext* context, unsigned int* sess
 SessionID* AccountManager_TryCreateSession(DBAccountContext* context, UserAccount* account, const char* password);
 
 SessionID* AccountManager_CreateSession(DBAccountContext* context, UserAccount* account);
+
 
 /* Profile image. */
 Error AccountManager_GetProfileImage(DBAccountContext* context, unsigned long long id, Image* image);

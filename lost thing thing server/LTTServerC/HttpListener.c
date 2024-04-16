@@ -14,7 +14,7 @@
 
 
 // Macros.
-#define REQUEST_MESSAGE_BUFFER_LENGTH 6000000
+#define REQUEST_MESSAGE_BUFFER_LENGTH 10000000
 
 #define TARGET_WSA_VERSION_MAJOR 2
 #define TARGET_WSA_VERSION_MINOR 2
@@ -501,7 +501,8 @@ static Error ProcessHttpRequest(ServerContext* context,
 {
 	// Parse request.
 	ClearHttpRequestStruct(requestToBuild);
-	Error ReturnedError = ParseHttpRequestMessage(unparsedRequestMessage, requestToBuild))
+	Error ReturnedError = ParseHttpRequestMessage(unparsedRequestMessage, requestToBuild);
+	if (ReturnedError.Code != ErrorCode_Success)
 	{
 		return ReturnedError;
 	}
@@ -554,15 +555,31 @@ static Error AcceptSingleClient(ServerContext* context,
 		return SetSocketError("AcceptSingleClient: Failed to accept client.", WSAGetLastError());
 	}
 	runtimeData->RequestCount += 1;
+	DWORD SocketOptionValue = 1;
+	if (setsockopt(ClientSocket, SOL_SOCKET, SO_RCVTIMEO, &SocketOptionValue, sizeof(DWORD)))
+	{
+		return SetSocketError("AcceptSingleClient: Failed to set socket timeout option.", WSAGetLastError());
+	}
 
-	int ReceivedLength = recv(ClientSocket, unparsedRequestMessage, REQUEST_MESSAGE_BUFFER_LENGTH - 1, 0);
-	if (ReceivedLength == SOCKET_ERROR)
+	int TotalReceivedLength = 0;
+	while (TotalReceivedLength < REQUEST_MESSAGE_BUFFER_LENGTH)
+	{
+		int NowReceivedLength = recv(ClientSocket, unparsedRequestMessage + TotalReceivedLength,
+			REQUEST_MESSAGE_BUFFER_LENGTH - 1 - TotalReceivedLength, 0);
+		if (NowReceivedLength == SOCKET_ERROR)
+		{
+			break;
+		}
+		TotalReceivedLength += NowReceivedLength;
+	}
+	
+	if (TotalReceivedLength == SOCKET_ERROR)
 	{
 		ReturnedError = SetSocketError("Failed to receive client data", WSAGetLastError());
 		closesocket(ClientSocket);
 		return ReturnedError;
 	}
-	unparsedRequestMessage[ReceivedLength] = '\0';
+	unparsedRequestMessage[TotalReceivedLength] = '\0';
 
 	// Process.
 	ReturnedError = ProcessHttpRequest(context, ClientSocket, unparsedRequestMessage, requestToBuild, responseToBuild, runtimeData);

@@ -352,7 +352,7 @@ static Error ReadArrayValue(FILE* file, GHDFType type, GHDFPrimitive** arrayPtr,
 	GHDFPrimitive* PrimitiveArray = (GHDFPrimitive*)Memory_SafeMalloc(sizeof(GHDFPrimitive) * ArraySize);
 	for (unsigned int i = 0; i < ArraySize; i++)
 	{
-		ReturnedError = ReadSingleValue(file, type, PrimitiveArray + i);
+		ReturnedError = ReadSingleValue(file, GetValueType(type), PrimitiveArray + i);
 		if (ReturnedError.Code != ErrorCode_Success)
 		{
 			ReturnedError;

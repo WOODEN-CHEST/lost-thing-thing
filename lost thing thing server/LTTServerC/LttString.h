@@ -148,6 +148,8 @@ _Bool String_Equals(const char* string1, const char* string2);
 
 _Bool String_EqualsCaseInsensitive(const char* string1, const char* string2);
 
+_Bool String_IsNumeric(const char* string);
+
 /// <summary>
 /// Creates a new string where all the sequences in the given string are replaced with new sequences of characters.
 /// </summary>
@@ -155,9 +157,9 @@ _Bool String_EqualsCaseInsensitive(const char* string1, const char* string2);
 /// <param name="oldSequence">Old sequence to replace.</param>
 /// <param name="newSequence">New sequence to put in place of the old one.</param>
 /// <returns></returns>
-char* String_Replace(char* string, const char* oldSequence, const char* newSequence);
+char* String_Replace(const char* string, const char* oldSequence, const char* newSequence);
 
-char** String_Split(const char* string, const char* delimeter, size_t* stringCount);
+char** String_Split(char* string, const char* delimeter, size_t* stringCount);
 
 /// <summary>
 /// Split the string by the provided character separator. This function modifies the given string.

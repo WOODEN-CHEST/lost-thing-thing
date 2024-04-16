@@ -27,9 +27,6 @@
     <Filter Include="Source Files\IO\Logger">
       <UniqueIdentifier>{ca543281-98ad-4a03-ae1c-9fb08298a8ce}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\JSON">
-      <UniqueIdentifier>{62973ba3-fd05-4ece-8ca7-c4c7460d4171}</UniqueIdentifier>
-    </Filter>
     <Filter Include="Source Files\HttpListener\Database">
       <UniqueIdentifier>{4d62ae3a-f3c8-4438-a537-2058ce82b989}</UniqueIdentifier>
     </Filter>
@@ -77,9 +74,6 @@
     <ClCompile Include="GHDF.c">
       <Filter>Source Files\IO</Filter>
     </ClCompile>
-    <ClCompile Include="LTTJSON.c">
-      <Filter>Source Files\JSON</Filter>
-    </ClCompile>
     <ClCompile Include="IDCodepointHashMap.h">
       <Filter>Source Files\HttpListener</Filter>
     </ClCompile>
@@ -105,6 +99,12 @@
       <Filter>Source Files\HttpListener\Database</Filter>
     </ClCompile>
     <ClCompile Include="LTTPostManager.c">
+      <Filter>Source Files\HttpListener\Database</Filter>
+    </ClCompile>
+    <ClCompile Include="LTTBase64.h">
+      <Filter>Source Files\HttpListener\Database</Filter>
+    </ClCompile>
+    <ClCompile Include="Base64.c">
       <Filter>Source Files\HttpListener\Database</Filter>
     </ClCompile>
   </ItemGroup>
@@ -148,9 +148,6 @@
     <ClInclude Include="GHDF.h">
       <Filter>Source Files\IO</Filter>
     </ClInclude>
-    <ClInclude Include="LTTJSON.h">
-      <Filter>Source Files\JSON</Filter>
-    </ClInclude>
     <ClInclude Include="LTTSMTP.h">
       <Filter>Source Files\HttpListener</Filter>
     </ClInclude>
@@ -166,6 +163,9 @@
   </ItemGroup>
   <ItemGroup>
     <Text Include="DatabaseCommonFunctions.txt">
+      <Filter>Source Files\HttpListener\Database</Filter>
+    </Text>
+    <Text Include="API documentation.txt">
       <Filter>Source Files\HttpListener\Database</Filter>
     </Text>
   </ItemGroup>
